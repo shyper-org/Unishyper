@@ -1,0 +1,31 @@
+[package]
+name = "rust-shyper-os"
+version = "0.1.0"
+edition = "2021"
+authors = ["hukeyang <hky1999@buaa.edu.cn>"]
+
+
+[dependencies]
+cfg-if = "1.0.0"
+log = "0.4.14"
+static_assertions = "1.1.0"
+
+buddy_system_allocator = "0.8.0"
+spin = "0.9.2"
+
+cortex-a = { git = "https://github.com/tonnylyz/cortex-a" }
+
+[dependencies.tock-registers]
+version = "0.7.0"
+default-features = false
+features = ["register_types"]
+
+
+
+[features]
+default = ["user_release"]
+user_release = []
+shyper = []
+
+[profile.release]
+debug = true

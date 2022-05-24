@@ -1,7 +1,6 @@
-use tock_registers::register_structs;
 use tock_registers::register_bitfields;
+use tock_registers::register_structs;
 use tock_registers::registers::*;
-
 
 register_bitfields! {
     u8,
@@ -285,7 +284,6 @@ register_bitfields! {
     ],
 }
 
-
 register_structs! {
     /// Representation of the UART registers.
     #[allow(non_snake_case)]
@@ -338,8 +336,12 @@ impl core::ops::Deref for Ns16550Mmio {
 }
 
 impl Ns16550Mmio {
-    pub const fn new(base_addr: usize) -> Self { Ns16550Mmio { base_addr } }
-    fn ptr(&self) -> *const Ns16550MmioBlock { self.base_addr as *const _ }
+    pub const fn new(base_addr: usize) -> Self {
+        Ns16550Mmio { base_addr }
+    }
+    fn ptr(&self) -> *const Ns16550MmioBlock {
+        self.base_addr as *const _
+    }
 }
 
 pub struct Ns16550Mmio32 {
@@ -355,6 +357,10 @@ impl core::ops::Deref for Ns16550Mmio32 {
 }
 
 impl Ns16550Mmio32 {
-    pub const fn new(base_addr: usize) -> Self { Ns16550Mmio32 { base_addr } }
-    fn ptr(&self) -> *const Ns16550Mmio32Block { self.base_addr as *const _ }
+    pub const fn new(base_addr: usize) -> Self {
+        Ns16550Mmio32 { base_addr }
+    }
+    fn ptr(&self) -> *const Ns16550Mmio32Block {
+        self.base_addr as *const _
+    }
 }

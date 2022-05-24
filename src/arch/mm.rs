@@ -1,6 +1,6 @@
 pub mod vm_descriptor {
     use tock_registers::register_bitfields;
-  
+
     register_bitfields! {u64,
       pub TABLE_DESCRIPTOR [
         NEXT_LEVEL_TABLE_PPN OFFSET(12) NUMBITS(36) [], // [47:12]
@@ -14,7 +14,7 @@ pub mod vm_descriptor {
         ]
       ]
     }
-  
+
     register_bitfields! {u64,
       pub PAGE_DESCRIPTOR [
         // Note: LIB and COW are software-defined bits
@@ -63,4 +63,4 @@ pub mod vm_descriptor {
         ]
       ]
     }
-  }
+}

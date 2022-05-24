@@ -62,7 +62,7 @@ _loop:
 .data
 BOOT_STACK:
 .align 12
-.space 4096 * 4
+.space 4096 * 4 // max 4 cores, each core has 4096 stack space.
 BOOT_STACK_TOP:
 
 .align 12

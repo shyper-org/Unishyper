@@ -26,18 +26,22 @@ register_structs! {
 }
 
 pub struct Pl011Mmio {
-  base_addr: usize,
+    base_addr: usize,
 }
 
 impl core::ops::Deref for Pl011Mmio {
-  type Target = Pl011MmioBlock;
+    type Target = Pl011MmioBlock;
 
-  fn deref(&self) -> &Self::Target {
-    unsafe { &*self.ptr() }
-  }
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr() }
+    }
 }
 
 impl Pl011Mmio {
-  pub const fn new(base_addr: usize) -> Self { Pl011Mmio { base_addr } }
-  fn ptr(&self) -> *const Pl011MmioBlock { self.base_addr as *const _ }
+    pub const fn new(base_addr: usize) -> Self {
+        Pl011Mmio { base_addr }
+    }
+    fn ptr(&self) -> *const Pl011MmioBlock {
+        self.base_addr as *const _
+    }
 }

@@ -83,7 +83,7 @@ vectors:
 .org 0x200
     VECTOR current_el_spx_synchronous
 .org 0x280
-    VECTOR_DISABLED
+    VECTOR current_el_spx_irq
 .org 0x300
     VECTOR_DISABLED // FIQ
 .org 0x380

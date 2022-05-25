@@ -16,6 +16,7 @@ pub trait ArchTrait {
     fn nop();
     fn fault_address() -> usize;
     fn core_id() -> usize;
+    fn curent_privilege() -> usize;
 }
 
 pub trait ContextFrameTrait {

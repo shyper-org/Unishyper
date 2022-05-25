@@ -24,10 +24,10 @@ pub fn current_sec() -> usize {
     count / freq
 }
 
-// pub fn interrupt() {
-//   crate::driver::timer::next();
-//   crate::lib::cpu::cpu().schedule();
-// }
+pub fn interrupt() {
+  crate::driver::timer::next();
+  crate::lib::cpu::cpu().schedule();
+}
 
 #[allow(dead_code)]
 pub fn current_cycle() -> usize {

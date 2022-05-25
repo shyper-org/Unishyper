@@ -74,7 +74,7 @@ impl ContextFrameTrait for Aarch64ContextFrame {
         let mut r = Aarch64ContextFrame {
             gpr: [0; 31],
             spsr: (if privileged {
-                SPSR_EL1::M::EL1t
+                SPSR_EL1::M::EL1h
             } else {
                 SPSR_EL1::M::EL0t
             } + SPSR_EL1::I::Unmasked

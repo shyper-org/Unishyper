@@ -1,12 +1,10 @@
 use spin::Once;
 
-use crate::arch::{AddressSpaceId, ContextFrame, BOARD_CORE_NUMBER, PAGE_SIZE};
-use crate::lib::address_space::AddressSpace;
+use crate::arch::{ContextFrame, BOARD_CORE_NUMBER, PAGE_SIZE};
 use crate::lib::scheduler::scheduler;
 use crate::lib::thread::Thread;
 use crate::lib::traits::*;
 use crate::mm::PhysicalFrame;
-use crate::println;
 
 pub struct Core {
     context: Option<*mut ContextFrame>,
@@ -14,7 +12,6 @@ pub struct Core {
     running_thread: Option<Thread>,
     idle_thread: Once<Thread>,
     idle_stack: Once<PhysicalFrame>,
-    address_space: Option<AddressSpace>,
 }
 
 // Note: only the core itself can be allowed to access its `Core`
@@ -27,7 +24,6 @@ const CORE: Core = Core {
     running_thread: None,
     idle_thread: Once::new(),
     idle_stack: Once::new(),
-    address_space: None,
 };
 
 static mut CORES: [Core; BOARD_CORE_NUMBER] = [CORE; BOARD_CORE_NUMBER];
@@ -114,24 +110,6 @@ impl Core {
             }
         }
         self.set_running_thread(Some(t.clone()));
-        if let Some(a) = t.address_space() {
-            self.set_address_space(a);
-        }
-    }
-
-    pub fn address_space(&self) -> Option<AddressSpace> {
-        self.address_space.clone()
-    }
-
-    fn set_address_space(&mut self, a: AddressSpace) {
-        if let Some(prev) = &self.address_space {
-            if prev.asid() == a.asid() {
-                return;
-            }
-            // info!("switch as from {} to {}", prev.asid(), a.asid());
-        }
-        self.address_space = Some(a.clone());
-        // crate::arch::PageTable::install_user_page_table(a.page_table().base_pa(), a.asid() as AddressSpaceId);
     }
 }
 

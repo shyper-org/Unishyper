@@ -24,5 +24,6 @@ pub fn print_arg(args: fmt::Arguments) {
 #[allow(non_snake_case)]
 #[no_mangle]
 extern "C" fn _Unwind_Resume(arg: usize) -> ! {
+    info!("Unwind resume arg {}",arg);
     loop {}
 }

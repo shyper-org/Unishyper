@@ -90,7 +90,3 @@ registers!(Aarch64, {
     X30 = (30, "X30"),
     SP = (31, "SP"),
 });
-
-pub const REG_RETURN_ADDRESS: Register = Aarch64::X30;
-pub const REG_STACK_POINTER: Register = Aarch64::SP;
-pub const REG_ARGUMENT: Register = Aarch64::X0;

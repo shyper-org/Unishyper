@@ -1,4 +1,3 @@
-use core::mem::size_of;
 use core::ops::Range;
 
 use cortex_a::registers::*;
@@ -13,7 +12,6 @@ use crate::lib::traits::*;
 
 pub const PAGE_SHIFT: usize = 12;
 pub const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
-pub const MACHINE_SIZE: usize = size_of::<usize>();
 
 const PA2KVA: usize = 0xFFFF_FF80_0000_0000;
 const KVA2PA: usize = 0x0000_007F_FFFF_FFFF;
@@ -28,8 +26,6 @@ impl Address for usize {
 }
 
 pub type ContextFrame = super::context_frame::Aarch64ContextFrame;
-
-pub type AddressSpaceId = u16;
 
 pub type CoreId = usize;
 

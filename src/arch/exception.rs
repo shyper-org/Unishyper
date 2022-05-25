@@ -6,7 +6,6 @@ use crate::lib::traits::ArchTrait;
 use crate::lib::traits::ContextFrameTrait;
 
 use crate::arch::ContextFrame;
-use crate::println;
 
 core::arch::global_asm!(include_str!("exception.S"));
 

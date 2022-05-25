@@ -6,7 +6,6 @@ use core::sync::atomic::Ordering::Relaxed;
 use spin::Mutex;
 
 use crate::arch::ContextFrame;
-use crate::lib::address_space::AddressSpace;
 use crate::lib::cpu::cpu;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
@@ -34,7 +33,6 @@ struct Inner {
     uuid: usize,
     parent: Option<usize>,
     level: PrivilegedLevel,
-    address_space: Option<AddressSpace>,
 }
 
 struct InnerMut {
@@ -107,10 +105,6 @@ impl Thread {
         }
     }
 
-    pub fn address_space(&self) -> Option<AddressSpace> {
-        self.0.inner.address_space.clone()
-    }
-
     pub fn set_context(&self, ctx: ContextFrame) {
         let mut context_frame = self.0.inner_mut.context_frame.lock();
         *context_frame = ctx;
@@ -138,25 +132,6 @@ fn new_tid() -> Tid {
 
 static THREAD_MAP: Mutex<BTreeMap<Tid, Thread>> = Mutex::new(BTreeMap::new());
 
-pub fn new_user(pc: usize, sp: usize, arg: usize, a: AddressSpace, parent: Option<Tid>) -> Thread {
-    let id = new_tid();
-    let t = Thread(Arc::new(ControlBlock {
-        inner: Inner {
-            uuid: id,
-            parent,
-            level: PrivilegedLevel::User,
-            address_space: Some(a),
-        },
-        inner_mut: InnerMut {
-            status: Mutex::new(Status::Sleep),
-            context_frame: Mutex::new(ContextFrame::new(pc, sp, arg, false)),
-        },
-    }));
-    let mut map = THREAD_MAP.lock();
-    map.insert(id, t.clone());
-    t
-}
-
 pub fn new_kernel(pc: usize, sp: usize, arg: usize) -> Thread {
     let id = new_tid();
     let t = Thread(Arc::new(ControlBlock {
@@ -164,7 +139,6 @@ pub fn new_kernel(pc: usize, sp: usize, arg: usize) -> Thread {
             uuid: id,
             parent: None,
             level: PrivilegedLevel::Kernel,
-            address_space: None,
         },
         inner_mut: InnerMut {
             status: Mutex::new(Status::Sleep),

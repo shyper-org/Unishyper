@@ -20,7 +20,7 @@ KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/rust-shyper-os
 .PHONY: all build emu debug clean
 
 build: 
-	cargo build --target src/target/${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
+	cargo build --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
 	aarch64-elf-objcopy ${KERNEL} -O binary ${KERNEL}.bin
 	aarch64-elf-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
 

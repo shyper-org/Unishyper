@@ -6,6 +6,7 @@ use crate::lib::traits::ArchTrait;
 use crate::lib::traits::ContextFrameTrait;
 
 use crate::arch::ContextFrame;
+use crate::println;
 
 core::arch::global_asm!(include_str!("exception.S"));
 
@@ -16,8 +17,31 @@ unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
 
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
-    // panic!("current_el_sp0_irq\n{}", ctx.read());
-    lower_aarch64_irq(ctx);
+    use crate::lib::interrupt::*;
+    let core = crate::lib::cpu::cpu();
+    core.set_context(ctx);
+    use crate::driver::{gic::INT_TIMER, INTERRUPT_CONTROLLER};
+    let irq = INTERRUPT_CONTROLLER.fetch();
+    match irq {
+        Some(INT_TIMER) => {
+            crate::lib::timer::interrupt();
+        }
+        Some(i) => {
+            if i >= 32 {
+                // crate::lib::interrupt::interrupt(i);
+                info!(" handle interrupt {}", i);
+            } else {
+                panic!("GIC unhandled SGI PPI")
+            }
+        }
+        None => {
+            panic!("GIC unknown irq")
+        }
+    }
+    if irq.is_some() {
+        INTERRUPT_CONTROLLER.finish(irq.unwrap());
+    }
+    core.clear_context();
 }
 
 #[no_mangle]
@@ -26,15 +50,15 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
     error!("current_el_spx_synchronous EC {:#X} \n{}", ec, ctx.read());
     let ctx_mut = ctx.as_mut().unwrap();
     ctx_mut.set_stack_pointer(ctx as usize + size_of::<ContextFrame>());
-    let page_fault = ESR_EL1.matches_all(ESR_EL1::EC::InstrAbortCurrentEL)
-        | ESR_EL1.matches_all(ESR_EL1::EC::DataAbortCurrentEL);
+    // let page_fault = ESR_EL1.matches_all(ESR_EL1::EC::InstrAbortCurrentEL)
+    //     | ESR_EL1.matches_all(ESR_EL1::EC::DataAbortCurrentEL);
     //   crate::lib::exception::handle_kernel(ctx.as_ref().unwrap(), page_fault);
     loop {}
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
-    panic!("current_el_spx_irq\n{}", ctx.read());
+    current_el_sp0_irq(ctx);
 }
 
 #[no_mangle]
@@ -58,7 +82,12 @@ unsafe extern "C" fn lower_aarch64_irq(ctx: *mut ContextFrame) {
     let core_id = crate::arch::Arch::core_id();
 
     core.set_context(ctx);
-    info!("core {} lower_aarch64_irq\n {}", core_id, ctx.read());
+    info!(
+        "core {} lower_aarch64_irq EL{} \n {}",
+        core_id,
+        crate::arch::Arch::curent_privilege(),
+        ctx.read()
+    );
     core.clear_context();
 }
 

@@ -4,7 +4,7 @@ use core::ops::Range;
 use cortex_a::registers::*;
 use tock_registers::interfaces::Readable;
 
-pub const BOARD_CORE_NUMBER: usize = 4;
+pub const BOARD_CORE_NUMBER: usize = 1;
 
 pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0x8000_0000;
 pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x4000_0000;
@@ -63,5 +63,9 @@ impl ArchTrait for Arch {
 
     fn core_id() -> CoreId {
         MPIDR_EL1.get() as usize & (BOARD_CORE_NUMBER - 1)
+    }
+
+    fn curent_privilege() -> usize {
+        (CurrentEL.get() as usize & 0b1100) >> 2
     }
 }

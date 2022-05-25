@@ -32,6 +32,9 @@ impl log::Log for SimpleLogger {
     }
 
     fn log(&self, record: &Record) {
+        use cortex_a::registers::*;
+        use tock_registers::interfaces::Writeable;
+        DAIF.write(DAIF::I::Masked);
         let lock = LOCK.lock();
         if self.enabled(record.metadata()) {
             let ms = crate::lib::timer::current_ms();
@@ -53,6 +56,7 @@ impl log::Log for SimpleLogger {
             println!();
         }
         drop(lock);
+        DAIF.write(DAIF::I::Unmasked);
     }
 
     fn flush(&self) {}

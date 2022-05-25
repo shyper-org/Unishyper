@@ -92,12 +92,3 @@ pub fn address_space_destroy(a: AddressSpace) {
     let mut map = ADDRESS_SPACE_MAP.lock();
     map.remove(&a.asid());
 }
-
-pub fn load_image(elf: &'static [u8]) -> (AddressSpace, usize) {
-    // let icntr = crate::lib::timer::current_cycle();
-    let a = address_space_alloc().unwrap();
-    // let icntr2 = crate::lib::timer::current_cycle();
-    // info!("as create cycle {}", icntr2 - icntr);
-    let entry = 0;
-    (a, entry)
-}

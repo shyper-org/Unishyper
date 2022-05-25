@@ -6,6 +6,7 @@ use crate::lib::scheduler::scheduler;
 use crate::lib::thread::Thread;
 use crate::lib::traits::*;
 use crate::mm::PhysicalFrame;
+use crate::println;
 
 pub struct Core {
     context: Option<*mut ContextFrame>,
@@ -30,6 +31,7 @@ const CORE: Core = Core {
 };
 
 static mut CORES: [Core; BOARD_CORE_NUMBER] = [CORE; BOARD_CORE_NUMBER];
+static mut schedule_count: usize =  0;
 
 impl Core {
     // context
@@ -78,6 +80,8 @@ impl Core {
     }
 
     pub fn schedule(&mut self) {
+        unsafe {schedule_count += 1; info!("schedule {}", schedule_count);}
+        
         if let Some(t) = scheduler().pop() {
             self.run(t);
         } else {
@@ -140,6 +144,7 @@ pub fn cpu() -> &'static mut Core {
 fn idle_thread(_arg: usize) {
     loop {
         info!("idle {}\n", _arg);
+        // loop{}
         // crate::arch::Arch::wait_for_interrupt();
     }
 }

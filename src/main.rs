@@ -12,28 +12,28 @@ extern crate log;
 extern crate alloc;
 extern crate static_assertions;
 
-mod arch;
-mod driver;
-mod lib;
-mod logger;
-mod mm;
-mod panic;
-mod util;
-mod board;
+pub mod arch;
+pub mod driver;
+pub mod lib;
+pub mod logger;
+pub mod mm;
+pub mod panic;
+pub mod util;
+pub mod board;
 
-use crate::lib::traits::ArchTrait;
+pub use crate::lib::traits::ArchTrait;
+
+// #[no_mangle]
+// fn test_thread(_arg: usize) {
+//     let core_id = crate::arch::Arch::core_id();
+//     loop {
+//         info!("test_thread, core {} _arg {} curentel {}", core_id, _arg, crate::arch::Arch::curent_privilege());
+//         // crate::arch::Arch::wait_for_interrupt();
+//     }
+// }
 
 #[no_mangle]
-fn test_thread(_arg: usize) {
-    let core_id = crate::arch::Arch::core_id();
-    loop {
-        info!("test_thread, core {} _arg {} curentel {}", core_id, _arg, crate::arch::Arch::curent_privilege());
-        // crate::arch::Arch::wait_for_interrupt();
-    }
-}
-
-#[no_mangle]
-fn main(core_id: usize) {
+fn loader_main(core_id: usize) {
     crate::arch::Arch::exception_init();
 
     println!("enter main, core {}", core_id);
@@ -45,16 +45,17 @@ fn main(core_id: usize) {
     board::init();
     info!("board init ok");
 
-    for i in 0..10 {
-        let stack_frame = crate::mm::page_pool::page_alloc().expect("fail to allocate test thread stack");
-        let t = crate::lib::thread::new_kernel(
-            test_thread as usize,
-            stack_frame.kva() + crate::arch::PAGE_SIZE,
-            i + 1 as usize,
-        );
-        info!("thread[{}] stack frame {:x} kva{:x}", i, stack_frame.pa(), stack_frame.kva());
-        lib::thread::thread_wake(&t);
+    extern "C" {
+        fn main(arg: usize) -> !;
     }
+
+    let stack_frame = crate::mm::page_pool::page_alloc().expect("fail to allocate test thread stack");
+    let t = crate::lib::thread::new_kernel(
+        main as usize,
+        stack_frame.kva() + crate::arch::PAGE_SIZE,
+        123 as usize,
+    );
+    lib::thread::thread_wake(&t);
 
     lib::cpu::cpu().schedule();
 

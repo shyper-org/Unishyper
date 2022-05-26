@@ -1,7 +1,7 @@
 .section .text.start
 
-.global _start
-_start:
+.global __start
+__start:
     mrs x1, mpidr_el1 // Multiprocessor Affinity Register
 #    and x2, x1, #0x100
 #    cbnz x2, _loop
@@ -52,7 +52,7 @@ _el1_entry:
     mov sp, x0
     mov x0, x19
     mov fp, sp
-    ldr x1, =main
+    ldr x1, =loader_main
     blr x1
 
 _loop:

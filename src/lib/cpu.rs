@@ -27,7 +27,7 @@ const CORE: Core = Core {
 };
 
 static mut CORES: [Core; BOARD_CORE_NUMBER] = [CORE; BOARD_CORE_NUMBER];
-static mut schedule_count: usize =  0;
+// static mut schedule_count: usize =  0;
 
 impl Core {
     // context
@@ -76,7 +76,7 @@ impl Core {
     }
 
     pub fn schedule(&mut self) {
-        unsafe {schedule_count += 1; info!("schedule {}", schedule_count);}
+        // unsafe {schedule_count += 1; info!("schedule {}", schedule_count);}
         
         if let Some(t) = scheduler().pop() {
             self.run(t);
@@ -91,7 +91,7 @@ impl Core {
 
     fn run(&mut self, t: Thread) {
         if let Some(prev) = self.running_thread() {
-            info!("switch thread from {} to {}", prev.tid(), t.tid());
+            // info!("switch thread from {} to {}", prev.tid(), t.tid());
             // Note: normal switch
             prev.set_context(*self.context());
             // add back to scheduler queue
@@ -105,7 +105,7 @@ impl Core {
                 *self.context_mut() = t.context();
             } else {
                 // Note: this is first run
-                // `main` prepare the context to stack
+                // `loader_main` prepare the context to stack
                 info!("first run thread {}", t.tid());
             }
         }
@@ -121,8 +121,8 @@ pub fn cpu() -> &'static mut Core {
 #[no_mangle]
 fn idle_thread(_arg: usize) {
     loop {
-        info!("idle {}\n", _arg);
+        // info!("idle {}\n", _arg);
         // loop{}
-        // crate::arch::Arch::wait_for_interrupt();
+        crate::arch::Arch::wait_for_interrupt();
     }
 }

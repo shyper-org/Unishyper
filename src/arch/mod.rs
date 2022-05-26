@@ -6,4 +6,4 @@ mod interface;
 mod mm;
 mod mmu;
 mod registers;
-mod start;
+pub mod start;

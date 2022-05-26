@@ -1,9 +1,13 @@
 [package]
-name = "rust-shyper-os"
+name = "rust_shyper_os"
 version = "0.1.0"
 edition = "2021"
 authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 
+[lib]
+crate-type = ["lib"]  # "lib" required for integration tests
+name = "rust_shyper_os"
+path = "src/main.rs"
 
 [dependencies]
 cfg-if = "1.0.0"

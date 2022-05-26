@@ -11,18 +11,22 @@ RUSTFLAGS := -C llvm-args=-global-isel=false
 # NOTE: generate frame pointer for every function
 export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
 
-CARGO_FLAGS := ${CARGO_FLAGS} --features ${MACHINE}
+CARGO_FLAGS := ${CARGO_FLAGS} #--features ${MACHINE}
 CARGO_FLAGS := ${CARGO_FLAGS} --release
 
 
-KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/rust-shyper-os
+KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/rust_shyper_os
 
-.PHONY: all build emu debug clean
+.PHONY: all build emu debug clean user
+
+user:
+	make -C user
 
 build: 
-	cargo build --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
-	aarch64-elf-objcopy ${KERNEL} -O binary ${KERNEL}.bin
-	aarch64-elf-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
+	cargo build --lib --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
+
+# aarch64-elf-objcopy ${KERNEL} -O binary ${KERNEL}.bin
+# aarch64-elf-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
 
 clean:
 	cargo clean

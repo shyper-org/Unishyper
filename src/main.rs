@@ -20,17 +20,9 @@ pub mod mm;
 pub mod panic;
 pub mod util;
 pub mod board;
+pub mod exported;
 
 pub use crate::lib::traits::ArchTrait;
-
-// #[no_mangle]
-// fn test_thread(_arg: usize) {
-//     let core_id = crate::arch::Arch::core_id();
-//     loop {
-//         info!("test_thread, core {} _arg {} curentel {}", core_id, _arg, crate::arch::Arch::curent_privilege());
-//         // crate::arch::Arch::wait_for_interrupt();
-//     }
-// }
 
 #[no_mangle]
 fn loader_main(core_id: usize) {
@@ -45,11 +37,18 @@ fn loader_main(core_id: usize) {
     board::init();
     info!("board init ok");
 
+    let stack_frame = crate::mm::page_pool::page_alloc().expect("fail to allocate test thread stack");
+
+    println!(
+        "thread user main, stack frame pa: 0x{:x} kva: 0x{:x}",
+        stack_frame.pa(),
+        stack_frame.kva()
+    );
+
     extern "C" {
         fn main(arg: usize) -> !;
     }
 
-    let stack_frame = crate::mm::page_pool::page_alloc().expect("fail to allocate test thread stack");
     let t = crate::lib::thread::new_kernel(
         main as usize,
         stack_frame.kva() + crate::arch::PAGE_SIZE,

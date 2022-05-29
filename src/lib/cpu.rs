@@ -49,7 +49,6 @@ impl Core {
     }
 
     // thread
-
     pub fn running_thread(&self) -> Option<Thread> {
         self.running_thread.clone()
     }

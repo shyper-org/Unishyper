@@ -47,7 +47,7 @@ struct ControlBlock {
 
 impl Drop for ControlBlock {
     fn drop(&mut self) {
-        trace!("Drop t{}", self.inner.uuid);
+        info!("Drop t{}", self.inner.uuid);
     }
 }
 
@@ -156,16 +156,16 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 }
 
 pub fn thread_destroy(t: Thread) {
-    trace!("Destroy t{}", t.tid());
+    info!("Destroy t{}", t.tid());
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
         if t.tid() == current_thread.tid() {
             crate::lib::cpu::cpu().set_running_thread(None);
         }
     }
-    if let Some(parent) = t.parent() {
+    // if let Some(parent) = t.parent() {
         // Todo: maybe need to implement.
         // thread_exit_signal(t.tid(), parent);
-    }
+    // }
     let mut map = THREAD_MAP.lock();
     map.remove(&t.tid());
 }

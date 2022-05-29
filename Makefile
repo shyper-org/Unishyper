@@ -16,6 +16,7 @@ CARGO_FLAGS := ${CARGO_FLAGS} --release
 
 
 KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/rust_shyper_os
+USER_KERNEL := user/target/${ARCH}${MACHINE}/${PROFILE}/user
 
 .PHONY: all build emu debug clean user
 
@@ -29,7 +30,8 @@ build:
 # aarch64-elf-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
 
 clean:
-	cargo clean
+	-cargo clean
+	make -C user clean
 
 QEMU_CMD := qemu-system-aarch64 -M virt -cpu cortex-a53 -device loader,file=${KERNEL},addr=0x80000000,force-raw=on
 QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
@@ -40,8 +42,22 @@ QEMU_COMMON_OPTIONS := -serial stdio -display none -smp 4 -m 2048
 emu: build
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -kernel ${KERNEL}.bin -s
 
+user_emu: user
+	qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${USER_KERNEL},addr=0x80000000,force-raw=on \
+		-serial stdio -display none \
+		-smp 4 -m 2048 \
+		-kernel ${USER_KERNEL}.bin -s
+
 debug: build
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -kernel ${KERNEL}.bin -s -S
+
+user_debug: user
+	qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${USER_KERNEL},addr=0x80000000,force-raw=on \
+		-serial stdio -display none \
+		-smp 4 -m 2048 \
+		-kernel ${USER_KERNEL}.bin -s -S
 
 dependencies:
 	rustup component add rust-src

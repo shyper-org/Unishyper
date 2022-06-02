@@ -6,6 +6,7 @@
 #![feature(lang_items)]
 #![feature(const_btree_new)]
 #![feature(allocator_api)]
+#![feature(never_type)]
 
 #[macro_use]
 extern crate log;

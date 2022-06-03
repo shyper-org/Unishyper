@@ -1,4 +1,3 @@
-#![no_std]
 #![no_main]
 #![feature(format_args_nl)]
 #![feature(alloc_error_handler)]
@@ -7,6 +6,8 @@ use rust_shyper_os::*;
 use rust_shyper_os::exported::exit;
 use no_std_net::IpAddr;
 use no_std_net::TcpStream;
+
+mod connection;
 
 #[no_mangle]
 fn test_thread(_arg: usize) {

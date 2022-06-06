@@ -150,7 +150,7 @@ impl NetworkInterface<ShyperNet> {
 		// How to use it with Heap?
         // let neighbor_cache = NeighborCache::new(BTreeMap::new());
         let mut neighbor_cache_storage = [None; 8];
-        let mut neighbor_cache = NeighborCache::new(&mut neighbor_cache_storage[..]);
+        let neighbor_cache = NeighborCache::new(&mut neighbor_cache_storage[..]);
         let ethernet_addr = EthernetAddress([mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]]);
         let ip_addrs = [IpCidr::new(
             IpAddress::v4(myip[0], myip[1], myip[2], myip[3]),

@@ -1,0 +1,45 @@
+warning: file found to be present in multiple build targets: /home/hky/rust/rust-shyperOS/src/main.rs
+   Compiling compiler_builtins v0.1.71
+   Compiling core v0.0.0 (/home/hky/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core)
+   Compiling autocfg v1.1.0
+   Compiling crossbeam-utils v0.8.8
+   Compiling arrayvec v0.4.12
+   Compiling futures-core v0.3.21
+   Compiling crossbeam-queue v0.3.5
+   Compiling log v0.4.17
+   Compiling lock_api v0.4.7
+   Compiling rustc-std-workspace-core v1.99.0 (/home/hky/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/rustc-std-workspace-core)
+   Compiling alloc v0.0.0 (/home/hky/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc)
+   Compiling cfg-if v1.0.0
+   Compiling nodrop v0.1.14
+   Compiling scopeguard v1.1.0
+   Compiling byteorder v1.4.3
+   Compiling spin v0.5.2
+   Compiling pin-project-lite v0.2.9
+   Compiling bitflags v1.3.2
+   Compiling tock-registers v0.7.0
+   Compiling managed v0.7.2
+   Compiling stable_deref_trait v1.2.0
+   Compiling fallible-iterator v0.2.0
+   Compiling spin v0.7.1
+   Compiling no-std-net v0.6.0
+   Compiling async-task v4.2.0
+   Compiling static_assertions v1.1.0
+   Compiling lazy_static v1.4.0
+   Compiling futures-lite v1.12.0
+   Compiling cortex-a v7.0.0 (https://github.com/tonnylyz/cortex-a#1129997b)
+   Compiling smoltcp v0.7.5
+   Compiling buddy_system_allocator v0.8.0
+   Compiling gimli v0.19.0
+   Compiling spin v0.9.3
+   Compiling rust_shyper_os v0.1.0 (/home/hky/rust/rust-shyperOS)
+error[E0432]: unresolved import `ioslice`
+ --> /home/hky/rust/rust-shyperOS/src/exported/net.rs:7:5
+  |
+7 | use ioslice::{IoSlice, IoSliceMut};
+  |     ^^^^^^^ use of undeclared crate or module `ioslice`
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `rust_shyper_os` due to previous error
+make[1]: *** [all] Error 101
+make: *** [user] Error 2

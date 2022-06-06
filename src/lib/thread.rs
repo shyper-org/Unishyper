@@ -7,6 +7,7 @@ use spin::Mutex;
 
 use crate::arch::ContextFrame;
 use crate::lib::cpu::cpu;
+use crate::lib::error::*;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
 
@@ -163,8 +164,8 @@ pub fn thread_destroy(t: Thread) {
         }
     }
     // if let Some(parent) = t.parent() {
-        // Todo: maybe need to implement.
-        // thread_exit_signal(t.tid(), parent);
+    // Todo: maybe need to implement.
+    // thread_exit_signal(t.tid(), parent);
     // }
     let mut map = THREAD_MAP.lock();
     map.remove(&t.tid());
@@ -174,6 +175,38 @@ pub fn thread_wake(t: &Thread) {
     let mut status = t.0.inner_mut.status.lock();
     *status = Status::Runnable;
     scheduler().add(t.clone());
+}
+
+pub fn thread_wake_by_tid(tid: Tid) {
+    if let Some(t) = thread_lookup(tid) {
+        thread_wake(&t);
+    } else {
+        warn!("Thread{} not exist!!!", tid);
+    }
+}
+
+// Todo: do not use sleep as Status.
+pub fn thread_block_current() {
+    if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
+        let t = &current_thread;
+        let reason = Status::Sleep;
+        assert_ne!(reason, Status::Runnable);
+        let mut status = t.0.inner_mut.status.lock();
+        *status = reason;
+        drop(status);
+        if let Some(current) = cpu().running_thread() {
+            if current.tid() == t.tid() {
+                cpu().schedule();
+            }
+        }
+    } else {
+        warn!("No Running Thread!");
+    }
+}
+
+// Todo: do not use sleep as Status.
+pub fn thread_block_current_with_timeout(timeout: u64) {
+    info!("wait for implementation! {}",timeout);
 }
 
 pub fn thread_sleep(t: &Thread, reason: Status) {
@@ -193,4 +226,25 @@ pub fn thread_sleep_to(t: &Thread, reason: Status, _next: Thread) {
     let mut status = t.0.inner_mut.status.lock();
     *status = reason;
     drop(status);
+}
+
+pub fn get_current_thread_id() -> Tid {
+    match cpu().running_thread() {
+        None => 0,
+        Some(t) => t.tid(),
+    }
+}
+
+pub fn current_thread() -> Result<Thread, Error> {
+    match cpu().running_thread() {
+        None => Err(ERROR_INTERNAL),
+        Some(t) => Ok(t),
+    }
+}
+
+pub fn thread_yield() {
+    // let icntr = crate::lib::timer::current_cycle();
+    cpu().schedule();
+    // let icntr2 = crate::lib::timer::current_cycle();
+    // info!("as create cycle {}", icntr2 - icntr);
 }

@@ -20,6 +20,10 @@ use smoltcp::wire::{IpCidr, Ipv4Address, Ipv4Cidr};
 use smoltcp::Error;
 
 use crate::lib::timer::current_ms;
+use crate::lib::thread::{
+    thread_yield,
+};
+use crate::exported::thread_spawn;
 
 use super::device::ShyperNet;
 use super::executor::{block_on, poll_on, spawn};
@@ -45,14 +49,14 @@ lazy_static! {
 }
 
 extern "C" {
-    fn sys_yield();
-    fn sys_spawn(
-        id: *mut Tid,
-        func: extern "C" fn(usize),
-        arg: usize,
-        prio: u8,
-        selector: isize,
-    ) -> i32;
+    // fn sys_yield(); => thread_yield()
+    // fn sys_spawn(
+    //     id: *mut Tid,
+    //     func: extern "C" fn(usize),
+    //     arg: usize,
+    //     prio: u8,
+    //     selector: isize,
+    // ) -> i32;
     fn sys_netwait();
 }
 
@@ -60,7 +64,7 @@ type Handle = SocketHandle;
 
 /// A thread handle type
 // type Tid = u32;
-use crate::lib::thread::Tid;
+// use crate::lib::thread::Tid;
 
 /// Default keep alive interval in milliseconds
 const DEFAULT_KEEP_ALIVE_INTERVAL: u64 = 75000;
@@ -169,6 +173,7 @@ impl AsyncSocket {
             .lock()
             .as_nic_mut()
             .unwrap()
+            
             .create_handle()
             .unwrap();
         Self(handle)
@@ -381,16 +386,13 @@ pub fn network_init() -> Result<(), ()> {
 
         // create thread, which manages the network stack
         // use a higher priority to reduce the network latency
-        let mut tid: Tid = 0;
-        let ret = unsafe { sys_spawn(&mut tid, nic_thread, 0, 3, 0) };
-        if ret >= 0 {
-            debug!("Spawn network thread with id {}", tid);
-        }
+        let tid = thread_spawn(nic_thread, 0);
+        debug!("Spawn network thread with id {}", tid);
 
         spawn(network_run()).detach();
 
         // switch to network thread
-        unsafe { sys_yield() };
+        thread_yield();
     }
 
     Ok(())

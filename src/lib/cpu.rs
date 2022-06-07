@@ -1,6 +1,6 @@
 use spin::Once;
 
-use crate::arch::{ContextFrame, BOARD_CORE_NUMBER, PAGE_SIZE};
+use crate::arch::{ContextFrame, BOARD_CORE_NUMBER};
 use crate::lib::scheduler::scheduler;
 use crate::lib::thread::Thread;
 use crate::lib::traits::*;
@@ -11,7 +11,6 @@ pub struct Core {
     // pointer points at stack
     running_thread: Option<Thread>,
     idle_thread: Once<Thread>,
-    idle_stack: Once<PhysicalFrame>,
 }
 
 // Note: only the core itself can be allowed to access its `Core`
@@ -23,7 +22,6 @@ const CORE: Core = Core {
     context: None,
     running_thread: None,
     idle_thread: Once::new(),
-    idle_stack: Once::new(),
 };
 
 static mut CORES: [Core; BOARD_CORE_NUMBER] = [CORE; BOARD_CORE_NUMBER];
@@ -60,14 +58,10 @@ impl Core {
     fn idle_thread(&self) -> Thread {
         match self.idle_thread.get() {
             None => {
-                let frame =
-                    crate::mm::page_pool::page_alloc().expect("fail to allocate idle thread stack");
-                let t = crate::lib::thread::new_kernel(
+                let t = crate::lib::thread::thread_alloc(
                     idle_thread as usize,
-                    frame.kva() + PAGE_SIZE,
                     crate::arch::Arch::core_id(),
                 );
-                self.idle_stack.call_once(|| frame);
                 self.idle_thread.call_once(|| t).clone()
             }
             Some(t) => t.clone(),

@@ -38,21 +38,12 @@ fn loader_main(core_id: usize) {
     board::init();
     info!("board init ok");
 
-    let stack_frame = crate::mm::page_pool::page_alloc().expect("fail to allocate test thread stack");
-
-    println!(
-        "thread user main, stack frame pa: 0x{:x} kva: 0x{:x}",
-        stack_frame.pa(),
-        stack_frame.kva()
-    );
-
     extern "C" {
         fn main(arg: usize) -> !;
     }
 
-    let t = crate::lib::thread::new_kernel(
+    let t = crate::lib::thread::thread_alloc(
         main as usize,
-        stack_frame.kva() + crate::arch::PAGE_SIZE,
         123 as usize,
     );
     lib::thread::thread_wake(&t);

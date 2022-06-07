@@ -5,11 +5,12 @@ use core::sync::atomic::Ordering::Relaxed;
 
 use spin::Mutex;
 
-use crate::arch::ContextFrame;
+use crate::arch::{ContextFrame, PAGE_SIZE};
 use crate::lib::cpu::cpu;
 use crate::lib::error::*;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
+use crate::mm::PhysicalFrame;
 
 pub type Tid = usize;
 
@@ -34,11 +35,13 @@ struct Inner {
     uuid: usize,
     parent: Option<usize>,
     level: PrivilegedLevel,
+    stack: PhysicalFrame,
 }
 
 struct InnerMut {
     status: Mutex<Status>,
     context_frame: Mutex<ContextFrame>,
+    // address_space: Option<AddressSpace>,
 }
 
 struct ControlBlock {
@@ -133,13 +136,20 @@ fn new_tid() -> Tid {
 
 static THREAD_MAP: Mutex<BTreeMap<Tid, Thread>> = Mutex::new(BTreeMap::new());
 
-pub fn new_kernel(pc: usize, sp: usize, arg: usize) -> Thread {
+pub fn thread_alloc(pc: usize, arg: usize) -> Thread {
     let id = new_tid();
+
+    let stack_frame =
+        crate::mm::page_pool::page_alloc().expect("fail to allocate user thread stack");
+
+    let sp = stack_frame.kva() + PAGE_SIZE;
+
     let t = Thread(Arc::new(ControlBlock {
         inner: Inner {
             uuid: id,
             parent: None,
             level: PrivilegedLevel::Kernel,
+            stack: stack_frame,
         },
         inner_mut: InnerMut {
             status: Mutex::new(Status::Sleep),
@@ -206,7 +216,7 @@ pub fn thread_block_current() {
 
 // Todo: do not use sleep as Status.
 pub fn thread_block_current_with_timeout(timeout: u64) {
-    info!("wait for implementation! {}",timeout);
+    info!("wait for implementation! {}", timeout);
 }
 
 pub fn thread_sleep(t: &Thread, reason: Status) {

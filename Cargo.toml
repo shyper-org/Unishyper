@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 
 [lib]
-crate-type = ["lib"]  # "lib" required for integration tests
+crate-type = ["lib"]
 name = "rust_shyper_os"
 path = "src/main.rs"
 

@@ -1,6 +1,7 @@
 // use alloc::collections::btree_map::BTreeMap;
 use alloc::vec;
 use core::slice;
+use alloc::collections::BTreeMap;
 
 #[cfg(not(feature = "dhcpv4"))]
 use no_std_net::Ipv4Addr;
@@ -37,19 +38,19 @@ extern "Rust" {
 /// Data type to determine the mac address
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
-pub(crate) struct ShyperNet {
+pub struct ShyperNet {
     pub mtu: u16,
 }
 
 impl ShyperNet {
-    pub(crate) const fn new(mtu: u16) -> Self {
+    pub const fn new(mtu: u16) -> Self {
         Self { mtu }
     }
 }
 
 impl NetworkInterface<ShyperNet> {
     #[cfg(feature = "dhcpv4")]
-    pub(crate) fn new() -> NetworkState {
+    pub fn new() -> NetworkState {
         let mtu = match unsafe { sys_get_mtu() } {
             Ok(mtu) => mtu,
             Err(_) => {
@@ -105,7 +106,7 @@ impl NetworkInterface<ShyperNet> {
     }
 
     #[cfg(not(feature = "dhcpv4"))]
-    pub(crate) fn new() -> NetworkState {
+    pub fn new() -> NetworkState {
         let mtu = match unsafe { sys_get_mtu() } {
             Ok(mtu) => mtu,
             Err(_) => {
@@ -147,19 +148,15 @@ impl NetworkInterface<ShyperNet> {
             prefix_len += (!mymask[3]).trailing_zeros();
         }
 
-		// How to use it with Heap?
-        // let neighbor_cache = NeighborCache::new(BTreeMap::new());
-        let mut neighbor_cache_storage = [None; 8];
-        let neighbor_cache = NeighborCache::new(&mut neighbor_cache_storage[..]);
+        let neighbor_cache = NeighborCache::new(BTreeMap::new());
         let ethernet_addr = EthernetAddress([mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]]);
         let ip_addrs = [IpCidr::new(
             IpAddress::v4(myip[0], myip[1], myip[2], myip[3]),
             prefix_len.try_into().unwrap(),
         )];
+
         let default_v4_gw = Ipv4Address::new(mygw[0], mygw[1], mygw[2], mygw[3]);
-        // let mut routes = Routes::new(BTreeMap::new());
-		let mut routes_storage = [];
-	let mut routes = Routes::new(&mut routes_storage[..]);
+        let mut routes = Routes::new(BTreeMap::new());
         routes.add_default_ipv4_route(default_v4_gw).unwrap();
 
         info!("MAC address {}", ethernet_addr);
@@ -170,13 +167,13 @@ impl NetworkInterface<ShyperNet> {
         let iface = EthernetInterfaceBuilder::new(device)
             .ethernet_addr(ethernet_addr)
             .neighbor_cache(neighbor_cache)
-            .ip_addrs(ip_addrs.as_mut_slice())
+            .ip_addrs(ip_addrs)
             .routes(routes)
             .finalize();
 
         NetworkState::Initialized(Self {
             iface,
-            sockets: SocketSet::new(vec![].as_mut_slice()),
+            sockets: SocketSet::new(vec![]),
             waker: WakerRegistration::new(),
         })
     }
@@ -206,13 +203,13 @@ impl<'a> Device<'a> for ShyperNet {
 }
 
 #[doc(hidden)]
-pub(crate) struct RxToken {
+pub struct RxToken {
     buffer: &'static mut [u8],
     handle: usize,
 }
 
 impl RxToken {
-    pub(crate) fn new(buffer: &'static mut [u8], handle: usize) -> Self {
+    pub fn new(buffer: &'static mut [u8], handle: usize) -> Self {
         Self { buffer, handle }
     }
 }
@@ -233,10 +230,10 @@ impl phy::RxToken for RxToken {
 }
 
 #[doc(hidden)]
-pub(crate) struct TxToken;
+pub struct TxToken;
 
 impl TxToken {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {}
     }
 }

@@ -1,9 +1,9 @@
-use alloc::{str, vec};
 use alloc::str::FromStr;
+use alloc::{str, vec};
 use core::ops::DerefMut;
 use core::sync::atomic::{AtomicU16, Ordering};
-use spin::Mutex;
 use core::task::{Context, Poll};
+use spin::Mutex;
 
 use futures_lite::future;
 use lazy_static::lazy_static;
@@ -19,11 +19,9 @@ use smoltcp::wire::IpAddress;
 use smoltcp::wire::{IpCidr, Ipv4Address, Ipv4Cidr};
 use smoltcp::Error;
 
-use crate::lib::timer::current_ms;
-use crate::lib::thread::{
-    thread_yield,
-};
 use crate::exported::thread_spawn;
+use crate::lib::thread::thread_yield;
+use crate::lib::timer::current_ms;
 
 use super::device::ShyperNet;
 use super::executor::{block_on, poll_on, spawn};
@@ -81,7 +79,7 @@ pub struct NetworkInterface<T: for<'a> Device<'a>> {
     dhcp: Dhcpv4Client,
     #[cfg(feature = "dhcpv4")]
     prev_cidr: Ipv4Cidr,
-    waker: WakerRegistration,
+    pub waker: WakerRegistration,
 }
 
 impl<T> NetworkInterface<T>
@@ -89,8 +87,8 @@ where
     T: for<'a> Device<'a>,
 {
     pub fn create_handle(&mut self) -> Result<Handle, ()> {
-        let tcp_rx_buffer = TcpSocketBuffer::new(vec![0; 65535].as_mut_slice());
-        let tcp_tx_buffer = TcpSocketBuffer::new(vec![0; 65535].as_mut_slice());
+        let tcp_rx_buffer = TcpSocketBuffer::new(vec![0; 65535]);
+        let tcp_tx_buffer = TcpSocketBuffer::new(vec![0; 65535]);
         let tcp_socket = TcpSocket::new(tcp_rx_buffer, tcp_tx_buffer);
         let tcp_handle = self.sockets.add(tcp_socket);
 
@@ -169,13 +167,7 @@ pub struct AsyncSocket(Handle);
 
 impl AsyncSocket {
     pub fn new() -> Self {
-        let handle = NIC
-            .lock()
-            .as_nic_mut()
-            .unwrap()
-            
-            .create_handle()
-            .unwrap();
+        let handle = NIC.lock().as_nic_mut().unwrap().create_handle().unwrap();
         Self(handle)
     }
 

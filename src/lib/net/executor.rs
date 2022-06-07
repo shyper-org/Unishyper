@@ -102,19 +102,18 @@ impl Wake for ThreadNotify {
 // Todo: replace these using thread_local or local_key model.
 static CURRENT_THREAD_NOTIFY_MAP: Mutex<BTreeMap<Tid, Arc<ThreadNotify>>> =
     Mutex::new(BTreeMap::new());
-fn get_current_thread_notify() -> &'static Arc<ThreadNotify> {
+
+fn get_current_thread_notify() -> Arc<ThreadNotify> {
     let mut map = CURRENT_THREAD_NOTIFY_MAP.lock();
     let cur_tid = &get_current_thread_id();
-    let thread_notify = match map.get(cur_tid) {
-        None => {
-            let arc_thread_notify = Arc::new(ThreadNotify::new());
-            map.insert(cur_tid.clone(), arc_thread_notify);
-            &arc_thread_notify
-        }
-        Some(thread_notify) => thread_notify,
-    };
-    drop(map);
-    return thread_notify;
+
+    if !map.contains_key(cur_tid) {
+        let arc_thread_notify = Arc::new(ThreadNotify::new());
+        map.insert(cur_tid.clone(), arc_thread_notify.clone());
+        return arc_thread_notify.clone();
+    } else {
+        return map.get(cur_tid).unwrap().clone();
+    }
 }
 
 pub fn poll_on<F, T>(future: F, timeout: Option<Duration>) -> Result<T, ()>
@@ -129,7 +128,7 @@ where
     }
 
     let start = Instant::from_millis(current_ms() as i64);
-    let waker = thread_notify.clone().into();
+    let waker = &thread_notify.clone().into();
     let mut cx = Context::from_waker(&waker);
     pin!(future);
 

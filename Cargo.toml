@@ -45,6 +45,7 @@ version = "0.7"
 optional = true
 default-features = false
 features = [
+    "alloc",
     "async",
     "ethernet",
     "proto-ipv4",

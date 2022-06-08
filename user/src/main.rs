@@ -18,12 +18,12 @@ fn test_thread(_arg: usize) {
     exit();
 }
 
-extern "C" fn test_c_thread(_arg: usize) {
+extern "C" fn test_c_thread(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
-        "test_c_thread, core {} _arg {} curent EL{}",
+        "test_c_thread, core {} arg {} curent EL{}",
         core_id,
-        _arg,
+        arg,
         crate::arch::Arch::curent_privilege()
     );
 }
@@ -34,12 +34,8 @@ fn main() {
 
     let tid = thread_spawn(test_c_thread, 1);
 
-    // for i in 0..10 {
-    //     let t = crate::lib::thread::thread_alloc(
-    //         test_thread as usize,
-    //         i as usize,
-    //     );
-    //     crate::lib::thread::thread_wake(&t);
-    // }
+    for i in 0..10 {
+        thread_spawn(test_c_thread, i + 100);
+    }
     loop {}
 }

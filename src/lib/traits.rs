@@ -20,7 +20,7 @@ pub trait ArchTrait {
 }
 
 pub trait ContextFrameTrait {
-    fn new(pc: usize, sp: usize, arg: usize, privileged: bool) -> Self;
+    fn new(pc: usize, sp: usize, arg0: usize, arg1: usize, privileged: bool) -> Self;
 
     // fn syscall_argument(&self, i: usize) -> usize;
     // fn syscall_number(&self) -> usize;
@@ -30,5 +30,6 @@ pub trait ContextFrameTrait {
     fn stack_pointer(&self) -> usize;
     fn set_stack_pointer(&mut self, sp: usize);
     fn set_argument(&mut self, arg: usize);
+    fn set_argument1(&mut self, arg1: usize);
     fn gpr(&self, index: usize) -> usize;
 }

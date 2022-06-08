@@ -30,17 +30,16 @@ extern "C" fn test_c_thread(_arg: usize) {
 
 #[no_mangle]
 fn main() {
-    println!("Hello, world!");
+    println!("Hello world!\n\nWelcome to shyper lightweight os...\n");
 
-    // let tid = thread_spawn(test_c_thread, 1);
+    let tid = thread_spawn(test_c_thread, 1);
 
-    // println!("thread_spawn tid {}", tid);
-    for i in 0..10 {
-        let t = crate::lib::thread::thread_alloc(
-            test_thread as usize,
-            i as usize,
-        );
-        crate::lib::thread::thread_wake(&t);
-    }
+    // for i in 0..10 {
+    //     let t = crate::lib::thread::thread_alloc(
+    //         test_thread as usize,
+    //         i as usize,
+    //     );
+    //     crate::lib::thread::thread_wake(&t);
+    // }
     loop {}
 }

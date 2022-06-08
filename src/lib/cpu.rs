@@ -4,7 +4,6 @@ use crate::arch::{ContextFrame, BOARD_CORE_NUMBER};
 use crate::lib::scheduler::scheduler;
 use crate::lib::thread::Thread;
 use crate::lib::traits::*;
-use crate::mm::PhysicalFrame;
 
 pub struct Core {
     context: Option<*mut ContextFrame>,

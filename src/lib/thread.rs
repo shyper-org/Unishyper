@@ -51,7 +51,7 @@ struct ControlBlock {
 
 impl Drop for ControlBlock {
     fn drop(&mut self) {
-        info!("Drop t{}", self.inner.uuid);
+        debug!("Drop t{}", self.inner.uuid);
     }
 }
 
@@ -136,7 +136,7 @@ fn new_tid() -> Tid {
 
 static THREAD_MAP: Mutex<BTreeMap<Tid, Thread>> = Mutex::new(BTreeMap::new());
 
-pub fn thread_alloc(pc: usize, arg: usize) -> Thread {
+pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
     let id = new_tid();
 
     let stack_frame =
@@ -153,12 +153,18 @@ pub fn thread_alloc(pc: usize, arg: usize) -> Thread {
         },
         inner_mut: InnerMut {
             status: Mutex::new(Status::Sleep),
-            context_frame: Mutex::new(ContextFrame::new(pc, sp, arg, true)),
+            context_frame: Mutex::new(ContextFrame::new(pc, sp, arg0,arg1,true)),
         },
     }));
     let mut map = THREAD_MAP.lock();
     map.insert(id, t.clone());
+
+    debug!("thread_alloc success id {} sp [{:x} to {:x}]", id, sp - PAGE_SIZE, sp);
     t
+}
+
+pub fn thread_alloc(pc: usize, arg: usize) -> Thread {
+    thread_alloc2(pc, arg, 0)
 }
 
 pub fn thread_lookup(tid: Tid) -> Option<Thread> {
@@ -167,7 +173,7 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 }
 
 pub fn thread_destroy(t: Thread) {
-    info!("Destroy t{}", t.tid());
+    debug!("Destroy t{}", t.tid());
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
         if t.tid() == current_thread.tid() {
             crate::lib::cpu::cpu().set_running_thread(None);

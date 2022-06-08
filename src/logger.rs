@@ -28,7 +28,8 @@ pub extern "C" fn rust_eh_personality() {
 
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Info
+        metadata.level() <= Level::Debug
+        // metadata.level() <= Level::Info
     }
 
     fn log(&self, record: &Record) {

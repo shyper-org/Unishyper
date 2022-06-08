@@ -69,7 +69,7 @@ impl core::fmt::Display for Aarch64ContextFrame {
 }
 
 impl ContextFrameTrait for Aarch64ContextFrame {
-    fn new(pc: usize, sp: usize, arg: usize, privileged: bool) -> Self {
+    fn new(pc: usize, sp: usize, arg0: usize, arg1: usize, privileged: bool) -> Self {
         use cortex_a::registers::*;
         let mut r = Aarch64ContextFrame {
             gpr: [0; 31],
@@ -83,7 +83,8 @@ impl ContextFrameTrait for Aarch64ContextFrame {
             elr: pc as u64,
             sp: sp as u64,
         };
-        r.set_argument(arg);
+        r.set_argument(arg0);
+        r.set_argument1(arg1);
         r
     }
 
@@ -105,6 +106,10 @@ impl ContextFrameTrait for Aarch64ContextFrame {
 
     fn set_argument(&mut self, arg: usize) {
         self.gpr[0] = arg as u64;
+    }
+
+    fn set_argument1(&mut self, arg1: usize) {
+        self.gpr[1] = arg1 as u64;
     }
 
     fn gpr(&self, index: usize) -> usize {

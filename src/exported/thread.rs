@@ -1,41 +1,22 @@
-use alloc::boxed::Box;
-
-use crate::lib::thread::{
-    Tid,
-    current_thread, 
-    thread_alloc,
-    thread_wake,
-};
+use crate::lib::thread::{current_thread, thread_alloc2, thread_wake, Tid};
 
 // Todo: may use fuction closure as parameters.
-pub fn thread_spawn(func: extern "C" fn(usize), _arg: usize) -> Tid {
-    let main = move |arg| {
-        info!("main start");
+pub fn thread_spawn(func: extern "C" fn(usize), arg: usize) -> Tid {
+    debug!("thread_spawn func: {:x} arg: {}", func as usize, arg);
+
+    extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> usize {
         func(arg);
-        info!("main end");
-    };
-
-    let p = Box::into_raw(Box::new(main));
-
-    extern "C" fn thread_start(main: usize) -> usize {
-        info!("thread_start main: {:x}", main);
-        unsafe {
-            Box::from_raw(main as *mut Box<dyn FnOnce()>)();
-        }
-        info!("thread_exit");
         exit();
         0
     }
+
     let _t = match current_thread() {
         Ok(t) => t,
         Err(_) => {
             panic!("no current thread!");
         }
     };
-    let child_thread = thread_alloc(
-        thread_start as usize,
-        p as *mut _ as usize,
-    );
+    let child_thread = thread_alloc2(thread_start as usize, func as usize, arg);
     thread_wake(&child_thread);
     child_thread.tid()
 }

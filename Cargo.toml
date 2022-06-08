@@ -62,6 +62,7 @@ features = [
 default = ["alloc","tcp"]
 
 alloc = []
+debug = []
 dhcpv4 = ["smoltcp/proto-dhcpv4"]
 tcp = [
     "async-task",

@@ -1,4 +1,4 @@
-use crate::driver::Interrupt;
+use crate::drivers::Interrupt;
 
 pub trait InterruptController {
   fn init(&self);

@@ -19,7 +19,7 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
     use crate::lib::interrupt::*;
     let core = crate::lib::cpu::cpu();
     core.set_context(ctx);
-    use crate::driver::{gic::INT_TIMER, INTERRUPT_CONTROLLER};
+    use crate::drivers::{gic::INT_TIMER, INTERRUPT_CONTROLLER};
     let irq = INTERRUPT_CONTROLLER.fetch();
     match irq {
         Some(INT_TIMER) => {

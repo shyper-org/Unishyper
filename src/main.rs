@@ -14,7 +14,7 @@ extern crate alloc;
 extern crate static_assertions;
 
 pub mod arch;
-pub mod driver;
+pub mod drivers;
 pub mod lib;
 pub mod logger;
 pub mod mm;

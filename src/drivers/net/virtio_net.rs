@@ -2,25 +2,20 @@
 //!
 //! The module contains ...
 use crate::arch::kernel::percore::increment_irq_counter;
-use crate::config::VIRTIO_MAX_QUEUE_SIZE;
 use crate::drivers::net::NetworkInterface;
 
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
+use alloc::vec;
 use core::mem;
 use core::result::Result;
 use core::{cell::RefCell, cmp::Ordering};
 
-#[cfg(not(feature = "pci"))]
 use crate::drivers::net::virtio_mmio::NetDevCfgRaw;
-#[cfg(feature = "pci")]
-use crate::drivers::net::virtio_pci::NetDevCfgRaw;
-#[cfg(not(feature = "pci"))]
+use crate::drivers::virtio::VIRTIO_MAX_QUEUE_SIZE;
 use crate::drivers::virtio::transport::mmio::{ComCfg, IsrStatus, NotifCfg};
-#[cfg(feature = "pci")]
-use crate::drivers::virtio::transport::pci::{ComCfg, IsrStatus, NotifCfg};
 use crate::drivers::virtio::virtqueue::{
 	AsSliceU8, BuffSpec, BufferToken, Bytes, Transfer, Virtq, VqIndex, VqSize, VqType,
 };
@@ -656,9 +651,7 @@ impl NetworkInterface for VirtioNetDriver {
 
 		let result = if self.isr_stat.is_interrupt() {
 			// handle incoming packets
-			#[cfg(not(feature = "newlib"))]
-			netwakeup();
-
+			// netwakeup();
 			true
 		} else if self.isr_stat.is_cfg_change() {
 			info!("Configuration changes are not possible! Aborting");

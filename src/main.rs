@@ -7,16 +7,20 @@
 #![feature(const_btree_new)]
 #![feature(allocator_api)]
 #![feature(never_type)]
+#![feature(asm_const)]
 
 #[macro_use]
 extern crate log;
 extern crate alloc;
 extern crate static_assertions;
 
+#[macro_use]
+mod macros;
+
 pub mod arch;
 pub mod drivers;
 pub mod lib;
-pub mod logger;
+mod logger;
 pub mod mm;
 pub mod panic;
 pub mod util;

@@ -27,8 +27,7 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
         }
         Some(i) => {
             if i >= 32 {
-                // crate::lib::interrupt::interrupt(i);
-                info!(" handle interrupt {}", i);
+                crate::lib::interrupt::interrupt(i);
             } else {
                 panic!("GIC unhandled SGI PPI")
             }

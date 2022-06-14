@@ -6,26 +6,6 @@ struct SimpleLogger;
 
 static LOCK: Mutex<()> = Mutex::new(());
 
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::lib::print::print_arg(format_args!($($arg)*)));
-}
-
-#[macro_export]
-macro_rules! println {
-    () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ({
-        $crate::lib::print::print_arg(format_args_nl!($($arg)*));
-    })
-}
-
-#[lang = "eh_personality"]
-#[no_mangle]
-pub extern "C" fn rust_eh_personality() {
-    error!("rust_eh_personality called");
-    loop {}
-}
-
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= Level::Debug

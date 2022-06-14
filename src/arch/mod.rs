@@ -7,3 +7,4 @@ mod mm;
 mod mmu;
 mod registers;
 pub mod start;
+pub mod irq;

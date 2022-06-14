@@ -26,3 +26,19 @@ pub trait NetworkInterface {
 	/// Handle interrupt and check if a packet is available
 	fn handle_interrupt(&mut self) -> bool;
 }
+
+pub fn network_irqhandler() {
+	debug!("Receive network interrupt");
+
+	let check_scheduler = match mmio::get_network_driver() {
+		Some(driver) => driver.lock().handle_interrupt(),
+		_ => {
+			debug!("Unable to handle interrupt!");
+			false
+		}
+	};
+
+	if check_scheduler {
+		crate::lib::cpu::cpu().schedule();
+	}
+}

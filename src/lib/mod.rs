@@ -9,6 +9,8 @@ pub mod scheduler;
 pub mod stack;
 pub mod thread;
 pub mod interrupt;
+
 pub mod net;
+pub mod synch;
 
 pub mod error;

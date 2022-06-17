@@ -4,6 +4,8 @@ use crate::arch::PAGE_SIZE;
 use crate::lib::traits::*;
 use crate::util::round_up;
 
+use super::Addr;
+
 // non paged memory in kernel (kernel heap memory)
 #[cfg(not(feature = "k210"))]
 pub const CONFIG_NON_PAGED_MEMORY_SIZE: usize = 0xf00_0000;
@@ -24,4 +26,12 @@ pub fn paged_range() -> Range<usize> {
 pub fn heap_range() -> Range<usize> {
     let normal_range = crate::arch::BOARD_NORMAL_MEMORY_RANGE;
     (normal_range.end - CONFIG_NON_PAGED_MEMORY_SIZE)..normal_range.end
+}
+
+pub fn kernel_end_address() -> Addr {
+    extern "C" {
+        // Note: link-time label, see linker.ld
+        fn KERNEL_END();
+    }
+    round_up((KERNEL_END as usize).kva2pa(), PAGE_SIZE).into()
 }

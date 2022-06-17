@@ -10,12 +10,6 @@ pub fn thread_spawn(func: extern "C" fn(usize), arg: usize) -> Tid {
         0
     }
 
-    let _t = match current_thread() {
-        Ok(t) => t,
-        Err(_) => {
-            panic!("no current thread!");
-        }
-    };
     let child_thread = thread_alloc2(thread_start as usize, func as usize, arg);
     thread_wake(&child_thread);
     child_thread.tid()

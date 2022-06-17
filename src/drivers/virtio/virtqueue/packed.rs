@@ -10,10 +10,12 @@ use super::{
 	AsSliceU8, BuffSpec, Buffer, BufferToken, Bytes, DescrFlags, MemDescr, MemPool, Pinned,
 	Transfer, TransferState, TransferToken, Virtq, VqIndex, VqSize,
 };
-use crate::arch::mm::paging::{BasePageSize, PageSize};
+
+use crate::arch::PAGE_SIZE;
 use crate::arch::mm::{paging, VirtAddr};
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
+use alloc::vec;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::sync::atomic::{fence, Ordering};
@@ -103,7 +105,7 @@ impl DescriptorRing {
 		// Allocate heap memory via a vec, leak and cast
 		let _mem_len = align_up!(
 			size * core::mem::size_of::<Descriptor>(),
-			BasePageSize::SIZE
+			PAGE_SIZE
 		);
 		let ptr = (crate::mm::allocate(_mem_len, true).0 as *const Descriptor) as *mut Descriptor;
 
@@ -1243,7 +1245,7 @@ impl PackedVq {
 
 		let descr_ring = RefCell::new(DescriptorRing::new(vq_size));
 		// Allocate heap memory via a vec, leak and cast
-		let _mem_len = align_up!(core::mem::size_of::<EventSuppr>(), BasePageSize::SIZE);
+		let _mem_len = align_up!(core::mem::size_of::<EventSuppr>(), PAGE_SIZE);
 
 		let drv_event_ptr =
 			(crate::mm::allocate(_mem_len, true).0 as *const EventSuppr) as *mut EventSuppr;

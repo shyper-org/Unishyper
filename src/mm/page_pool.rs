@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use alloc::collections::VecDeque;
 use core::ops::Range;
 
@@ -37,12 +38,28 @@ impl PagePool {
         }
     }
 
-    pub fn allocate(&mut self) -> Result<PhysicalFrame, Error> {
+    pub fn allocate_page(&mut self) -> Result<PhysicalFrame, Error> {
         if let Some(pa) = self.free.pop_front() {
             Ok(PhysicalFrame::new(pa))
         } else {
             Err(ERROR_OOM)
         }
+    }
+
+    // Todo: we need to organize free pages better.
+    pub fn allocate_pages(&mut self, num: usize) -> Result<Vec<PhysicalFrame>, Error> {
+        let mut pages_queue: Vec<PhysicalFrame> = Vec::new();
+        for _ in 0..num {
+            let p = self.free.pop_front().unwrap();
+            if pages_queue.len() > 0 {
+                if pages_queue[pages_queue.len()-1].pa() != p {
+                    return Err(ERROR_OOM)
+                } 
+            }
+            pages_queue.push(PhysicalFrame::new(p));
+        }
+
+        return Ok(pages_queue);
     }
 
     pub fn free(&mut self, pa: usize) -> Result<(), Error> {
@@ -70,7 +87,12 @@ pub fn init() {
 
 pub fn page_alloc() -> Result<PhysicalFrame, Error> {
     let mut pool = page_pool().lock();
-    pool.allocate()
+    pool.allocate_page()
+}
+
+pub fn pages_alloc(num: usize) -> Result<Vec<PhysicalFrame>, Error> {
+    let mut pool = page_pool().lock();
+    pool.allocate_pages(num)
 }
 
 pub fn page_free(pa: usize) -> Result<(), Error> {

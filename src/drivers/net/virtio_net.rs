@@ -1,7 +1,7 @@
 //! A module containing a virtio network driver.
 //!
 //! The module contains ...
-use crate::arch::kernel::percore::increment_irq_counter;
+// use crate::arch::kernel::percore::increment_irq_counter;
 use crate::drivers::net::NetworkInterface;
 
 use alloc::boxed::Box;
@@ -647,7 +647,7 @@ impl NetworkInterface for VirtioNetDriver {
 	}
 
 	fn handle_interrupt(&mut self) -> bool {
-		increment_irq_counter((32 + self.irq).into());
+		// increment_irq_counter((32 + self.irq).into());
 
 		let result = if self.isr_stat.is_interrupt() {
 			// handle incoming packets

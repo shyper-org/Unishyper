@@ -30,7 +30,7 @@ pub trait NetworkInterface {
 pub fn network_irqhandler() {
 	debug!("Receive network interrupt");
 
-	let check_scheduler = match mmio::get_network_driver() {
+	let check_scheduler = match crate::drivers::virtio::mmio::get_network_driver() {
 		Some(driver) => driver.lock().handle_interrupt(),
 		_ => {
 			debug!("Unable to handle interrupt!");

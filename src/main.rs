@@ -8,6 +8,7 @@
 #![feature(allocator_api)]
 #![feature(never_type)]
 #![feature(asm_const)]
+#![feature(drain_filter)]
 
 #[macro_use]
 extern crate log;

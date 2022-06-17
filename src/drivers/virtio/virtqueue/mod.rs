@@ -130,51 +130,6 @@ impl Virtq {
 	}
 }
 
-// Public Interface solely for page boundary checking and other convenience functions
-impl Virtq {
-	/// Allows to check, if a given structure crosses a physical page boundary.
-	/// Returns true, if the structure does NOT cross a boundary or crosses only
-	/// contiguous physical page boundaries.
-	///
-	/// Structures provided to the Queue must pass this test, otherwise the queue
-	/// currently panics.
-	pub fn check_bounds<T: AsSliceU8>(data: &T) -> bool {
-		let slice = data.as_slice_u8();
-
-		let start_virt = (&slice[0] as *const u8) as usize;
-		let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
-		let end_phy_calc = paging::virt_to_phys(VirtAddr::from(start_virt)) + (slice.len() - 1);
-		let end_phy = paging::virt_to_phys(VirtAddr::from(end_virt));
-
-		end_phy == end_phy_calc
-	}
-
-	/// Allows to check, if a given slice crosses a physical page boundary.
-	/// Returns true, if the slice does NOT cross a boundary or crosses only
-	/// contiguous physical page boundaries.
-	/// Slice MUST come from a boxed value. Otherwise the slice might be moved and
-	/// the test of this function is not longer valid.
-	///
-	/// This check is especially useful if one wants to check if slices
-	/// into which the queue will destructure a structure are valid for the queue.
-	///
-	/// Slices provided to the Queue must pass this test, otherwise the queue
-	/// currently panics.
-	pub fn check_bounds_slice(slice: &[u8]) -> bool {
-		let start_virt = (&slice[0] as *const u8) as usize;
-		let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
-		let end_phy_calc = paging::virt_to_phys(VirtAddr::from(start_virt)) + (slice.len() - 1);
-		let end_phy = paging::virt_to_phys(VirtAddr::from(end_virt));
-
-		end_phy == end_phy_calc
-	}
-
-	/// Frees memory regions gained access to via `Transfer.ret_raw()`.
-	pub fn free_raw(ptr: *mut u8, len: usize) {
-		crate::mm::deallocate(VirtAddr::from(ptr as usize), len);
-	}
-}
-
 // Public interface of Virtq
 impl Virtq {
 	/// Enables interrupts for this virtqueue upon receiving a transfer

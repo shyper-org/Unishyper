@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use core::sync::atomic::AtomicUsize;
@@ -10,7 +11,7 @@ use crate::lib::cpu::cpu;
 use crate::lib::error::*;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
-use crate::mm::PhysicalFrame;
+use crate::mm::{PhysicalFrame, Addr};
 
 pub type Tid = usize;
 
@@ -41,7 +42,7 @@ struct Inner {
 struct InnerMut {
     status: Mutex<Status>,
     context_frame: Mutex<ContextFrame>,
-    // address_space: Option<AddressSpace>,
+    address_space: Mutex<BTreeMap<Addr, Vec<PhysicalFrame>>>,
 }
 
 struct ControlBlock {
@@ -126,6 +127,16 @@ impl Thread {
         let mut context_frame = self.0.inner_mut.context_frame.lock();
         f(&mut *context_frame)
     }
+
+    pub fn add_address_space(&self, addr: Addr, frames: Vec<PhysicalFrame>) {
+        let mut addr_space = self.0.inner_mut.address_space.lock();
+        addr_space.insert(addr, frames);
+    }
+
+    pub fn free_address_space(&self, addr: Addr) {
+        let mut addr_space = self.0.inner_mut.address_space.lock();
+        addr_space.remove(&addr);
+    }
 }
 
 static THREAD_UUID_ALLOCATOR: AtomicUsize = AtomicUsize::new(100);
@@ -154,6 +165,7 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
         inner_mut: InnerMut {
             status: Mutex::new(Status::Sleep),
             context_frame: Mutex::new(ContextFrame::new(pc, sp, arg0,arg1,true)),
+            address_space: Mutex::new(BTreeMap::new()),
         },
     }));
     let mut map = THREAD_MAP.lock();

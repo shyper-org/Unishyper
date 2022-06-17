@@ -84,6 +84,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 
 [[package]]
+name = "fatfs"
+version = "0.4.0"
+source = "git+https://github.com/rafalh/rust-fatfs#4892fb1791b29616d8573235eb83644003d13791"
+dependencies = [
+ "bitflags",
+ "log",
+]
+
+[[package]]
 name = "futures-core"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -178,6 +187,7 @@ dependencies = [
  "cfg-if",
  "cortex-a",
  "crossbeam-queue",
+ "fatfs",
  "futures-lite",
  "gimli",
  "ioslice",

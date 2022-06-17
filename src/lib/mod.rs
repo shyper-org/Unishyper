@@ -14,3 +14,4 @@ pub mod net;
 pub mod synch;
 
 pub mod error;
+pub mod fs;

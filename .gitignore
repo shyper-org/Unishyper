@@ -2,3 +2,4 @@
 .vscode
 *Cargo.lock
 Cargo.lock
+disk.img

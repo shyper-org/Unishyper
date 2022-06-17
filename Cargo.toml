@@ -30,6 +30,12 @@ version = "1.4"
 optional = true
 features = ["spin_no_std"]
 
+[dependencies.fatfs]
+version = "0.4"
+git = "https://github.com/rafalh/rust-fatfs"
+default-features = false
+features = ["lfn", "alloc", "log_level_error", "log_level_warn", "log_level_info", "log_level_debug", "log_level_trace"]
+
 [dependencies.tock-registers]
 version = "0.7.0"
 default-features = false

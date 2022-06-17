@@ -17,7 +17,7 @@ KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/rust_shyper_os
 USER_KERNEL := examples/user/target/${ARCH}${MACHINE}/${PROFILE}/user
 NET_KERNEL := examples/net_demo/target/${ARCH}${MACHINE}/${PROFILE}/net_demo
 
-.PHONY: all build emu debug clean user net_demo user_emu net_emu
+.PHONY: all build emu debug clean user net_demo user_emu net_emu disk
 
 user:
 	make -C examples/user
@@ -53,6 +53,7 @@ user_emu: user
 		-device loader,file=${USER_KERNEL},addr=0x80000000,force-raw=on \
 		-serial stdio -display none \
 		-smp 4 -m 2048 \
+		${QEMU_DISK_OPTIONS} \
 		-kernel ${USER_KERNEL}.bin -s
 
 net_emu: net_demo
@@ -81,6 +82,11 @@ net_debug: net_demo
 		${QEMU_NETWORK_OPTIONS} \
 		-smp 4 -m 2048 \
 		-kernel ${NET_KERNEL}.bin -s -S
+
+disk:
+	rm -rf disk
+	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
+	mkfs.fat -F 32 disk.img
 
 dependencies:
 	rustup component add rust-src

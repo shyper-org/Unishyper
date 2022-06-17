@@ -111,5 +111,7 @@ pub fn init_drivers() {
         } else {
             debug!("Unable to find mmio device");
         }
+        use crate::drivers::blk;
+        blk::virtio_blk_init();
     });
 }

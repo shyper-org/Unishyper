@@ -4,6 +4,7 @@ pub mod timer;
 pub mod uart;
 pub mod gic;
 
+pub mod blk;
 pub mod net;
 pub mod virtio;
 

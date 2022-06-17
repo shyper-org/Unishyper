@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use alloc::collections::VecDeque;
 use core::ops::Range;
 
@@ -7,6 +6,8 @@ use spin::{Mutex, Once};
 use crate::arch::*;
 use crate::mm::PhysicalFrame;
 use crate::lib::error::ERROR_OOM;
+
+use super::Region;
 
 pub type Error = usize;
 
@@ -47,22 +48,26 @@ impl PagePool {
     }
 
     // Todo: we need to organize free pages better.
-    pub fn allocate_pages(&mut self, num: usize) -> Result<Vec<PhysicalFrame>, Error> {
-        let mut pages_queue: Vec<PhysicalFrame> = Vec::new();
-        for _ in 0..num {
-            let p = self.free.pop_front().unwrap();
-            if pages_queue.len() > 0 {
-                if pages_queue[pages_queue.len()-1].pa() != p {
-                    return Err(ERROR_OOM)
-                } 
+    pub fn allocate_pages(&mut self, num: usize) -> Result<Region, Error> {
+        assert!(num > 0,"try to allocate zero page!");
+        let p = self.free.pop_front().unwrap();
+        let mut pa = p;
+        // debug!("allocate_pages get pa 0x{:x}", p);
+        if num > 1 {
+            for _ in 1..num {
+                let next_pa = self.free.pop_front().unwrap();
+                if pa + PAGE_SIZE != next_pa {
+                    panic!("allocate_pages no more free continues mem region pa {:x}!", pa);
+                }
+                // debug!("allocate_pages get next_pa 0x{:x}", next_pa);
+                pa = next_pa;
             }
-            pages_queue.push(PhysicalFrame::new(p));
         }
-
-        return Ok(pages_queue);
+        return Ok(Region::new(p, num * PAGE_SIZE))
     }
 
     pub fn free(&mut self, pa: usize) -> Result<(), Error> {
+        // debug!(" free pa {:x}", pa);
         self.free.push_back(pa);
         Ok(())
     }
@@ -90,8 +95,9 @@ pub fn page_alloc() -> Result<PhysicalFrame, Error> {
     pool.allocate_page()
 }
 
-pub fn pages_alloc(num: usize) -> Result<Vec<PhysicalFrame>, Error> {
+pub fn pages_alloc(num: usize) -> Result<Region, Error> {
     let mut pool = page_pool().lock();
+    // debug!("pages_alloc num {}",num);
     pool.allocate_pages(num)
 }
 

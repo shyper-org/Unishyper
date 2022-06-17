@@ -1,12 +1,11 @@
 pub mod config;
 pub mod heap;
+mod mem_region;
 mod page_frame;
 pub mod page_pool;
 
+pub use self::mem_region::*;
 pub use self::page_frame::*;
-
-use alloc::vec::Vec;
-use core::alloc::AllocError;
 
 use crate::arch::PAGE_SIZE;
 use crate::lib::thread::current_thread;
@@ -20,6 +19,16 @@ impl Addr {
     pub fn as_usize(self) -> usize {
         self.0
     }
+
+    /// Convert to mutable pointer.
+    pub fn as_mut_ptr<T>(self) -> *mut T {
+        self.0 as *mut T
+    }
+
+    /// Convert to pointer.
+    pub fn as_ptr<T>(self) -> *const T {
+        self.0 as *const T
+    }
 }
 
 impl From<usize> for Addr {
@@ -28,10 +37,10 @@ impl From<usize> for Addr {
     }
 }
 
-impl From<Vec<PhysicalFrame>> for Addr {
-    fn from(pages: Vec<PhysicalFrame>) -> Self {
-        assert!(pages.len() > 0);
-        Addr(pages[0].kva())
+impl From<Region> for Addr {
+    fn from(region: Region) -> Self {
+        assert!(region.size() > 0);
+        Addr(region.kva())
     }
 }
 
@@ -42,7 +51,7 @@ impl Into<usize> for Addr {
     }
 }
 
-pub fn allocate(size: usize) -> Result<Addr, AllocError> {
+pub fn allocate(size: usize) -> Addr {
     assert!(size > 0);
     assert_eq!(
         size % PAGE_SIZE,
@@ -59,14 +68,21 @@ pub fn allocate(size: usize) -> Result<Addr, AllocError> {
         }
     };
 
-    let frames =
+    // debug!("thread {} alloc size 0x{:x} pages_num {}", t.tid(), size, size / PAGE_SIZE);
+
+    let region =
         page_pool::pages_alloc(size / PAGE_SIZE).expect("failed to allocate physical frame");
 
-    let addr: Addr = frames.into();
+    debug!(
+        "allocate region start 0x{:x} size 0x{:x}",
+        region.kva(),
+        region.size()
+    );
 
-    t.add_address_space(addr, frames.as_ref());
+    let addr = region.addr();
+    t.add_address_space(addr, region);
 
-    Ok(addr)
+    addr
 }
 
 pub fn deallocate(address: Addr) {
@@ -82,6 +98,8 @@ pub fn deallocate(address: Addr) {
             panic!("no current thread!");
         }
     };
+
+    debug!("deallocate region addr start 0x{:x}", address.as_usize());
 
     t.free_address_space(address);
 }

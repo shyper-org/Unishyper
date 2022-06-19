@@ -377,6 +377,7 @@ impl SplitVq {
 		index: VqIndex,
 		_feats: u64,
 	) -> Result<Self, ()> {
+		debug!("SplitVq::new");
 		// Get a handler to the queues configuration area.
 		let mut vq_handler = match com_cfg.select_vq(index.into()) {
 			Some(handler) => handler,

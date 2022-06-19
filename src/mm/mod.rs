@@ -65,26 +65,35 @@ pub fn allocate(size: usize) -> Addr {
         size % PAGE_SIZE,
     );
 
-    let t = match current_thread() {
-        Ok(t) => t,
-        Err(_) => {
-            panic!("no current thread!");
-        }
-    };
-
-    // debug!("thread {} alloc size 0x{:x} pages_num {}", t.tid(), size, size / PAGE_SIZE);
-
     let region =
         page_pool::pages_alloc(size / PAGE_SIZE).expect("failed to allocate physical frame");
 
-    debug!(
-        "allocate region start 0x{:x} size 0x{:x}",
-        region.kva(),
-        region.size()
-    );
+    // debug!("allocate region start 0x{:x} size 0x{:x}", region.kva(), region.size());
 
     let addr = region.addr();
-    t.add_address_space(addr, region);
+
+    match current_thread() {
+        Ok(t) => {
+            debug!(
+                "thread {} alloc size 0x{:x} pages_num {} region start 0x{:x} size 0x{:x}",
+                t.tid(),
+                size,
+                size / PAGE_SIZE,
+                region.kva(),
+                region.size()
+            );
+            t.add_address_space(addr, region);
+        }
+        Err(_) => {
+            // debug!(
+            //     "thread NULL alloc size 0x{:x} pages_num {} region start 0x{:x} size 0x{:x}",
+            //     size,
+            //     size / PAGE_SIZE,
+            //     region.kva(),
+            //     region.size()
+            // );
+        }
+    };
 
     addr
 }
@@ -96,14 +105,14 @@ pub fn deallocate(address: Addr) {
         address.as_usize()
     );
 
-    let t = match current_thread() {
-        Ok(t) => t,
+    match current_thread() {
+        Ok(t) => {
+            t.free_address_space(address);
+        },
         Err(_) => {
-            panic!("no current thread!");
+            debug!("no current thread!");
         }
     };
 
     debug!("deallocate region addr start 0x{:x}", address.as_usize());
-
-    t.free_address_space(address);
 }

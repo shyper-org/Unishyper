@@ -1,5 +1,5 @@
 pub mod fatfs2 {
-    use fatfs::{IoBase, IoError, Read, Seek, SeekFrom, Write};
+    use fatfs::{IoBase, IoError, Read, Seek, SeekFrom, Write, FsOptions, FileSystem};
     use core::slice;
 
     use crate::drivers::blk;
@@ -55,9 +55,11 @@ pub mod fatfs2 {
         }
     }
 
+    #[repr(align(4))]
     struct DiskCursor {
         sector: usize,
         offset: usize,
+        // cache_sector: Option<usize>,
         block: DataBlock,
     }
 
@@ -67,6 +69,7 @@ pub mod fatfs2 {
                 sector: start_sector,
                 offset: 0,
                 block: DataBlock::new(),
+                // cache_sector: None,
             }
         }
 
@@ -133,13 +136,20 @@ pub mod fatfs2 {
         fn write(&mut self, buf: &[u8]) -> Result<usize, DiskCursorIoError> {
             let mut i = 0;
             while i < buf.len() {
+                // read the block to memory
+                self.read_blk(
+                    self.sector,
+                    ((buf.len() - i) / BSIZE).max(1).try_into().unwrap(),
+                )
+                .expect("ata error");
+
                 let data = &mut self.block.0[self.offset..];
                 if data.len() == 0 {
                     break;
                 }
                 let end = (i + data.len()).min(buf.len());
                 let len = end - i;
-                data[i..end].copy_from_slice(&buf[..len]);
+                data[..end].copy_from_slice(&buf[i..len]);
 
                 self.write_blk(
                     self.sector,
@@ -151,10 +161,6 @@ pub mod fatfs2 {
                 self.move_cursor(i);
             }
             Ok(i)
-        }
-
-        fn write_all(&mut self, _buf: &[u8]) -> Result<(), DiskCursorIoError> {
-            todo!("Write All")
         }
 
         fn flush(&mut self) -> Result<(), DiskCursorIoError> {
@@ -181,23 +187,10 @@ pub mod fatfs2 {
         }
     }
 
-    pub fn ls_dir(_path: &str) {
-        let start_sector: usize = 0;
-        let storage = DiskCursor::new(start_sector);
-
-        let fs = fatfs::FileSystem::new(storage, fatfs::FsOptions::new()).expect("open fs");
-        let cursor = fs.root_dir();
-
-        for entry in cursor.iter() {
-            let entry = entry.expect("Entry");
-            println!("{}", entry.file_name());
-        }
-    }
-
     pub fn test_fatfs() {
         let start_sector: usize = 0;
         let storage = DiskCursor::new(start_sector);
-        use fatfs::{FsOptions, FileSystem};
+
         let options = FsOptions::new();
         let fs = FileSystem::new(storage, options).expect("open fs");
         let root_cursor = fs.root_dir();

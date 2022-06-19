@@ -777,8 +777,6 @@ impl VirtioNetDriver {
         feats.push(Features::VIRTIO_F_RING_INDIRECT_DESC);
         // MTU setting can be used
         feats.push(Features::VIRTIO_NET_F_MTU);
-        // // Packed Vq can be used
-        // feats.push(Features::VIRTIO_F_RING_PACKED);
 
         // Currently the driver does NOT support the features below.
         // In order to provide functionality for theses, the driver
@@ -1716,6 +1714,10 @@ pub mod constants {
         /// initialized to false.
         pub fn new(val: u64) -> Self {
             FeatureSet(val)
+        }
+
+        pub fn get_val(&self) -> usize {
+            self.0 as usize
         }
     }
 }

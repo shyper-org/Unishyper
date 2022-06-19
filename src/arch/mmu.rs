@@ -43,9 +43,11 @@ pub unsafe extern "C" fn populate_page_table(pt: &mut PageDirectory) {
         pt.0[i] = invalid_entry();
     }
     for i in BOARD_DEVICE_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
+        // println!("BOARD_DEVICE_MEMORY_RANGE: 0x{:x}",i);00
         pt.0[i / ONE_GIGABYTE] = block_entry(i, true);
     }
     for i in BOARD_NORMAL_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
+        // println!("BOARD_NORMAL_MEMORY_RANGE: 0x{:x}",i);
         pt.0[i / ONE_GIGABYTE] = block_entry(i, false);
     }
     // special mapping for kernel elf image

@@ -3,6 +3,8 @@ pub mod transport;
 pub mod virtqueue;
 pub mod mmio;
 
+pub use mmio::init_drivers;
+
 pub const VIRTIO_MAX_QUEUE_SIZE: u16 = 1024;
 
 pub mod error {

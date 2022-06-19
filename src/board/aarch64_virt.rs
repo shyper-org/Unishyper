@@ -6,6 +6,7 @@ pub fn init(){
     use tock_registers::interfaces::Writeable;
     DAIF.write(DAIF::I::Masked);
     crate::drivers::INTERRUPT_CONTROLLER.init();
+    crate::drivers::init_devices();
     crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
     crate::drivers::timer::init();
     let pmcr = 1u64;

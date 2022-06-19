@@ -2,8 +2,11 @@ use alloc::vec::Vec;
 
 use crate::drivers::net::virtio_net::VirtioNetDriver;
 use crate::drivers::net::NetworkInterface;
-use crate::drivers::virtio::transport::mmio::{DevId, MmioRegisterLayout};
+use crate::drivers::virtio::transport::mmio::{
+    init_device, DevId, MmioRegisterLayout, VirtioDriver,
+};
 use crate::lib::synch::spinlock::SpinlockIrqSave;
+use crate::util::irqsave;
 
 pub const MAGIC_VALUE: u32 = 0x74726976;
 
@@ -30,16 +33,13 @@ impl MmioDriver {
 /// Tries to find the network device within the specified address range.
 /// Returns a reference to it within the Ok() if successful or an Err() on failure.
 pub fn detect_network() -> Result<&'static mut MmioRegisterLayout, &'static str> {
-    // Trigger page mapping in the first iteration!
-    let mut current_page = 0;
-
     // Look for the device-ID in all possible 64-byte aligned addresses within this range.
     for current_address in (VIRTIO_MMIO_START..VIRTIO_MMIO_END).step_by(512) {
         trace!(
             "try to detect MMIO device at physical address {:#X}",
             current_address
         );
-		debug!(
+        debug!(
             "try to detect MMIO device at physical address {:#X}",
             current_address
         );
@@ -86,4 +86,27 @@ pub fn detect_network() -> Result<&'static mut MmioRegisterLayout, &'static str>
 
 pub fn get_network_driver() -> Option<&'static SpinlockIrqSave<dyn NetworkInterface>> {
     unsafe { MMIO_DRIVERS.iter().find_map(|drv| drv.get_network_driver()) }
+}
+
+pub fn register_driver(drv: MmioDriver) {
+    unsafe {
+        MMIO_DRIVERS.push(drv);
+    }
+}
+
+pub fn init_drivers() {
+    // virtio: MMIO Device Discovery
+    irqsave(|| {
+        if let Ok(mmio) = detect_network() {
+            debug!(
+                "Found MMIO device, but we guess the interrupt number {}!",
+                IRQ_NUMBER
+            );
+            if let Ok(VirtioDriver::Network(drv)) = init_device(mmio, IRQ_NUMBER) {
+                register_driver(MmioDriver::VirtioNet(SpinlockIrqSave::new(drv)))
+            }
+        } else {
+            debug!("Unable to find mmio device");
+        }
+    });
 }

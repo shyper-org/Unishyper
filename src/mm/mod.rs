@@ -9,12 +9,16 @@ pub use self::page_frame::*;
 
 use crate::arch::PAGE_SIZE;
 use crate::lib::thread::current_thread;
+use crate::lib::traits::Address;
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Addr(pub usize);
 
 impl Addr {
+    pub fn to_pa(self) -> usize {
+        self.0.kva2pa()
+    }
     /// Convert to `usize`
     pub fn as_usize(self) -> usize {
         self.0
@@ -32,8 +36,8 @@ impl Addr {
 }
 
 impl From<usize> for Addr {
-    fn from(num: usize) -> Self {
-        Addr(num)
+    fn from(addr: usize) -> Self {
+        Addr(addr)
     }
 }
 

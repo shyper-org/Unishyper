@@ -5,7 +5,6 @@
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
-use core::arch::x86_64::_mm_mfence;
 use core::cell::RefCell;
 use core::convert::TryInto;
 use core::ptr::read_volatile;
@@ -38,9 +37,9 @@ impl NetDevCfgRaw {
 		unsafe {
 			loop {
 				let before = read_volatile(&self.config_generation);
-				_mm_mfence();
+				// _mm_mfence();
 				let mtu = read_volatile(&self.mtu);
-				_mm_mfence();
+				// _mm_mfence();
 				let after = read_volatile(&self.config_generation);
 
 				if before == after {
@@ -57,10 +56,10 @@ impl NetDevCfgRaw {
 		unsafe {
 			loop {
 				let before = read_volatile(&self.config_generation);
-				_mm_mfence();
+				// _mm_mfence();
 				let mut src = self.mac.iter();
 				mac.fill_with(|| read_volatile(src.next().unwrap()));
-				_mm_mfence();
+				// _mm_mfence();
 				let after = read_volatile(&self.config_generation);
 
 				if before == after {
@@ -75,9 +74,9 @@ impl NetDevCfgRaw {
 		unsafe {
 			loop {
 				let before = read_volatile(&self.config_generation);
-				_mm_mfence();
+				// _mm_mfence();
 				let status = read_volatile(&self.status);
-				_mm_mfence();
+				// _mm_mfence();
 				let after = read_volatile(&self.config_generation);
 
 				if before == after {
@@ -92,9 +91,9 @@ impl NetDevCfgRaw {
 		unsafe {
 			loop {
 				let before = read_volatile(&self.config_generation);
-				_mm_mfence();
+				// _mm_mfence();
 				let max_pairs = read_volatile(&self.max_virtqueue_pairs);
-				_mm_mfence();
+				// _mm_mfence();
 				let after = read_volatile(&self.config_generation);
 
 				if before == after {

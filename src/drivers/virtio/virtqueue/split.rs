@@ -2,21 +2,20 @@
 //! See Virito specification v1.1. - 2.6
 #![allow(dead_code)]
 
-#[cfg(not(feature = "pci"))]
 use super::super::transport::mmio::{ComCfg, NotifCfg, NotifCtrl};
-#[cfg(feature = "pci")]
-use super::super::transport::pci::{ComCfg, NotifCfg, NotifCtrl};
 use super::error::VirtqError;
 use super::{
 	AsSliceU8, BuffSpec, Buffer, BufferToken, Bytes, DescrFlags, MemDescr, MemPool, Pinned,
 	Transfer, TransferState, TransferToken, Virtq, VqIndex, VqSize,
 };
-use crate::arch::mm::paging::{BasePageSize, PageSize};
-use crate::arch::mm::{paging, VirtAddr};
+
+use crate::mm::Addr;
+use crate::arch::PAGE_SIZE;
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
+use alloc::vec;
 use core::sync::atomic::{fence, Ordering};
 use core::{cell::RefCell, ptr};
 
@@ -129,14 +128,14 @@ impl DescrRing {
 				assert!(len == 1);
 				if is_write {
 					Descriptor::new(
-						paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+						Addr::from(desc.ptr as usize).to_pa() as u64,
 						desc.len as u32,
 						DescrFlags::VIRTQ_DESC_F_INDIRECT | DescrFlags::VIRTQ_DESC_F_WRITE,
 						0,
 					)
 				} else {
 					Descriptor::new(
-						paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+						Addr::from(desc.ptr as usize).to_pa() as u64,
 						desc.len as u32,
 						DescrFlags::VIRTQ_DESC_F_INDIRECT.into(),
 						0,
@@ -150,14 +149,14 @@ impl DescrRing {
 
 				if is_write {
 					Descriptor::new(
-						paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+						Addr::from(desc.ptr as usize).to_pa() as u64,
 						desc.len as u32,
 						DescrFlags::VIRTQ_DESC_F_WRITE | DescrFlags::VIRTQ_DESC_F_NEXT,
 						next_index,
 					)
 				} else {
 					Descriptor::new(
-						paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+						Addr::from(desc.ptr as usize).to_pa() as u64,
 						desc.len as u32,
 						DescrFlags::VIRTQ_DESC_F_NEXT.into(),
 						next_index,
@@ -165,14 +164,14 @@ impl DescrRing {
 				}
 			} else if is_write {
 				Descriptor::new(
-					paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+					Addr::from(desc.ptr as usize).to_pa() as u64,
 					desc.len as u32,
 					DescrFlags::VIRTQ_DESC_F_WRITE.into(),
 					0,
 				)
 			} else {
 				Descriptor::new(
-					paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+					Addr::from(desc.ptr as usize).to_pa() as u64,
 					desc.len as u32,
 					0,
 					0,
@@ -389,19 +388,19 @@ impl SplitVq {
 		// Allocate heap memory via a vec, leak and cast
 		let _mem_len = align_up!(
 			size as usize * core::mem::size_of::<Descriptor>(),
-			BasePageSize::SIZE
+			PAGE_SIZE
 		);
 		let table_raw =
-			(crate::mm::allocate(_mem_len, true).0 as *const Descriptor) as *mut Descriptor;
+			(crate::mm::allocate(_mem_len).0 as *const Descriptor) as *mut Descriptor;
 
 		let descr_table = DescrTable {
 			raw: unsafe { core::slice::from_raw_parts_mut(table_raw, size as usize) },
 		};
 
-		let _mem_len = align_up!(6 + (size as usize * 2), BasePageSize::SIZE);
-		let avail_raw = (crate::mm::allocate(_mem_len, true).0 as *const u8) as *mut u8;
-		let _mem_len = align_up!(6 + (size as usize * 8), BasePageSize::SIZE);
-		let used_raw = (crate::mm::allocate(_mem_len, true).0 as *const u8) as *mut u8;
+		let _mem_len = align_up!(6 + (size as usize * 2), PAGE_SIZE);
+		let avail_raw = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
+		let _mem_len = align_up!(6 + (size as usize * 8), PAGE_SIZE);
+		let used_raw = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
 
 		let avail_ring = unsafe {
 			AvailRing {
@@ -440,10 +439,10 @@ impl SplitVq {
 		}
 
 		// Provide memory areas of the queues data structures to the device
-		vq_handler.set_ring_addr(paging::virt_to_phys(VirtAddr::from(table_raw as u64)));
+		vq_handler.set_ring_addr(Addr::from(table_raw as usize).to_pa());
 		// As usize is safe here, as the *mut EventSuppr raw pointer is a thin pointer of size usize
-		vq_handler.set_drv_ctrl_addr(paging::virt_to_phys(VirtAddr::from(avail_raw as u64)));
-		vq_handler.set_dev_ctrl_addr(paging::virt_to_phys(VirtAddr::from(used_raw as u64)));
+		vq_handler.set_drv_ctrl_addr(Addr::from(avail_raw as usize).to_pa());
+		vq_handler.set_dev_ctrl_addr(Addr::from(used_raw as usize).to_pa());
 
 		let descr_ring = DescrRing {
 			read_idx: 0,
@@ -1528,14 +1527,14 @@ impl SplitVq {
 				for desc in recv_desc_lst {
 					desc_slice[crtl_desc_iter] = if desc_lst_len > 1 {
 						Descriptor::new(
-							paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+							Addr::from(desc.ptr as usize).to_pa() as u64,
 							desc.len as u32,
 							DescrFlags::VIRTQ_DESC_F_WRITE | DescrFlags::VIRTQ_DESC_F_NEXT,
 							(crtl_desc_iter + 1) as u16,
 						)
 					} else {
 						Descriptor::new(
-							paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+							Addr::from(desc.ptr as usize).to_pa() as u64,
 							desc.len as u32,
 							DescrFlags::VIRTQ_DESC_F_WRITE.into(),
 							0,
@@ -1552,14 +1551,14 @@ impl SplitVq {
 				for desc in send_desc_lst {
 					desc_slice[crtl_desc_iter] = if desc_lst_len > 1 {
 						Descriptor::new(
-							paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+							Addr::from(desc.ptr as usize).to_pa() as u64,
 							desc.len as u32,
 							DescrFlags::VIRTQ_DESC_F_NEXT.into(),
 							(crtl_desc_iter + 1) as u16,
 						)
 					} else {
 						Descriptor::new(
-							paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+							Addr::from(desc.ptr as usize).to_pa() as u64,
 							desc.len as u32,
 							0,
 							0,
@@ -1576,14 +1575,14 @@ impl SplitVq {
 				for desc in send_desc_lst {
 					desc_slice[crtl_desc_iter] = if desc_lst_len > 1 {
 						Descriptor::new(
-							paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+							Addr::from(desc.ptr as usize).to_pa() as u64,
 							desc.len as u32,
 							DescrFlags::VIRTQ_DESC_F_NEXT.into(),
 							(crtl_desc_iter + 1) as u16,
 						)
 					} else {
 						Descriptor::new(
-							paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+							Addr::from(desc.ptr as usize).to_pa() as u64,
 							desc.len as u32,
 							0,
 							0,
@@ -1597,14 +1596,14 @@ impl SplitVq {
 				for desc in recv_desc_lst {
 					desc_slice[crtl_desc_iter] = if desc_lst_len > 1 {
 						Descriptor::new(
-							paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+							Addr::from(desc.ptr as usize).to_pa() as u64,
 							desc.len as u32,
 							DescrFlags::VIRTQ_DESC_F_WRITE | DescrFlags::VIRTQ_DESC_F_NEXT,
 							(crtl_desc_iter + 1) as u16,
 						)
 					} else {
 						Descriptor::new(
-							paging::virt_to_phys(VirtAddr::from(desc.ptr as u64)).into(),
+							Addr::from(desc.ptr as usize).to_pa() as u64,
 							desc.len as u32,
 							DescrFlags::VIRTQ_DESC_F_WRITE.into(),
 							0,

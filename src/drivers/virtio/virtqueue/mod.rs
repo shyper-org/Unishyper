@@ -10,14 +10,13 @@
 #![allow(dead_code)]
 #![allow(clippy::type_complexity)]
 
-pub mod packed;
 pub mod split;
 
 use crate::arch::PAGE_SIZE;
-use crate::arch::mm::{paging, VirtAddr};
+use crate::mm::Addr;
+// use crate::arch::mm::{paging, VirtAddr};
 
 use self::error::{BufferError, VirtqError};
-use self::packed::PackedVq;
 use self::split::SplitVq;
 
 use super::transport::mmio::{ComCfg, NotifCfg};
@@ -89,7 +88,6 @@ impl From<VqSize> for u16 {
 
 /// Enum that defines which virtqueue shall be created when used via the `Virtq::new()` function.
 pub enum VqType {
-	Packed,
 	Split,
 }
 
@@ -110,7 +108,6 @@ struct Descriptor {
 /// do need these features should refrain from providing support for both
 /// Virtqueue types and use the structs directly instead.
 pub enum Virtq {
-	Packed(PackedVq),
 	Split(SplitVq),
 }
 
@@ -124,7 +121,6 @@ impl Virtq {
 	/// updated notification flags before finishing transfers!
 	fn dispatch(&self, tkn: TransferToken, notif: bool) -> Transfer {
 		match self {
-			Virtq::Packed(vq) => vq.dispatch(tkn, notif),
 			Virtq::Split(vq) => vq.dispatch(tkn, notif),
 		}
 	}
@@ -135,7 +131,6 @@ impl Virtq {
 	/// Enables interrupts for this virtqueue upon receiving a transfer
 	pub fn enable_notifs(&self) {
 		match self {
-			Virtq::Packed(vq) => vq.enable_notifs(),
 			Virtq::Split(vq) => vq.enable_notifs(),
 		}
 	}
@@ -143,7 +138,6 @@ impl Virtq {
 	/// Disables interrupts for this virtqueue upon receiving a transfer
 	pub fn disable_notifs(&self) {
 		match self {
-			Virtq::Packed(vq) => vq.disable_notifs(),
 			Virtq::Split(vq) => vq.disable_notifs(),
 		}
 	}
@@ -156,7 +150,6 @@ impl Virtq {
 	/// * All finished `TransferTokens` will have a state of `TransferState::Finished`.
 	pub fn poll(&self) {
 		match self {
-			Virtq::Packed(vq) => vq.poll(),
 			Virtq::Split(vq) => vq.poll(),
 		}
 	}
@@ -168,7 +161,6 @@ impl Virtq {
 	/// in order to fire-and-forget.
 	pub fn clean_up(&self) {
 		match self {
-			Virtq::Packed(vq) => vq.clean_up(),
 			Virtq::Split(vq) => vq.clean_up(),
 		}
 	}
@@ -220,9 +212,6 @@ impl Virtq {
 		let mut transfer_lst = Vec::new();
 		for (vq_ref, tkn_lst) in used_vqs {
 			match vq_ref.as_ref() {
-				Virtq::Packed(vq) => {
-					transfer_lst.append(vq.dispatch_batch(tkn_lst, notif).as_mut())
-				}
 				Virtq::Split(vq) => transfer_lst.append(vq.dispatch_batch(tkn_lst, notif).as_mut()),
 			}
 		}
@@ -280,9 +269,6 @@ impl Virtq {
 
 		for (vq, tkn_lst) in used_vqs {
 			match vq.as_ref() {
-				Virtq::Packed(vq) => {
-					vq.dispatch_batch_await(tkn_lst, Rc::clone(&await_queue), notif)
-				}
 				Virtq::Split(vq) => {
 					vq.dispatch_batch_await(tkn_lst, Rc::clone(&await_queue), notif)
 				}
@@ -304,10 +290,6 @@ impl Virtq {
 		feats: u64,
 	) -> Self {
 		match vq_type {
-			VqType::Packed => match PackedVq::new(com_cfg, notif_cfg, size, index, feats) {
-				Ok(packed_vq) => Virtq::Packed(packed_vq),
-				Err(_vq_error) => panic!("Currently panics if queue fails to be created"),
-			},
 			VqType::Split => match SplitVq::new(com_cfg, notif_cfg, size, index, feats) {
 				Ok(split_vq) => Virtq::Split(split_vq),
 				Err(_vq_error) => panic!("Currently panics if queue fails to be created"),
@@ -319,7 +301,6 @@ impl Virtq {
 	/// queue currently has for new descriptors.
 	pub fn size(&self) -> VqSize {
 		match self {
-			Virtq::Packed(vq) => vq.size(),
 			Virtq::Split(vq) => vq.size(),
 		}
 	}
@@ -327,7 +308,6 @@ impl Virtq {
 	// Returns the index (ID) of a Virtqueue.
 	pub fn index(&self) -> VqIndex {
 		match self {
-			Virtq::Packed(vq) => vq.index(),
 			Virtq::Split(vq) => vq.index(),
 		}
 	}
@@ -401,7 +381,6 @@ impl Virtq {
 		recv: Option<(*mut K, BuffSpec<'_>)>,
 	) -> Result<TransferToken, VirtqError> {
 		match self {
-			Virtq::Packed(vq) => vq.prep_transfer_from_raw(rc_self, send, recv),
 			Virtq::Split(vq) => vq.prep_transfer_from_raw(rc_self, send, recv),
 		}
 	}
@@ -454,7 +433,6 @@ impl Virtq {
 		recv: Option<BuffSpec<'_>>,
 	) -> Result<BufferToken, VirtqError> {
 		match self {
-			Virtq::Packed(vq) => vq.prep_buffer(rc_self, send, recv),
 			Virtq::Split(vq) => vq.prep_buffer(rc_self, send, recv),
 		}
 	}
@@ -464,7 +442,6 @@ impl Virtq {
 	/// and BufferToken.
 	fn early_drop(&self, transfer_tk: Pinned<TransferToken>) {
 		match self {
-			Virtq::Packed(vq) => vq.early_drop(transfer_tk),
 			Virtq::Split(vq) => vq.early_drop(transfer_tk),
 		}
 	}
@@ -2032,7 +2009,7 @@ impl Drop for MemDescr {
 			Dealloc::Not => (),
 			Dealloc::AsSlice => unsafe { drop(Vec::from_raw_parts(self.ptr, self._mem_len, 0)) },
 			Dealloc::AsPage => {
-				crate::mm::deallocate(VirtAddr::from(self.ptr as usize), self._mem_len)
+				crate::mm::deallocate(Addr::from(self.ptr as usize))
 			}
 		}
 	}
@@ -2143,8 +2120,8 @@ impl MemPool {
 		// Assert descriptor does not cross a page barrier
 		let start_virt = (&slice[0] as *const u8) as usize;
 		let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
-		let end_phy_calc = paging::virt_to_phys(VirtAddr::from(start_virt)) + (slice.len() - 1);
-		let end_phy = paging::virt_to_phys(VirtAddr::from(end_virt));
+		let end_phy_calc = Addr::from(start_virt).to_pa() + (slice.len() - 1);
+		let end_phy = Addr::from(end_virt).to_pa();
 
 		assert_eq!(end_phy, end_phy_calc);
 
@@ -2185,8 +2162,8 @@ impl MemPool {
 		// Assert descriptor does not cross a page barrier
 		let start_virt = (&slice[0] as *const u8) as usize;
 		let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
-		let end_phy_calc = paging::virt_to_phys(VirtAddr::from(start_virt)) + (slice.len() - 1);
-		let end_phy = paging::virt_to_phys(VirtAddr::from(end_virt));
+		let end_phy_calc = Addr::from(start_virt).to_pa() + (slice.len() - 1);
+		let end_phy = Addr::from(end_virt).to_pa();
 
 		assert_eq!(end_phy, end_phy_calc);
 
@@ -2223,13 +2200,13 @@ impl MemPool {
 
 		// Allocate heap memory via a vec, leak and cast
 		let _mem_len = align_up!(len, PAGE_SIZE);
-		let ptr = (crate::mm::allocate(_mem_len, true).0 as *const u8) as *mut u8;
+		let ptr = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
 
 		// Assert descriptor does not cross a page barrier
 		let start_virt = ptr as usize;
 		let end_virt = start_virt + (len - 1);
-		let end_phy_calc = paging::virt_to_phys(VirtAddr::from(start_virt)) + (len - 1);
-		let end_phy = paging::virt_to_phys(VirtAddr::from(end_virt));
+		let end_phy_calc =Addr::from(start_virt).to_pa() + (len - 1);
+		let end_phy = Addr::from(end_virt).to_pa();
 
 		assert_eq!(end_phy, end_phy_calc);
 
@@ -2258,13 +2235,13 @@ impl MemPool {
 
 		// Allocate heap memory via a vec, leak and cast
 		let _mem_len = align_up!(len, PAGE_SIZE);
-		let ptr = (crate::mm::allocate(_mem_len, true).0 as *const u8) as *mut u8;
+		let ptr = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
 
 		// Assert descriptor does not cross a page barrier
 		let start_virt = ptr as usize;
 		let end_virt = start_virt + (len - 1);
-		let end_phy_calc = paging::virt_to_phys(VirtAddr::from(start_virt)) + (len - 1);
-		let end_phy = paging::virt_to_phys(VirtAddr::from(end_virt));
+		let end_phy_calc = Addr::from(start_virt).to_pa() + (len - 1);
+		let end_phy = Addr::from(end_virt).to_pa();
 
 		assert_eq!(end_phy, end_phy_calc);
 

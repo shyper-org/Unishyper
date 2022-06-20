@@ -25,15 +25,15 @@ use smoltcp::wire::{EthernetAddress, IpCidr, Ipv4Address};
 use super::interface::{NetworkInterface, NetworkState};
 use super::waker::WakerRegistration;
 
-extern "Rust" {
-    fn sys_get_mac_address() -> Result<[u8; 6], ()>;
-    fn sys_get_mtu() -> Result<u16, ()>;
-    fn sys_get_tx_buffer(len: usize) -> Result<(*mut u8, usize), ()>;
-    fn sys_send_tx_buffer(handle: usize, len: usize) -> Result<(), ()>;
-    fn sys_receive_rx_buffer() -> Result<(&'static mut [u8], usize), ()>;
-    fn sys_rx_buffer_consumed(handle: usize) -> Result<(), ()>;
-    fn sys_free_tx_buffer(handle: usize);
-}
+use crate::drivers::net::{
+    get_mac_address,
+    get_mtu,
+    get_tx_buffer,
+    send_tx_buffer,
+    receive_rx_buffer,
+    rx_buffer_consumed,
+    free_tx_buffer,
+};
 
 /// Data type to determine the mac address
 #[derive(Debug, Copy, Clone)]
@@ -51,7 +51,7 @@ impl ShyperNet {
 impl NetworkInterface<ShyperNet> {
     #[cfg(feature = "dhcpv4")]
     pub fn new() -> NetworkState {
-        let mtu = match unsafe { sys_get_mtu() } {
+        let mtu = match get_mtu(){
             Ok(mtu) => mtu,
             Err(_) => {
                 return NetworkState::InitializationFailed;
@@ -63,7 +63,7 @@ impl NetworkInterface<ShyperNet> {
             trace!("{}", printer);
         });
 
-        let mac: [u8; 6] = match unsafe { sys_get_mac_address() } {
+        let mac: [u8; 6] = match get_mac_address() {
             Ok(mac) => mac,
             Err(_) => {
                 return NetworkState::InitializationFailed;
@@ -107,7 +107,7 @@ impl NetworkInterface<ShyperNet> {
 
     #[cfg(not(feature = "dhcpv4"))]
     pub fn new() -> NetworkState {
-        let mtu = match unsafe { sys_get_mtu() } {
+        let mtu = match get_mtu() {
             Ok(mtu) => mtu,
             Err(_) => {
                 return NetworkState::InitializationFailed;
@@ -119,7 +119,7 @@ impl NetworkInterface<ShyperNet> {
             trace!("{}", printer);
         });
 
-        let mac: [u8; 6] = match unsafe { sys_get_mac_address() } {
+        let mac: [u8; 6] = match get_mac_address() {
             Ok(mac) => mac,
             Err(_) => {
                 return NetworkState::InitializationFailed;
@@ -190,7 +190,7 @@ impl<'a> Device<'a> for ShyperNet {
     }
 
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
-        match unsafe { sys_receive_rx_buffer() } {
+        match receive_rx_buffer() {
             Ok((buffer, handle)) => Some((RxToken::new(buffer, handle), TxToken::new())),
             _ => None,
         }
@@ -221,7 +221,7 @@ impl phy::RxToken for RxToken {
         F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
     {
         let result = f(self.buffer);
-        if unsafe { sys_rx_buffer_consumed(self.handle).is_ok() } {
+        if rx_buffer_consumed(self.handle).is_ok() {
             result
         } else {
             Err(smoltcp::Error::Exhausted)
@@ -244,18 +244,18 @@ impl phy::TxToken for TxToken {
         F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
     {
         let (tx_buffer, handle) =
-            unsafe { sys_get_tx_buffer(len).map_err(|_| smoltcp::Error::Exhausted)? };
+            get_tx_buffer(len).map_err(|_| smoltcp::Error::Exhausted)?;
         let tx_slice: &'static mut [u8] = unsafe { slice::from_raw_parts_mut(tx_buffer, len) };
         match f(tx_slice) {
             Ok(result) => {
-                if unsafe { sys_send_tx_buffer(handle, len).is_ok() } {
+                if send_tx_buffer(handle, len).is_ok(){
                     Ok(result)
                 } else {
                     Err(smoltcp::Error::Exhausted)
                 }
             }
             Err(e) => {
-                unsafe { sys_free_tx_buffer(handle) };
+                _ = free_tx_buffer(handle);
                 Err(e)
             }
         }

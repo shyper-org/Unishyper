@@ -22,6 +22,7 @@ use smoltcp::Error;
 use crate::exported::thread_spawn;
 use crate::lib::thread::thread_yield;
 use crate::lib::timer::current_ms;
+use crate::drivers::net::netwait;
 
 use super::device::ShyperNet;
 use super::executor::{block_on, poll_on, spawn};
@@ -44,18 +45,6 @@ impl NetworkState {
 
 lazy_static! {
     static ref NIC: Mutex<NetworkState> = Mutex::new(NetworkState::Missing);
-}
-
-extern "C" {
-    // fn sys_yield(); => thread_yield()
-    // fn sys_spawn(
-    //     id: *mut Tid,
-    //     func: extern "C" fn(usize),
-    //     arg: usize,
-    //     prio: u8,
-    //     selector: isize,
-    // ) -> i32;
-    fn sys_netwait();
 }
 
 type Handle = SocketHandle;
@@ -355,7 +344,7 @@ pub async fn network_run() {
 
 extern "C" fn nic_thread(_: usize) {
     loop {
-        unsafe { sys_netwait() };
+        netwait();
 
         trace!("Network thread checks the devices");
 

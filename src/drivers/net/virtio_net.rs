@@ -23,6 +23,8 @@ use crate::drivers::virtio::VIRTIO_MAX_QUEUE_SIZE;
 use self::constants::{FeatureSet, Features, NetHdrGSO, Status, MAX_NUM_VQ};
 use self::error::VirtioNetError;
 
+use super::netwakeup;
+
 pub const ETH_HDR: usize = 14usize;
 
 /// A wrapper struct for the raw configuration structure.
@@ -568,7 +570,7 @@ impl NetworkInterface for VirtioNetDriver {
         !self.recv_vqs.poll_queue.borrow().is_empty()
     }
 
-    fn receive_rx_buffer(&mut self) -> Result<(&'static [u8], usize), ()> {
+    fn receive_rx_buffer(&mut self) -> Result<(&'static mut [u8], usize), ()> {
         match self.recv_vqs.get_next() {
             Some(transfer) => {
                 let transfer = match RxQueues::post_processing(transfer) {
@@ -588,8 +590,15 @@ impl NetworkInterface for VirtioNetDriver {
                     // Create static reference for the user-space
                     // As long as we keep the Transfer in a raw reference this reference is static,
                     // so this is fine.
-                    let recv_ref = (recv_payload as *const [u8]) as *mut [u8];
-                    let ref_data: &'static [u8] = unsafe { &*(recv_ref) };
+                    // let recv_ref = (recv_payload as *const [u8]) as *mut [u8];
+                    // let ref_data: &'static mut [u8] = unsafe { &*(recv_ref) };
+                    let recv_ref = (recv_payload as *const [u8]) as *mut u8;
+                    let ref_data: &'static mut [u8] = unsafe {
+                        core::slice::from_raw_parts_mut(
+                            recv_ref,
+                            recv_payload.len(),
+                        )
+                    };
                     let raw_transfer = Box::into_raw(Box::new(transfer));
 
                     Ok((ref_data, raw_transfer as usize))
@@ -598,8 +607,8 @@ impl NetworkInterface for VirtioNetDriver {
                     let payload_ptr =
                         (&packet[mem::size_of::<VirtioNetHdr>()] as *const u8) as *mut u8;
 
-                    let ref_data: &'static [u8] = unsafe {
-                        core::slice::from_raw_parts(
+                    let ref_data: &'static mut [u8] = unsafe {
+                        core::slice::from_raw_parts_mut(
                             payload_ptr,
                             packet.len() - mem::size_of::<VirtioNetHdr>(),
                         )
@@ -651,7 +660,7 @@ impl NetworkInterface for VirtioNetDriver {
 
         let result = if self.isr_stat.is_interrupt() {
             // handle incoming packets
-            // netwakeup();
+            netwakeup();
             true
         } else if self.isr_stat.is_cfg_change() {
             info!("Configuration changes are not possible! Aborting");

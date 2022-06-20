@@ -24,6 +24,7 @@ pub enum PrivilegedLevel {
 pub enum Status {
     Runnable,
     Sleep,
+    Blocked,
     WaitForEvent,
     WaitForReply,
     WaitForRequest,

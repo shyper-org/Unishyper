@@ -26,16 +26,7 @@ use crate::lib::timer::current_ms;
 /// A thread handle type
 // type Tid = u32;
 use crate::lib::thread::Tid;
-
-extern "C" {
-    //     fn sys_getpid() -> Tid; => get_current_thread_id()
-    // fn sys_yield(); => thread_yield()
-    // fn sys_wakeup_task(tid: Tid); => thread_wake_by_tid(tid: Tid)
-    // fn sys_block_current_task(); => thread_block_current(t: &Thread, reason: Status)
-    // fn sys_block_current_task_with_timeout(timeout: u64); => thread_block_current_with_timeout(timeout: u64)
-    fn sys_set_network_polling_mode(value: bool);
-
-}
+use crate::drivers::net::set_polling_mode;
 
 lazy_static! {
     static ref QUEUE: SegQueue<Runnable> = SegQueue::new();
@@ -123,9 +114,7 @@ where
     // CURRENT_THREAD_NOTIFY.with(|thread_notify| {
     let thread_notify = get_current_thread_notify();
 
-    unsafe {
-        sys_set_network_polling_mode(true);
-    }
+    set_polling_mode(true);
 
     let start = Instant::from_millis(current_ms() as i64);
     let waker = &thread_notify.clone().into();
@@ -134,17 +123,13 @@ where
 
     loop {
         if let Poll::Ready(t) = future.as_mut().poll(&mut cx) {
-            unsafe {
-                sys_set_network_polling_mode(false);
-            }
+            set_polling_mode(false);
             return Ok(t);
         }
 
         if let Some(duration) = timeout {
             if Instant::from_millis(current_ms() as i64) >= start + duration {
-                unsafe {
-                    sys_set_network_polling_mode(false);
-                }
+                set_polling_mode(false);
                 return Err(());
             }
         }

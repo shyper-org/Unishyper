@@ -4,6 +4,9 @@ mod mem_region;
 mod page_frame;
 pub mod page_pool;
 
+use alloc::collections::BTreeMap;
+use spin::Mutex;
+
 pub use self::mem_region::*;
 pub use self::page_frame::*;
 
@@ -55,6 +58,8 @@ impl Into<usize> for Addr {
     }
 }
 
+static GLOBAL_MM_MAP: Mutex<BTreeMap<Addr, Region>> = Mutex::new(BTreeMap::new());
+
 pub fn allocate(size: usize) -> Addr {
     assert!(size > 0);
     assert_eq!(
@@ -86,12 +91,13 @@ pub fn allocate(size: usize) -> Addr {
         }
         Err(_) => {
             // debug!(
-            //     "thread NULL alloc size 0x{:x} pages_num {} region start 0x{:x} size 0x{:x}",
+            //     "thread GLOBAL alloc size 0x{:x} pages_num {} region start 0x{:x} size 0x{:x}",
             //     size,
             //     size / PAGE_SIZE,
             //     region.kva(),
             //     region.size()
             // );
+            GLOBAL_MM_MAP.lock().insert(addr, region);
         }
     };
 

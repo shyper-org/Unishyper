@@ -58,10 +58,6 @@ impl NetworkInterface<ShyperNet> {
             }
         };
         let device = ShyperNet::new(mtu);
-        #[cfg(feature = "trace")]
-        let device = EthernetTracer::new(device, |_timestamp, printer| {
-            trace!("{}", printer);
-        });
 
         let mac: [u8; 6] = match get_mac_address() {
             Ok(mac) => mac,
@@ -114,10 +110,6 @@ impl NetworkInterface<ShyperNet> {
             }
         };
         let device = ShyperNet::new(mtu);
-        #[cfg(feature = "trace")]
-        let device = EthernetTracer::new(device, |_timestamp, printer| {
-            trace!("{}", printer);
-        });
 
         let mac: [u8; 6] = match get_mac_address() {
             Ok(mac) => mac,

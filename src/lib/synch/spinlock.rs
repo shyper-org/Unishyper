@@ -74,8 +74,6 @@ impl<T: ?Sized> Spinlock<T> {
 	pub fn lock(&self) -> SpinlockGuard<'_, T> {
 		self.obtain_lock();
 		SpinlockGuard {
-			#[cfg(feature = "smp")]
-			dequeue: &self.dequeue,
 			data: unsafe { &mut *self.data.get() },
 		}
 	}

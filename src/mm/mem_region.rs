@@ -42,11 +42,11 @@ impl Region {
 
 impl Drop for Region {
     fn drop(&mut self) {
-        // debug!(
-        //     "drop region {:016x} to {:016x}",
-        //     self.pa,
-        //     self.pa + self.size - 1
-        // );
+        debug!(
+            "drop region {:016x} to {:016x}",
+            self.pa,
+            self.pa + self.size - 1
+        );
         for pa in (self.pa..self.pa + self.size).step_by(PAGE_SIZE) {
             super::page_pool::page_free(pa).expect("physical page drop failed");
         }

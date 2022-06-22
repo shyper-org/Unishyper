@@ -165,117 +165,6 @@ impl Virtq {
 		}
 	}
 
-	/// Dispatches a batch of TransferTokens. The actual behaviour depends on the respective
-	/// virtqueue implementation. Please see the respective docs for details.
-	///
-	/// **INFO:**
-	/// Due to the missing HashMap implementation in the kernel, this function currently uses a nested
-	/// for-loop. The first iteration is over the number if dispatched tokens. Inside this loop, the
-	/// function iterates over a list of all already "used" virtqueues. If the given token belongs to an
-	/// existing queue it is inserted into the corresponding list of tokens, if it belongs to no queue,
-	/// a new entry in the "used" virtqueues list is made.
-	/// This procedure can possibly be very slow.
-	///
-	/// The `notif` parameter indicates if the driver wants to have a notification for this specific
-	/// transfer. This is only for performance optimization. As it is NOT ensured, that the device sees the
-	/// updated notification flags before finishing transfers!
-	pub fn dispatch_batch(tkns: Vec<TransferToken>, notif: bool) -> Vec<Transfer> {
-		let mut used_vqs: Vec<(Rc<Virtq>, Vec<TransferToken>)> = Vec::new();
-
-		// Sort the TransferTokens depending in the queue their coming from.
-		// then call dispatch_batch of that queue
-		for tkn in tkns {
-			let index = tkn.get_vq().index();
-			let mut used = false;
-			let mut index_used = 0usize;
-
-			for (pos, (vq, _)) in used_vqs.iter_mut().enumerate() {
-				if index == vq.index() {
-					index_used = pos;
-					used = true;
-					break;
-				}
-			}
-
-			if used {
-				let (_, tkn_lst) = &mut used_vqs[index_used];
-				tkn_lst.push(tkn);
-			} else {
-				let mut new_tkn_lst = Vec::new();
-				let vq = tkn.get_vq();
-				new_tkn_lst.push(tkn);
-
-				used_vqs.push((vq, new_tkn_lst))
-			}
-		}
-
-		let mut transfer_lst = Vec::new();
-		for (vq_ref, tkn_lst) in used_vqs {
-			match vq_ref.as_ref() {
-				Virtq::Split(vq) => transfer_lst.append(vq.dispatch_batch(tkn_lst, notif).as_mut()),
-			}
-		}
-
-		transfer_lst
-	}
-
-	/// Dispatches a batch of TransferTokens. The Transfers will be placed in to the `await_queue`
-	/// upon finish.
-	///
-	/// **INFO:**
-	/// Due to the missing HashMap implementation in the kernel, this function currently uses a nested
-	/// for-loop. The first iteration is over the number if dispatched tokens. Inside this loop, the
-	/// function iterates over a list of all already "used" virtqueues. If the given token belongs to an
-	/// existing queue it is inserted into the corresponding list of tokens, if it belongs to no queue,
-	/// a new entry in the "used" virtqueues list is made.
-	/// This procedure can possibly be very slow.
-	///
-	/// The `notif` parameter indicates if the driver wants to have a notification for this specific
-	/// transfer. This is only for performance optimization. As it is NOT ensured, that the device sees the
-	/// updated notification flags before finishing transfers!
-	pub fn dispatch_batch_await(
-		tkns: Vec<TransferToken>,
-		await_queue: Rc<RefCell<VecDeque<Transfer>>>,
-		notif: bool,
-	) {
-		let mut used_vqs: Vec<(Rc<Virtq>, Vec<TransferToken>)> = Vec::new();
-
-		// Sort the TransferTokens depending in the queue their coming from.
-		// then call dispatch_batch of that queue
-		for tkn in tkns {
-			let index = tkn.get_vq().index();
-			let mut used = false;
-			let mut index_used = 0usize;
-
-			for (pos, (vq, _)) in used_vqs.iter_mut().enumerate() {
-				if index == vq.index() {
-					index_used = pos;
-					used = true;
-					break;
-				}
-			}
-
-			if used {
-				let (_, tkn_lst) = &mut used_vqs[index_used];
-				tkn_lst.push(tkn);
-			} else {
-				let mut new_tkn_lst = Vec::new();
-				let vq = tkn.get_vq();
-				new_tkn_lst.push(tkn);
-
-				used_vqs.push((vq, new_tkn_lst))
-			}
-		}
-
-		for (vq, tkn_lst) in used_vqs {
-			match vq.as_ref() {
-				Virtq::Split(vq) => {
-					vq.dispatch_batch_await(tkn_lst, Rc::clone(&await_queue), notif)
-				}
-			}
-		}
-	}
-
 	/// Creates a new Virtq of the specified (VqType)[VqType], (VqSize)[VqSize] and the (VqIndex)[VqIndex].
 	/// The index represents the "ID" of the virtqueue.
 	/// Upon creation the virtqueue is "registered" at the device via the `ComCfg` struct.
@@ -309,79 +198,6 @@ impl Virtq {
 	pub fn index(&self) -> VqIndex {
 		match self {
 			Virtq::Split(vq) => vq.index(),
-		}
-	}
-
-	/// Provides the calley with a TransferToken. Fails upon multiple circumstances.
-	///
-	/// **INFO:**
-	/// * Data behind the respective raw pointers will NOT be deallocated. Under no circumstances.
-	/// * Calley is responsible for ensuring the raw pointers will remain valid from start till end of transfer.
-	///   * start: call of `fn prep_transfer_from_raw()`
-	///   * end: closing of [Transfer](Transfer) via `Transfer.close()`.
-	///   * In case the underlying BufferToken is reused, the raw pointers MUST still be valid all the time
-	///   BufferToken exists.
-	/// * Transfer created from this TransferTokens will ONLY allow to return a copy of the data.
-	///   * This is due to the fact, that the `Transfer.ret()` returns a `Box[u8]`, which must own
-	///   the array. This would lead to unwanted frees, if not handled carefully
-	/// * Drivers must take care of keeping a copy of the respective `*mut T` and `*mut K` for themselves
-	///
-	/// **Parameters**
-	/// * send: `Option<(*mut T, BuffSpec)>`
-	///     * None: No send buffers are provided to the device
-	///     * Some:
-	///         * `T` defines the structure which will be provided to the device
-	///         * [BuffSpec](BuffSpec) defines how this struct will be presented to the device.
-	///         See documentation on `BuffSpec` for details.
-	/// * recv: `Option<(*mut K, BuffSpec)>`
-	///     * None: No buffers, which are writable for the device are provided to the device.
-	///     * Some:
-	///         * `K` defines the structure which will be provided to the device
-	///         * [BuffSpec](BuffSpec) defines how this struct will be presented to the device.
-	///         See documentation on `BuffSpec` for details.
-	///
-	/// **Reasons for Failure:**
-	/// * Queue does not have enough descriptors left, to split `T` or `K` into the desired amount of memory chunks.
-	/// * Calley mixed `Indirect (Direct::Indirect())` with `Direct(BuffSpec::Single() or BuffSpec::Multiple())` descriptors.
-	///
-	/// **Details on Usage:**
-	/// * `(Single, _ )` or `(_ , Single)` -> Results in one descriptor in the queue, hence Consumes one element.
-	/// * `(Multiple, _ )` or `(_ , Multiple)` -> Results in a list of descriptors in the queue. Consumes `Multiple.len()` elements.
-	/// * `(Singe, Single)` -> Results in a descriptor list of two chained descriptors, hence Consumes two elements in the queue
-	/// * `(Single, Multiple)` or `(Multiple, Single)` -> Results in a descripotr list of `1 + Multiple.len(). Consumes equally
-	/// many elements in the queue.
-	/// * `(Indirect, _ )` or `(_, Indirect)` -> Resulsts in one descriptor in the queue, hence Consumes one element.
-	/// * `(Indirect, Indirect)` -> Resulsts in one descriptor in the queue, hence Consumes one element.
-	///    * Calley is not allowed to mix `Indirect` and `Direct` descriptors. Furthermore if the calley decides to use `Indirect`
-	/// descriptors, the queue will merge the send and recv structure as follows:
-	/// ```text
-	/// //+++++++++++++++++++++++
-	/// //+        Queue        +
-	/// //+++++++++++++++++++++++
-	/// //+ Indirect descriptor + -> refers to a descriptor list in the form of ->  ++++++++++++++++++++++++++
-	/// //+         ...         +                                                   +     Descriptors for T  +
-	/// //+++++++++++++++++++++++                                                   +     Descriptors for K  +
-	/// //                                                                          ++++++++++++++++++++++++++
-	/// ```
-	/// As a result indirect descriptors result in a single descriptor consumption in the actual queue.
-	///
-	/// * If one wants to have a structure in the style of:
-	/// ```
-	/// struct send_recv_struct {
-	///     // send_part: ...
-	///     // recv_part: ...
-	/// }
-	/// ```
-	/// Then he must split the structure after the send part and provide the respective part via the send argument and the respective other
-	/// part via the recv argument.
-	pub fn prep_transfer_from_raw<T: AsSliceU8 + 'static, K: AsSliceU8 + 'static>(
-		&self,
-		rc_self: Rc<Virtq>,
-		send: Option<(*mut T, BuffSpec<'_>)>,
-		recv: Option<(*mut K, BuffSpec<'_>)>,
-	) -> Result<TransferToken, VirtqError> {
-		match self {
-			Virtq::Split(vq) => vq.prep_transfer_from_raw(rc_self, send, recv),
 		}
 	}
 
@@ -674,174 +490,6 @@ impl Transfer {
 				Ok((send_data, recv_data))
 			}
 			TransferState::Processing => Err(VirtqError::OngoingTransfer(None)),
-			TransferState::Ready => unreachable!(
-				"Transfers not owned by a queue Must have state Finished or Processing!"
-			),
-		}
-	}
-
-	/// Returns a copy if the respective send and receiving buffers
-	/// The actual buffers remain in the BufferToken and hence the token can be
-	/// reused afterwards.
-	///
-	/// **Return Tuple**
-	///
-	/// `(sended_data, received_data)`
-	///
-	/// The returned data is of type `Box<[Box<[u8]>]>`. This function therefore preserves
-	/// the scattered structure of the buffer,
-	///
-	/// If one create this buffer via a `Virtq.prep_transfer()` or `Virtq.prep_transfer_from_raw()`
-	/// call, a casting back to the original structure `T` is NOT possible.
-	/// In these cases please use `Transfer.ret_cpy()` or use 'BuffSpec::Single' only!
-	pub fn ret_scat_cpy(
-		&self,
-	) -> Result<(Option<Vec<Box<[u8]>>>, Option<Vec<Box<[u8]>>>), VirtqError> {
-		match &self.transfer_tkn.as_ref().unwrap().state {
-			TransferState::Finished => {
-				// Unwrapping is okay here, as TransferToken must hold a BufferToken
-				let send_data = self
-					.transfer_tkn
-					.as_ref()
-					.unwrap()
-					.buff_tkn
-					.as_ref()
-					.unwrap()
-					.send_buff
-					.as_ref()
-					.map(Buffer::scat_cpy);
-
-				let recv_data = self
-					.transfer_tkn
-					.as_ref()
-					.unwrap()
-					.buff_tkn
-					.as_ref()
-					.unwrap()
-					.recv_buff
-					.as_ref()
-					.map(Buffer::scat_cpy);
-
-				Ok((send_data, recv_data))
-			}
-			TransferState::Processing => Err(VirtqError::OngoingTransfer(None)),
-			TransferState::Ready => unreachable!(
-				"Transfers not owned by a queue Must have state Finished or Processing!"
-			),
-		}
-	}
-
-	/// Returns a copy if the respective send and receiving buffers
-	/// The actual buffers remain in the BufferToken and hence the token can be
-	/// reused afterwards.
-	///
-	/// **Return Tuple**
-	///
-	/// `(sended_data, received_data)`
-	///
-	/// The sended_data is `Box<[u8]>`. This function herefore merges (if multiple descriptors
-	/// were requested for one buffer) into a single `[u8]`.
-	///
-	/// It can be assumed, that if one created the send buffer from a structure `T`, that
-	/// `&sended_data[0] as *const u8 == *const T`
-	pub fn ret_cpy(&self) -> Result<(Option<Box<[u8]>>, Option<Box<[u8]>>), VirtqError> {
-		match &self.transfer_tkn.as_ref().unwrap().state {
-			TransferState::Finished => {
-				// Unwrapping is okay here, as TransferToken must hold a BufferToken
-				let send_data = self
-					.transfer_tkn
-					.as_ref()
-					.unwrap()
-					.buff_tkn
-					.as_ref()
-					.unwrap()
-					.send_buff
-					.as_ref()
-					.map(Buffer::cpy);
-
-				let recv_data = self
-					.transfer_tkn
-					.as_ref()
-					.unwrap()
-					.buff_tkn
-					.as_ref()
-					.unwrap()
-					.recv_buff
-					.as_ref()
-					.map(Buffer::cpy);
-
-				Ok((send_data, recv_data))
-			}
-			TransferState::Processing => Err(VirtqError::OngoingTransfer(None)),
-			TransferState::Ready => unreachable!(
-				"Transfers not owned by a queue Must have state Finished or Processing!"
-			),
-		}
-	}
-
-	/// # HIGHLY EXPERIMENTIALLY
-	/// This function returns a Vector of tuples to the allocated memory areas Currently the complete behaviour of this function is not well tested and it should be used with care.
-	///
-	/// **INFO:**
-	/// * Memory regions MUST be deallocated via `Virtq::free_raw(*mut u8, len)`
-	/// * Memory regions length might be larger than expected due to the used
-	/// allocation function in the kernel. Hence one MUST NOT assume valid data
-	/// after the length of the buffer, that was given at creation, is reached.
-	///   * Still the provided `Virtq::free_raw(*mut u8, len)` function MUST be provided
-	/// with the actual usize returned by this function in order to prevent memory leaks or failure.
-	/// * Fails if `TransferState != Finished`.
-	///
-	pub fn into_raw(
-		mut self,
-	) -> Result<(Option<Vec<(*mut u8, usize)>>, Option<Vec<(*mut u8, usize)>>), VirtqError> {
-		let state = self.transfer_tkn.as_ref().unwrap().state;
-
-		match state {
-			TransferState::Finished => {
-				// Desctructure Token
-				let mut transfer_tkn = self.transfer_tkn.take().unwrap().unpin();
-
-				let mut buffer_tkn = transfer_tkn.buff_tkn.take().unwrap();
-
-				let send_data = if buffer_tkn.ret_send {
-					match buffer_tkn.send_buff {
-						Some(buff) => {
-							// This data is not a second time returnable
-							// Unnecessary, because token will be dropped.
-							// But to be consistent in state.
-							buffer_tkn.ret_send = false;
-							Some(buff.into_raw())
-						}
-						None => None,
-					}
-				} else {
-					return Err(VirtqError::NoReuseBuffer);
-				};
-
-				let recv_data = if buffer_tkn.ret_recv {
-					match buffer_tkn.recv_buff {
-						Some(buff) => {
-							// This data is not a second time returnable
-							// Unnecessary, because token will be dropped.
-							// But to be consistent in state.
-							buffer_tkn.ret_recv = false;
-							Some(buff.into_raw())
-						}
-						None => None,
-					}
-				} else {
-					return Err(VirtqError::NoReuseBuffer);
-				};
-				// Prevent Token to be reusable although it will be dropped
-				// later in this function.
-				// Unnecessary but to be consistent in state.
-				//
-				// Unwrapping is okay here, as TransferToken must hold a BufferToken
-				buffer_tkn.reusable = false;
-
-				Ok((send_data, recv_data))
-			}
-			TransferState::Processing => Err(VirtqError::OngoingTransfer(Some(self))),
 			TransferState::Ready => unreachable!(
 				"Transfers not owned by a queue Must have state Finished or Processing!"
 			),
@@ -2191,6 +1839,7 @@ impl MemPool {
 	///   * Second MemPool.pull -> MemDesc with id = 100
 	///   * Third MemPool.pull -> MemDesc with id = 2,
 	fn pull(&self, rc_self: Rc<MemPool>, bytes: Bytes) -> Result<MemDescr, VirtqError> {
+		// debug!("pull");
 		let id = match self.pool.borrow_mut().pop() {
 			Some(id) => id,
 			None => return Err(VirtqError::NoDescrAvail),
@@ -2231,6 +1880,7 @@ impl MemPool {
 	///   * Second MemPool.pull -> MemDesc with id = 100
 	///   * Third MemPool.pull -> MemDesc with id = 2,
 	fn pull_untracked(&self, rc_self: Rc<MemPool>, bytes: Bytes) -> MemDescr {
+		// debug!("pull_untracked");
 		let len = bytes.0;
 
 		// Allocate heap memory via a vec, leak and cast
@@ -2245,6 +1895,7 @@ impl MemPool {
 
 		assert_eq!(end_phy, end_phy_calc);
 
+		debug!("end pull_untracked");
 		MemDescr {
 			ptr,
 			len,

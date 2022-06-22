@@ -59,8 +59,6 @@ const DEFAULT_KEEP_ALIVE_INTERVAL: u64 = 75000;
 static LOCAL_ENDPOINT: AtomicU16 = AtomicU16::new(0);
 
 pub struct NetworkInterface<T: for<'a> Device<'a>> {
-    #[cfg(feature = "trace")]
-    pub iface: smoltcp::iface::EthernetInterface<'static, EthernetTracer<T>>,
     #[cfg(not(feature = "trace"))]
     pub iface: smoltcp::iface::EthernetInterface<'static, T>,
     pub sockets: SocketSet<'static>,
@@ -354,7 +352,8 @@ extern "C" fn nic_thread(_: usize) {
     }
 }
 
-pub fn network_init() -> Result<(), ()> {
+pub fn network_init(){
+    info!("network init");
     // initialize variable, which contains the next local endpoint
     LOCAL_ENDPOINT.store(start_endpoint(), Ordering::SeqCst);
 
@@ -375,8 +374,6 @@ pub fn network_init() -> Result<(), ()> {
         // switch to network thread
         thread_yield();
     }
-
-    Ok(())
 }
 
 #[no_mangle]

@@ -201,88 +201,41 @@ impl RxQueues {
         let rc_vq = Rc::new(vq);
         let vq = &rc_vq;
 
-        if dev_cfg
+        // VIRTIO_NET_F_GUEST_TSO4 VIRTIO_NET_F_GUEST_TSO6 VIRTIO_NET_F_GUEST_UFO
+        // If above features not set, buffers must be at least 1526 bytes large.
+        // See Virtio specification v1.1 - 5.1.6.3.1
+
+        let buff_def = [
+            Bytes::new(mem::size_of::<VirtioNetHdr>()).unwrap(),
+            Bytes::new(1514).unwrap(),
+        ];
+        let spec = if dev_cfg
             .features
-            .is_feature(Features::VIRTIO_NET_F_GUEST_TSO4)
-            | dev_cfg
-                .features
-                .is_feature(Features::VIRTIO_NET_F_GUEST_TSO6)
-            | dev_cfg
-                .features
-                .is_feature(Features::VIRTIO_NET_F_GUEST_UFO)
+            .is_feature(Features::VIRTIO_F_RING_INDIRECT_DESC)
         {
-            // Receive Buffers must be at least 65562 bytes large with theses features set.
-            // See Virtio specification v1.1 - 5.1.6.3.1
-
-            // Currently we choose indirect descriptors if possible in order to allow
-            // as many packages as possible inside the queue.
-            let buff_def = [
-                Bytes::new(mem::size_of::<VirtioNetHdr>()).unwrap(),
-                Bytes::new(65550).unwrap(),
-            ];
-
-            let spec = if dev_cfg
-                .features
-                .is_feature(Features::VIRTIO_F_RING_INDIRECT_DESC)
-            {
-                BuffSpec::Indirect(&buff_def)
-            } else {
-                BuffSpec::Single(Bytes::new(mem::size_of::<VirtioNetHdr>() + 65550).unwrap())
-            };
-
-            let num_buff: u16 = vq.size().into();
-
-            for _ in 0..num_buff {
-                let buff_tkn = match vq.prep_buffer(Rc::clone(vq), None, Some(spec.clone())) {
-                    Ok(tkn) => tkn,
-                    Err(_vq_err) => {
-                        error!("Setup of network queue failed, which should not happen!");
-                        panic!("setup of network queue failed!");
-                    }
-                };
-
-                // BufferTokens are directly provided to the queue
-                // TransferTokens are directly dispatched
-                // Transfers will be awaited at the queue
-                buff_tkn
-                    .provide()
-                    .dispatch_await(Rc::clone(&self.poll_queue), false);
-            }
+            BuffSpec::Indirect(&buff_def)
         } else {
-            // If above features not set, buffers must be at least 1526 bytes large.
-            // See Virtio specification v1.1 - 5.1.6.3.1
-            //
-            let buff_def = [
-                Bytes::new(mem::size_of::<VirtioNetHdr>()).unwrap(),
-                Bytes::new(1514).unwrap(),
-            ];
-            let spec = if dev_cfg
-                .features
-                .is_feature(Features::VIRTIO_F_RING_INDIRECT_DESC)
-            {
-                BuffSpec::Indirect(&buff_def)
-            } else {
-                BuffSpec::Single(Bytes::new(mem::size_of::<VirtioNetHdr>() + 1514).unwrap())
+            BuffSpec::Single(Bytes::new(mem::size_of::<VirtioNetHdr>() + 1514).unwrap())
+        };
+
+        let num_buff: u16 = vq.size().into();
+
+        debug!("RX Queues add, num buff {}", num_buff);
+        for _ in 0..num_buff {
+            let buff_tkn = match vq.prep_buffer(Rc::clone(vq), None, Some(spec.clone())) {
+                Ok(tkn) => tkn,
+                Err(_vq_err) => {
+                    error!("Setup of network queue failed, which should not happen!");
+                    panic!("setup of network queue failed!");
+                }
             };
 
-            let num_buff: u16 = vq.size().into();
-
-            for _ in 0..num_buff {
-                let buff_tkn = match vq.prep_buffer(Rc::clone(vq), None, Some(spec.clone())) {
-                    Ok(tkn) => tkn,
-                    Err(_vq_err) => {
-                        error!("Setup of network queue failed, which should not happen!");
-                        panic!("setup of network queue failed!");
-                    }
-                };
-
-                // BufferTokens are directly provided to the queue
-                // TransferTokens are directly dispatched
-                // Transfers will be awaited at the queue
-                buff_tkn
-                    .provide()
-                    .dispatch_await(Rc::clone(&self.poll_queue), false);
-            }
+            // BufferTokens are directly provided to the queue
+            // TransferTokens are directly dispatched
+            // Transfers will be awaited at the queue
+            buff_tkn
+                .provide()
+                .dispatch_await(Rc::clone(&self.poll_queue), false);
         }
 
         // Safe virtqueue
@@ -411,6 +364,7 @@ impl TxQueues {
 
             let num_buff: u16 = vq.size().into();
 
+            debug!("TxQueues add, num buff {}",num_buff);
             for _ in 0..num_buff {
                 self.ready_queue.push(
                     vq.prep_buffer(Rc::clone(vq), Some(spec.clone()), None)
@@ -593,12 +547,8 @@ impl NetworkInterface for VirtioNetDriver {
                     // let recv_ref = (recv_payload as *const [u8]) as *mut [u8];
                     // let ref_data: &'static mut [u8] = unsafe { &*(recv_ref) };
                     let recv_ref = (recv_payload as *const [u8]) as *mut u8;
-                    let ref_data: &'static mut [u8] = unsafe {
-                        core::slice::from_raw_parts_mut(
-                            recv_ref,
-                            recv_payload.len(),
-                        )
-                    };
+                    let ref_data: &'static mut [u8] =
+                        unsafe { core::slice::from_raw_parts_mut(recv_ref, recv_payload.len()) };
                     let raw_transfer = Box::into_raw(Box::new(transfer));
 
                     Ok((ref_data, raw_transfer as usize))
@@ -783,7 +733,7 @@ impl VirtioNetDriver {
         // If wanted, push new features into feats here:
         //
         // Indirect descriptors can be used
-        feats.push(Features::VIRTIO_F_RING_INDIRECT_DESC);
+        // feats.push(Features::VIRTIO_F_RING_INDIRECT_DESC);
         // MTU setting can be used
         feats.push(Features::VIRTIO_NET_F_MTU);
 

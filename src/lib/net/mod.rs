@@ -10,15 +10,7 @@ mod waker;
 pub use smoltcp::wire::IpAddress;
 pub use smoltcp::socket::SocketHandle as Handle;
 
-/// A handle, identifying a socket
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
-// pub struct Handle(usize);
 
-/// initialize the network stack
-pub fn network_init() -> i32 {
-	info!("network init\n");
-    0
-}
 
 // /// Internet protocol version.
 // #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]

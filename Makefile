@@ -38,7 +38,7 @@ QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
 					 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
 					 -global virtio-mmio.force-legacy=false
 QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no \
-						-device virtio-net-device,mac=ff:ff:ff:02:02:02,netdev=tap0 \
+						-device virtio-net-device,mac=48:b0:2d:0e:6e:9e,netdev=tap0 \
 						-global virtio-mmio.force-legacy=false
 QEMU_COMMON_OPTIONS := -serial stdio -display none -smp 4 -m 2048
 

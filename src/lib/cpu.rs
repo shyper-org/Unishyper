@@ -83,7 +83,7 @@ impl Core {
 
     fn run(&mut self, t: Thread) {
         if let Some(prev) = self.running_thread() {
-            // info!("switch thread from {} to {}", prev.tid(), t.tid());
+            info!("switch thread from {} to {}", prev.tid(), t.tid());
             // Note: normal switch
             prev.set_context(*self.context());
             // add back to scheduler queue

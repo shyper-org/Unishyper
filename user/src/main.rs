@@ -64,6 +64,8 @@ extern "C" fn test_mm_thread(arg: usize) {
 fn main() {
     println!("Hello world!\n\nWelcome to shyper lightweight os...\n");
 
+    network_init();
+
     let tid = thread_spawn(test_mm_thread, 1);
 
     // for i in 0..10 {

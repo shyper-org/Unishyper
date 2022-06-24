@@ -68,8 +68,6 @@ impl Core {
     }
 
     pub fn schedule(&mut self) {
-        // unsafe {schedule_count += 1; info!("schedule {}", schedule_count);}
-        
         if let Some(t) = scheduler().pop() {
             self.run(t);
         } else {
@@ -83,22 +81,25 @@ impl Core {
 
     fn run(&mut self, t: Thread) {
         if let Some(prev) = self.running_thread() {
-            info!("switch thread from {} to {}", prev.tid(), t.tid());
+            debug!("switch thread from {} to {}", prev.tid(), t.tid());
             // Note: normal switch
             prev.set_context(*self.context());
             // add back to scheduler queue
             if prev.runnable() {
                 scheduler().add(prev.clone());
             }
+            debug!("next ctx:\n {}", t.context());
             *self.context_mut() = t.context();
         } else {
+            debug!("run thread {}",t.tid());
             if self.context.is_some() {
                 // Note: previous process has been destroyed
+                debug!("previous process has been destroyed, next ctx:\n {}", t.context());
                 *self.context_mut() = t.context();
             } else {
                 // Note: this is first run
                 // `loader_main` prepare the context to stack
-                info!("first run thread {}", t.tid());
+                debug!("first run thread {}", t.tid());
             }
         }
         self.set_running_thread(Some(t.clone()));

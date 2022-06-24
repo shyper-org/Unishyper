@@ -63,10 +63,12 @@ pub extern "C" fn set_polling_mode(value: bool) {
 
 
 pub extern "C" fn netwait() {
+	debug!("netwait");
 	NET_SEM.acquire();
 }
 
 pub fn netwakeup() {
+	debug!("netwakeup");
 	NET_SEM.release();
 }
 
@@ -82,7 +84,7 @@ pub fn network_irqhandler() {
 	};
 
 	if check_scheduler {
-		crate::lib::cpu::cpu().schedule();
+		crate::lib::thread::thread_yield();
 	}
 }
 

@@ -31,5 +31,6 @@ pub trait ContextFrameTrait {
     fn set_stack_pointer(&mut self, sp: usize);
     fn set_argument(&mut self, arg: usize);
     fn set_argument1(&mut self, arg1: usize);
+    fn set_return_address(&mut self, pc : usize);
     fn gpr(&self, index: usize) -> usize;
 }

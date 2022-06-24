@@ -20,7 +20,7 @@ fn unsupported() -> ! {
     panic!("unsupported function!!\n")
 }
 
-pub fn network_init() {
+pub extern "C" fn network_init(_: usize) {
     net::init();
 }
 

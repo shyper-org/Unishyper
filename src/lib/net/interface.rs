@@ -342,18 +342,23 @@ pub async fn network_run() {
 
 extern "C" fn nic_thread(_: usize) {
     loop {
+        debug!("netwait");
+
         netwait();
 
-        trace!("Network thread checks the devices");
+        debug!("Network thread checks the devices");
+
+        continue;
 
         if let NetworkState::Initialized(nic) = NIC.lock().deref_mut() {
+            debug!("NetworkState Initialized success, poll_common");
             nic.poll_common(Instant::from_millis(current_ms() as i64));
         }
     }
 }
 
 pub fn network_init(){
-    info!("network init");
+    info!("network lib init");
     // initialize variable, which contains the next local endpoint
     LOCAL_ENDPOINT.store(start_endpoint(), Ordering::SeqCst);
 
@@ -372,7 +377,7 @@ pub fn network_init(){
         spawn(network_run()).detach();
 
         // switch to network thread
-        thread_yield();
+        // thread_yield();
     }
 }
 

@@ -11,7 +11,6 @@ pub use smoltcp::wire::IpAddress;
 pub use smoltcp::socket::SocketHandle as Handle;
 
 pub fn init() -> i32 {
-	info!("network init!\n");
     interface::network_init();
     0
 }

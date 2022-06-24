@@ -1,4 +1,4 @@
-use crate::lib::thread::{current_thread, thread_sleep, thread_wake, Thread};
+use crate::lib::thread::{current_thread, thread_sleep, thread_wake, Thread, thread_yield};
 use alloc::collections::VecDeque;
 
 use super::spinlock::SpinlockIrqSave;
@@ -72,7 +72,7 @@ impl Semaphore {
             if let Some(queue) = &mut inner.queue {
                 if let Some(t) = queue.pop_front() {
                     thread_wake(&t);
-                    crate::lib::cpu::cpu().schedule();
+                    thread_yield();
                 }
             }
         }

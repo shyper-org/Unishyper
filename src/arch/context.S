@@ -1,6 +1,9 @@
 .equ SIZE_OF_CONTEXT_FRAME, 0x110
 
-.macro VECTOR handler
+.text
+.global set_cpu_context
+.global save_context
+save_context:
     sub	sp, sp, #SIZE_OF_CONTEXT_FRAME
     stp x0, x1,  [sp, #(0 * 16)]
     stp x2, x3,  [sp, #(1 * 16)]
@@ -24,21 +27,7 @@
     stp x0, x1,  [sp, #(16 * 16)]
     mov fp, 0
     mov x0, sp
-    bl  \handler
-    b   pop_context
-.endm
-
-.macro VECTOR_DISABLED
-1:  wfe
-    b      1b
-.endm
-
-.text
-.global pop_context_first
-pop_context_first:
-    mov sp, x0
-.global pop_context
-pop_context:
+    bl set_cpu_context
     ldr x0, [sp, #(31 * 8)] // spsr
     ldr x1, [sp, #(32 * 8)] // elr
     ldr x2, [sp, #(33 * 8)] // sp
@@ -64,50 +53,3 @@ pop_context:
     add	sp, sp, #SIZE_OF_CONTEXT_FRAME
     eret
 
-.section .text.vector
-.global vectors
-vectors:
-.align 11
-
-// Current exception level with SP_EL0.
-.org 0x000
-    VECTOR current_el_sp0_synchronous
-.org 0x080
-    VECTOR current_el_sp0_irq
-.org 0x100
-    VECTOR_DISABLED
-.org 0x180
-    VECTOR_DISABLED
-
-// Current exception level with SP_ELx, x > 0.
-.org 0x200
-    VECTOR current_el_spx_synchronous
-.org 0x280
-    VECTOR current_el_spx_irq
-.org 0x300
-    VECTOR_DISABLED // FIQ
-.org 0x380
-    VECTOR current_el_spx_serror
-
-// Lower exception level, aarch64
-.org 0x400
-    VECTOR lower_aarch64_synchronous
-.org 0x480
-    VECTOR lower_aarch64_irq
-.org 0x500
-    VECTOR_DISABLED // FIQ
-.org 0x580
-    VECTOR lower_aarch64_serror
-
-// Lower exception level, aarch32
-.org 0x600
-    VECTOR_DISABLED
-.org 0x680
-    VECTOR_DISABLED
-.org 0x700
-    VECTOR_DISABLED
-.org 0x780
-    VECTOR_DISABLED
-.org 0x800
-
-.end

@@ -60,6 +60,7 @@ user_debug: user
 	qemu-system-aarch64 -M virt -cpu cortex-a53 \
 		-device loader,file=${USER_KERNEL},addr=0x80000000,force-raw=on \
 		-serial stdio -display none \
+		${QEMU_NETWORK_OPTIONS} \
 		-smp 4 -m 2048 \
 		-kernel ${USER_KERNEL}.bin -s -S
 

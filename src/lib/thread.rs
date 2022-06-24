@@ -10,7 +10,8 @@ use crate::lib::cpu::cpu;
 use crate::lib::error::*;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
-use crate::mm::{PhysicalFrame, Addr, Region};
+use crate::mm::{Addr, PhysicalFrame, Region};
+use crate::util::irqsave;
 
 pub type Tid = usize;
 
@@ -164,14 +165,19 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
         },
         inner_mut: InnerMut {
             status: Mutex::new(Status::Sleep),
-            context_frame: Mutex::new(ContextFrame::new(pc, sp, arg0,arg1,true)),
+            context_frame: Mutex::new(ContextFrame::new(pc, sp, arg0, arg1, true)),
             mem_regions: Mutex::new(BTreeMap::new()),
         },
     }));
     let mut map = THREAD_MAP.lock();
     map.insert(id, t.clone());
 
-    debug!("thread_alloc success id {} sp [{:x} to {:x}]", id, sp - PAGE_SIZE, sp);
+    debug!(
+        "thread_alloc success id {} sp [{:x} to {:x}]",
+        id,
+        sp - PAGE_SIZE,
+        sp
+    );
     t
 }
 
@@ -224,7 +230,7 @@ pub fn thread_block_current() {
         drop(status);
         if let Some(current) = cpu().running_thread() {
             if current.tid() == t.tid() {
-                cpu().schedule();
+                thread_yield();
             }
         }
     } else {
@@ -244,16 +250,37 @@ pub fn thread_sleep(t: &Thread, reason: Status) {
     drop(status);
     if let Some(current) = cpu().running_thread() {
         if current.tid() == t.tid() {
-            cpu().schedule();
+            thread_yield();
         }
     }
 }
 
-pub fn thread_sleep_to(t: &Thread, reason: Status, _next: Thread) {
-    assert_ne!(reason, Status::Runnable);
-    let mut status = t.0.inner_mut.status.lock();
-    *status = reason;
-    drop(status);
+#[no_mangle]
+pub fn thread_yield() {
+    // let icntr = crate::lib::timer::current_cycle();
+    debug!("\n***\nthread yield begin on Thread [{}]", get_current_thread_id());
+    // irqsave(|| {
+        crate::arch::switch_to();
+    // });
+    // switch to
+    //  asm save_context
+            // push context
+            // set cpu context
+                // cpu.run
+                    // 存在栈里面的contextframe保存到 prev thread里
+                // 
+            // pop context
+    // new thread
+    debug!("\n***\nthread yield end, back to Thread [{}]", get_current_thread_id());
+    // let icntr2 = crate::lib::timer::current_cycle();
+    // info!("as create cycle {}", icntr2 - icntr);
+}
+
+#[no_mangle]
+pub fn _thread_yield() {
+    debug!("_thread_yield begin\n");
+    cpu().schedule();
+    debug!("_thread_yield end\n");
 }
 
 pub fn get_current_thread_id() -> Tid {
@@ -268,11 +295,4 @@ pub fn current_thread() -> Result<Thread, Error> {
         None => Err(ERROR_INTERNAL),
         Some(t) => Ok(t),
     }
-}
-
-pub fn thread_yield() {
-    // let icntr = crate::lib::timer::current_cycle();
-    cpu().schedule();
-    // let icntr2 = crate::lib::timer::current_cycle();
-    // info!("as create cycle {}", icntr2 - icntr);
 }

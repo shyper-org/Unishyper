@@ -85,6 +85,7 @@ impl ContextFrameTrait for Aarch64ContextFrame {
         };
         r.set_argument(arg0);
         r.set_argument1(arg1);
+        r.set_return_address(pc);
         r
     }
 
@@ -110,6 +111,10 @@ impl ContextFrameTrait for Aarch64ContextFrame {
 
     fn set_argument1(&mut self, arg1: usize) {
         self.gpr[1] = arg1 as u64;
+    }
+
+    fn set_return_address(&mut self, pc: usize) {
+        self.gpr[30] = pc as u64;
     }
 
     fn gpr(&self, index: usize) -> usize {

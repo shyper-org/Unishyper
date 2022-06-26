@@ -20,13 +20,13 @@ save_context:
     stp x24,x25, [sp, #(12 * 16)]
     stp x26,x27, [sp, #(13 * 16)]
     stp x28,x29, [sp, #(14 * 16)]
-    mov x1, #1
-    msr spsel, x1
-    mrs x1, spsr_el1
-    mrs x1, sp_el0
-    mov sp, x1
+    //mov x1, #1
+    //msr spsel, x1
+    //mrs x1, spsr_el1
+    //mrs x1, sp_el0
     stp x30, x1, [sp, #(15 * 16)]
     //mrs x0, elr_el1
+    mov x1, sp
     stp x30, x1,  [sp, #(16 * 16)]
     mov fp, 0
     mov x0, sp
@@ -34,9 +34,9 @@ save_context:
     ldr x0, [sp, #(31 * 8)] // spsr
     ldr x1, [sp, #(32 * 8)] // elr
     ldr x2, [sp, #(33 * 8)] // sp
-    msr spsr_el1, x0
-    msr elr_el1, x1
-    msr sp_el0, x2
+    //msr spsr_el1, x0
+    //msr elr_el1, x1
+    //msr sp_el0, x2
     ldp x0, x1,  [sp, #(0 * 16)]
     ldp x2, x3,  [sp, #(1 * 16)]
     ldp x4, x5,  [sp, #(2 * 16)]
@@ -53,6 +53,8 @@ save_context:
     ldp x26,x27, [sp, #(13 * 16)]
     ldp x28,x29, [sp, #(14 * 16)]
     ldr x30, [sp, #(15 * 16)]
-    add	sp, sp, #SIZE_OF_CONTEXT_FRAME
-    eret
+    //add	sp, sp, #SIZE_OF_CONTEXT_FRAME
+    ldr x5, [sp, #(33 * 8)]
+    mov sp, x5
+    ret
 

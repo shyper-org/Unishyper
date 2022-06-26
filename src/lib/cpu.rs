@@ -57,6 +57,7 @@ impl Core {
     fn idle_thread(&self) -> Thread {
         match self.idle_thread.get() {
             None => {
+                info!("Alloc idle thread on core {}:",crate::arch::Arch::core_id());
                 let t = crate::lib::thread::thread_alloc(
                     idle_thread as usize,
                     crate::arch::Arch::core_id(),
@@ -114,7 +115,7 @@ pub fn cpu() -> &'static mut Core {
 #[no_mangle]
 fn idle_thread(_arg: usize) {
     loop {
-        // info!("idle {}\n", _arg);
+        info!("idle_thread {}\n", _arg);
         // loop{}
         crate::arch::Arch::wait_for_interrupt();
     }

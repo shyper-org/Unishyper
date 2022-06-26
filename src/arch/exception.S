@@ -44,7 +44,7 @@ pop_context:
     ldr x2, [sp, #(33 * 8)] // sp
     msr spsr_el1, x0
     msr elr_el1, x1
-    msr sp_el1, x2
+    msr sp_el0, x2
     ldp x0, x1,  [sp, #(0 * 16)]
     ldp x2, x3,  [sp, #(1 * 16)]
     ldp x4, x5,  [sp, #(2 * 16)]

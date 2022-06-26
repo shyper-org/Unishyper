@@ -258,7 +258,7 @@ pub fn thread_sleep(t: &Thread, reason: Status) {
 #[no_mangle]
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
-    debug!("\n***\nthread yield begin on Thread [{}]", get_current_thread_id());
+    // debug!("\n***\nthread yield begin on Thread [{}]", get_current_thread_id());
     // irqsave(|| {
         crate::arch::switch_to();
     // });
@@ -271,7 +271,7 @@ pub fn thread_yield() {
                 // 
             // pop context
     // new thread
-    debug!("\n***\nthread yield end, back to Thread [{}]", get_current_thread_id());
+    // debug!("\n***\nthread yield end, back to Thread [{}]", get_current_thread_id());
     // let icntr2 = crate::lib::timer::current_cycle();
     // info!("as create cycle {}", icntr2 - icntr);
 }

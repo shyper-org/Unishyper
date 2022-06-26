@@ -92,6 +92,7 @@ extern "C" fn test_yield_thread(arg: usize) {
 fn main() {
     println!("\nHello world!\n\nWelcome to shyper lightweight os...\n");
 
+    // thread_spawn(test_mm_thread, 321);
     // thread_spawn(network_init, 0);
 
     // thread_spawn(test_net_sem, 1);

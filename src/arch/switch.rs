@@ -8,9 +8,10 @@ pub fn switch_to() {
     extern "C" {
         fn save_context();
     }
-    
     // debug!("save_context");
-    unsafe { save_context();}
+    unsafe {
+        save_context();
+    }
     // xxxxxxx
     // debug!("save_context return");
 }

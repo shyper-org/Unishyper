@@ -75,11 +75,24 @@ use rust_shyper_os::*;
 // }
 
 use rust_shyper_os::lib::thread::thread_yield;
-extern "C" fn test_yield_thread(arg: usize) {
+extern "C" fn test_yield_thread_1(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     loop {
         println!(
-            "\n=============\ntest_c_thread, core {} arg {} curent EL{}\n==================\n",
+            "\n==========================\ntest_yield_thread_1, core {} arg {} curent EL{}\n==========================\n",
+            core_id,
+            arg,
+            crate::arch::Arch::curent_privilege()
+        );
+        thread_yield();
+    }
+}
+
+extern "C" fn test_yield_thread_2(arg: usize) {
+    let core_id = crate::arch::Arch::core_id();
+    loop {
+        println!(
+            "\n**************************\ntest_yield_thread_2, core {} arg {} curent EL{}\n**************************\n",
             core_id,
             arg,
             crate::arch::Arch::curent_privilege()
@@ -96,14 +109,14 @@ fn main() {
     // thread_spawn(network_init, 0);
 
     // thread_spawn(test_net_sem, 1);
-    thread_spawn(test_yield_thread, 1);
-    // thread_yield();
-    thread_spawn(test_yield_thread, 2);
+    thread_spawn(test_yield_thread_1, 1);
+    // // thread_yield();
+    thread_spawn(test_yield_thread_2, 2);
     thread_yield();
     // for i in 0..10 {
     //     thread_spawn(test_c_thread, i + 100);
     // }
     // use rust_shyper_os::lib::thread::thread_yield;
     // thread_yield();
-    loop {}
+    exit();
 }

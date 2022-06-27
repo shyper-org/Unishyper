@@ -259,18 +259,9 @@ pub fn thread_sleep(t: &Thread, reason: Status) {
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
     // debug!("\n***\nthread yield begin on Thread [{}]", get_current_thread_id());
-    // irqsave(|| {
+    irqsave(|| {
         crate::arch::switch_to();
-    // });
-    // switch to
-    //  asm save_context
-            // push context
-            // set cpu context
-                // cpu.run
-                    // 存在栈里面的contextframe保存到 prev thread里
-                // 
-            // pop context
-    // new thread
+    });
     // debug!("\n***\nthread yield end, back to Thread [{}]", get_current_thread_id());
     // let icntr2 = crate::lib::timer::current_cycle();
     // info!("as create cycle {}", icntr2 - icntr);

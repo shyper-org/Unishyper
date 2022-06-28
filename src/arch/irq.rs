@@ -60,7 +60,7 @@ pub fn nested_disable() -> bool {
 	}
 
 	let mut was_enabled = true;
-	if flags & (IRQ_FLAG_A | IRQ_FLAG_I | IRQ_FLAG_F) > 0 {
+	if flags & (IRQ_FLAG_A | IRQ_FLAG_I) > 0 {
 		was_enabled = false;
 	}
 

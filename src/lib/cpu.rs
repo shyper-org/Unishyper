@@ -89,13 +89,13 @@ impl Core {
             if prev.runnable() {
                 scheduler().add(prev.clone());
             }
-            debug!("next ctx:\n {}", t.context());
+            // debug!("next ctx:\n {}", t.context());
             *self.context_mut() = t.context();
         } else {
             debug!("run thread {}",t.tid());
             if self.context.is_some() {
                 // Note: previous process has been destroyed
-                debug!("previous process has been destroyed, next ctx:\n {}", t.context());
+                // debug!("previous process has been destroyed, next ctx:\n {}", t.context());
                 *self.context_mut() = t.context();
             } else {
                 // Note: this is first run

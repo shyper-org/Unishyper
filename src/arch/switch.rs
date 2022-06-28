@@ -1,6 +1,6 @@
 core::arch::global_asm!(include_str!("context.S"));
 
-use crate::arch::ContextFrame;
+use crate::{arch::ContextFrame, util::irqsave};
 
 #[inline(always)]
 pub fn switch_to() {
@@ -18,11 +18,13 @@ pub fn switch_to() {
 
 #[no_mangle]
 unsafe extern "C" fn set_cpu_context(ctx: *mut ContextFrame) {
-    debug!("set_cpu_context\n {}", ctx.read());
-    let core = crate::lib::cpu::cpu();
-    core.set_context(ctx);
-    // debug!("core set_context success");
-    crate::lib::thread::_thread_yield();
-    core.clear_context();
+    // debug!("set_cpu_context\n {}", ctx.read());
+    irqsave(|| {
+        let core = crate::lib::cpu::cpu();
+        core.set_context(ctx);
+        // debug!("core set_context success");
+        crate::lib::thread::_thread_yield();
+        core.clear_context();
+    });
     // debug!("core clear_context success");
 }

@@ -2,6 +2,8 @@ use log::{Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
 use spin::Mutex;
 
+use crate::util::irqsave;
+
 struct SimpleLogger;
 
 static LOCK: Mutex<()> = Mutex::new(());
@@ -13,31 +15,29 @@ impl log::Log for SimpleLogger {
     }
 
     fn log(&self, record: &Record) {
-        use cortex_a::registers::*;
-        use tock_registers::interfaces::Writeable;
-        DAIF.write(DAIF::I::Masked);
-        let lock = LOCK.lock();
-        if self.enabled(record.metadata()) {
-            let ms = crate::lib::timer::current_ms();
-            let s = ms / 1000;
-            let ms = ms % 1000;
-            print!("[{:04}.{:03}]", s, ms);
+        irqsave(|| {
+            let lock = LOCK.lock();
+            if self.enabled(record.metadata()) {
+                let ms = crate::lib::timer::current_ms();
+                let s = ms / 1000;
+                let ms = ms % 1000;
+                print!("[{:04}.{:03}]", s, ms);
 
-            match record.level() {
-                Level::Error => print!("[E]"),
-                Level::Warn => print!("[W]"),
-                Level::Info => print!("[I]"),
-                Level::Debug => print!("[D]"),
-                Level::Trace => print!("[T]"),
+                match record.level() {
+                    Level::Error => print!("[E]"),
+                    Level::Warn => print!("[W]"),
+                    Level::Info => print!("[I]"),
+                    Level::Debug => print!("[D]"),
+                    Level::Trace => print!("[T]"),
+                }
+                if let Some(m) = record.module_path() {
+                    print!("[{}]", m);
+                }
+                print!(" {}", record.args());
+                println!();
             }
-            if let Some(m) = record.module_path() {
-                print!("[{}]", m);
-            }
-            print!(" {}", record.args());
-            println!();
-        }
-        drop(lock);
-        DAIF.write(DAIF::I::Unmasked);
+            drop(lock);
+        });
     }
 
     fn flush(&self) {}

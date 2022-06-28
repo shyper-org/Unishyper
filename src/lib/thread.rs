@@ -11,7 +11,6 @@ use crate::lib::error::*;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
 use crate::mm::{Addr, PhysicalFrame, Region};
-use crate::util::irqsave;
 
 pub type Tid = usize;
 
@@ -259,9 +258,7 @@ pub fn thread_sleep(t: &Thread, reason: Status) {
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
     // debug!("\n***\nthread yield begin on Thread [{}]", get_current_thread_id());
-    irqsave(|| {
-        crate::arch::switch_to();
-    });
+    crate::arch::switch_to();
     // debug!("\n***\nthread yield end, back to Thread [{}]", get_current_thread_id());
     // let icntr2 = crate::lib::timer::current_cycle();
     // info!("as create cycle {}", icntr2 - icntr);
@@ -269,9 +266,9 @@ pub fn thread_yield() {
 
 #[no_mangle]
 pub fn _thread_yield() {
-    debug!("_thread_yield begin\n");
+    // debug!("_thread_yield begin\n");
     cpu().schedule();
-    debug!("_thread_yield end\n");
+    // debug!("_thread_yield end\n");
 }
 
 pub fn get_current_thread_id() -> Tid {

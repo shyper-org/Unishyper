@@ -10,5 +10,5 @@ pub fn panic_handler(info: &PanicInfo) -> ! {
     if let Some(location) = info.location() {
         error!("Location: {}:{}", location.file(), location.line());
     }
-    loop {}
+    panic!("os panic");
 }

@@ -1,4 +1,4 @@
-use crate::lib::thread::{current_thread, thread_sleep, thread_wake, Thread, thread_yield};
+use crate::lib::thread::{current_thread, thread_sleep, thread_wake, thread_yield, Thread};
 use alloc::collections::VecDeque;
 
 use super::spinlock::SpinlockIrqSave;
@@ -39,21 +39,24 @@ impl Semaphore {
                 Ok(t) => {
                     let mut inner = self.inner.lock();
                     if inner.value == 0 {
-                        thread_sleep(&t, crate::lib::thread::Status::Blocked);
                         if let Some(queue) = &mut inner.queue {
-                            queue.push_back(t);
+                            queue.push_back(t.clone());
                         } else {
                             let mut queue = VecDeque::new();
-                            queue.push_back(t);
+                            queue.push_back(t.clone());
                             inner.queue = Some(queue);
                         }
+                        /* Before yield, we need to drop the lock. */
+                        drop(inner);
+                        thread_sleep(&t, crate::lib::thread::Status::Blocked);
                     } else {
                         inner.value -= 1;
+                        // debug!("semaphore acquire success, current value {}, return", inner.value);
                         return;
                     }
                 }
                 Err(_) => {
-                    debug!("failed to get current_thread");
+                    error!("failed to get current_thread");
                     return;
                 }
             }
@@ -66,14 +69,19 @@ impl Semaphore {
     /// will notify any pending waiters in `acquire` or `access` if necessary.
     pub fn release(&self) {
         let mut inner = self.inner.lock();
-        if inner.value != 0 {
-            inner.value += 1;
-        } else {
-            if let Some(queue) = &mut inner.queue {
-                if let Some(t) = queue.pop_front() {
-                    thread_wake(&t);
-                    thread_yield();
-                }
+        // debug!(
+        //     "semaphore release on thread [{}], value from {} to ({})",
+        //     crate::lib::thread::current_thread().unwrap().tid(),
+        //     inner.value,
+        //     inner.value + 1
+        // );
+        inner.value += 1;
+        if let Some(queue) = &mut inner.queue {
+            if let Some(t) = queue.pop_front() {
+                /* Before yield, we need to drop the lock. */
+                drop(inner);
+                thread_wake(&t);
+                thread_yield();
             }
         }
     }

@@ -65,6 +65,7 @@ pub fn nested_disable() -> bool {
 	}
 
 	disable();
+	// println!("nested disable irq, was enabled {}", was_enabled);
 	was_enabled
 }
 
@@ -77,4 +78,5 @@ pub fn nested_enable(was_enabled: bool) {
 	if was_enabled {
 		enable();
 	}
+	// println!("nested enable irq, was enabled {}", was_enabled);
 }

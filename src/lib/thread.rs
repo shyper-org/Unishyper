@@ -205,6 +205,7 @@ pub fn thread_destroy(t: Thread) {
 }
 
 pub fn thread_wake(t: &Thread) {
+    debug!("thread_wake set thread [{}] Runnable", t.tid());
     let mut status = t.0.inner_mut.status.lock();
     *status = Status::Runnable;
     scheduler().add(t.clone());
@@ -243,6 +244,7 @@ pub fn thread_block_current_with_timeout(timeout: u64) {
 }
 
 pub fn thread_sleep(t: &Thread, reason: Status) {
+    debug!("thread_sleep sleep thread [{}] status {:?}", t.tid(), reason);
     assert_ne!(reason, Status::Runnable);
     let mut status = t.0.inner_mut.status.lock();
     *status = reason;

@@ -27,15 +27,24 @@ pub fn round_down(addr: usize, n: usize) -> usize {
 
 use crate::arch::irq;
 
+// static mut irqsave_mark: usize = 0;
 /// `irqsave` guarantees that the call of the closure
 /// will be not disturbed by an interrupt
 #[inline]
 pub fn irqsave<F, R>(f: F) -> R
 where
-	F: FnOnce() -> R,
+    F: FnOnce() -> R,
 {
-	let irq = irq::nested_disable();
-	let ret = f();
-	irq::nested_enable(irq);
-	ret
+    // unsafe {
+    //     irqsave_mark += 1;
+    //     println!("irqsave nested_disable on ({}) to ({})", irqsave_mark-1, irqsave_mark);
+    // }
+    let irq = irq::nested_disable();
+    let ret = f();
+    irq::nested_enable(irq);
+    // unsafe {
+    //     println!("irqsave nested_enable on ({}) to ({})", irqsave_mark, irqsave_mark -1);
+    //     irqsave_mark -= 1;
+    // }
+    ret
 }

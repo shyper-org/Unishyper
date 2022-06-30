@@ -55,6 +55,8 @@ fn loader_main(core_id: usize) {
 
     lib::cpu::cpu().schedule();
 
+    println!("\nHello world!\n\nWelcome to shyper lightweight os...\n\n====== entering first thread ======>>>\n");
+
     extern "C" {
         fn pop_context_first(ctx: usize, core_id: usize) -> !;
     }

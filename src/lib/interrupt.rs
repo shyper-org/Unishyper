@@ -32,5 +32,11 @@ pub fn irq_install_handler(irq_number: u32, handler: fn(), name: &'static str) {
 }
 
 pub fn interrupt(int: Interrupt) {
-    debug!("external {}", int);
+    debug!("external interrupt {}", int);
+    let lock = IRQ_HANDLERS.lock();
+    if let Some(handler) = lock.get(&(int as u32)) {
+        handler();
+    } else {
+        error!("interrupt {} is not registered!!!", int);
+    }
 }

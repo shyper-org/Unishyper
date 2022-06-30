@@ -1,5 +1,5 @@
 target remote 127.0.0.1:1234
-file user/target/aarch64shyper/release/user
+file examples/user/target/aarch64shyper/release/user
 break *0x40080000
 set confirm off
 display/i $pc

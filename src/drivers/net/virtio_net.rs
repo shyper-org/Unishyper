@@ -606,7 +606,7 @@ impl NetworkInterface for VirtioNetDriver {
     }
 
     fn handle_interrupt(&mut self) -> bool {
-        // increment_irq_counter((32 + self.irq).into());
+        debug!("handle interrupt 32 + {}", self.irq);
 
         let result = if self.isr_stat.is_interrupt() {
             // handle incoming packets

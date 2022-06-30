@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(format_args_nl)]
 #![feature(alloc_error_handler)]
+#![allow(unused_imports)]
 
 use rust_shyper_os::arch::*;
 use rust_shyper_os::exported::*;
@@ -60,20 +61,6 @@ use rust_shyper_os::*;
 //     }
 // }
 
-// use rust_shyper_os::drivers::net::netwakeup;
-// extern "C" fn test_net_sem(arg: usize) {
-//     let core_id = crate::arch::Arch::core_id();
-//     println!(
-//         "test_net_sem, core {} arg {} curent EL{}\n",
-//         core_id,
-//         arg,
-//         crate::arch::Arch::curent_privilege()
-//     );
-//     loop {
-//         netwakeup();
-//     }
-// }
-
 // use rust_shyper_os::lib::thread::thread_yield;
 // extern "C" fn test_yield_thread_1(arg: usize) {
 //     let core_id = crate::arch::Arch::core_id();
@@ -129,7 +116,6 @@ extern "C" fn test_semaphore_release(arg: usize) {
         arg,
         crate::arch::Arch::curent_privilege()
     );
-    let core_id = crate::arch::Arch::core_id();
     for i in 0..arg {
         println!("\n[Release Thread] release round {}\n", i);
         TEST_SEM.release();
@@ -138,8 +124,6 @@ extern "C" fn test_semaphore_release(arg: usize) {
 
 #[no_mangle]
 fn main() {
-    println!("\nHello world!\n\nWelcome to shyper lightweight os...\n");
-
     // thread_spawn(test_mm_thread, 321);
     // thread_spawn(network_init, 0);
 

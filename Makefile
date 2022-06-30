@@ -1,8 +1,6 @@
 ARCH ?= aarch64
 MACHINE ?= shyper
 PROFILE ?= release
-USER_PROFILE ?= release
-TRUSTED_PROFILE ?= release
 
 # NOTE: this is to deal with `(signal: 11, SIGSEGV: invalid memory reference)`
 # https://github.com/rust-lang/rust/issues/73677
@@ -16,12 +14,16 @@ CARGO_FLAGS := ${CARGO_FLAGS} --release
 
 
 KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/rust_shyper_os
-USER_KERNEL := user/target/${ARCH}${MACHINE}/${PROFILE}/user
+USER_KERNEL := examples/user/target/${ARCH}${MACHINE}/${PROFILE}/user
+NET_KERNEL := examples/net_demo/target/${ARCH}${MACHINE}/${PROFILE}/net_demo
 
-.PHONY: all build emu debug clean user
+.PHONY: all build emu debug clean user net_demo user_emu net_emu
 
 user:
-	make -C user
+	make -C examples/user
+
+net_demo:
+	make -C examples/net_demo
 
 build: 
 	cargo build --lib --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
@@ -31,7 +33,8 @@ build:
 
 clean:
 	-cargo clean
-	make -C user clean
+	make -C examples/user clean
+	make -C examples/net_demo clean
 
 QEMU_CMD := qemu-system-aarch64 -M virt -cpu cortex-a53 -device loader,file=${KERNEL},addr=0x80000000,force-raw=on
 QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
@@ -49,9 +52,16 @@ user_emu: user
 	qemu-system-aarch64 -M virt -cpu cortex-a53 \
 		-device loader,file=${USER_KERNEL},addr=0x80000000,force-raw=on \
 		-serial stdio -display none \
-		${QEMU_NETWORK_OPTIONS} \
 		-smp 4 -m 2048 \
 		-kernel ${USER_KERNEL}.bin -s
+
+net_emu: net_demo
+	qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${NET_KERNEL},addr=0x80000000,force-raw=on \
+		-serial stdio -display none \
+		${QEMU_NETWORK_OPTIONS} \
+		-smp 4 -m 2048 \
+		-kernel ${NET_KERNEL}.bin -s
 
 debug: build
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -kernel ${KERNEL}.bin -s -S
@@ -63,6 +73,14 @@ user_debug: user
 		${QEMU_NETWORK_OPTIONS} \
 		-smp 4 -m 2048 \
 		-kernel ${USER_KERNEL}.bin -s -S
+
+net_debug: net_demo
+	qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${NET_KERNEL},addr=0x80000000,force-raw=on \
+		-serial stdio -display none \
+		${QEMU_NETWORK_OPTIONS} \
+		-smp 4 -m 2048 \
+		-kernel ${NET_KERNEL}.bin -s -S
 
 dependencies:
 	rustup component add rust-src

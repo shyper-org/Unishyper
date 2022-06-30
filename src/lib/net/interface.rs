@@ -49,10 +49,6 @@ lazy_static! {
 
 type Handle = SocketHandle;
 
-/// A thread handle type
-// type Tid = u32;
-// use crate::lib::thread::Tid;
-
 /// Default keep alive interval in milliseconds
 const DEFAULT_KEEP_ALIVE_INTERVAL: u64 = 75000;
 
@@ -341,14 +337,13 @@ pub async fn network_run() {
 }
 
 extern "C" fn nic_thread(_: usize) {
+    info!("[nic_thread] Enter NIC thread\n*********************************************\n");
     loop {
-        debug!("netwait");
+        debug!("[nic_thread] enter netwait");
 
         netwait();
 
-        debug!("Network thread checks the devices");
-
-        continue;
+        debug!("[nic_thread] netwait finished, try to call nic.poll_common");
 
         if let NetworkState::Initialized(nic) = NIC.lock().deref_mut() {
             debug!("NetworkState Initialized success, poll_common");
@@ -377,7 +372,7 @@ pub fn network_init(){
         spawn(network_run()).detach();
 
         // switch to network thread
-        // thread_yield();
+        thread_yield();
     }
 }
 

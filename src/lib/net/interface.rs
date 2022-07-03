@@ -155,6 +155,7 @@ impl AsyncSocket {
     }
 
     fn with<R>(&self, f: impl FnOnce(&mut TcpSocket) -> R) -> R {
+        // trace!("Async Socket with()");
         let mut guard = NIC.lock();
         let nic = guard.as_nic_mut().unwrap();
         let res = {
@@ -192,19 +193,23 @@ impl AsyncSocket {
     }
 
     pub async fn accept(&self, port: u16) -> Result<(IpAddress, u16), Error> {
+        trace!("AsyncSocket accept");
         self.with(|s| s.listen(port).map_err(|_| Error::Illegal))?;
 
         future::poll_fn(|cx| {
             self.with(|s| {
                 if s.is_active() {
+                    trace!("AsyncSocket accept TcpSocket is active, state {:?}", s.state());
                     Poll::Ready(Ok(()))
                 } else {
+                    trace!("AsyncSocket accept TcpSocket is not active state {:?}", s.state());
                     match s.state() {
                         TcpState::Closed
                         | TcpState::Closing
                         | TcpState::FinWait1
                         | TcpState::FinWait2 => Poll::Ready(Err(Error::Illegal)),
                         _ => {
+                            trace!("AsyncSocket accept state {:?}, register_recv_waker, Poll Pending", s.state());
                             s.register_recv_waker(cx.waker());
                             Poll::Pending
                         }
@@ -214,6 +219,7 @@ impl AsyncSocket {
         })
         .await?;
 
+        trace!("AsyncSocket accept await ?");
         let mut guard = NIC.lock();
         let nic = guard.as_nic_mut().map_err(|_| Error::Illegal)?;
         let mut socket = nic.sockets.get::<TcpSocket>(self.0);
@@ -318,6 +324,7 @@ impl From<Handle> for AsyncSocket {
 fn start_endpoint() -> u16 {
     use cortex_a::registers::CNTPCT_EL0;
     use tock_registers::interfaces::Readable;
+    trace!("get start endpoint {}", CNTPCT_EL0.get());
     (CNTPCT_EL0.get() % (u16::MAX as u64)).try_into().unwrap()
 }
 
@@ -326,6 +333,7 @@ pub fn network_delay(timestamp: Instant) -> Option<Duration> {
 }
 
 pub async fn network_run() {
+    trace!("network_run");
     future::poll_fn(|cx| match NIC.lock().deref_mut() {
         NetworkState::Initialized(nic) => {
             nic.poll(cx, Instant::from_millis(current_ms() as i64));
@@ -374,6 +382,7 @@ pub fn network_init(){
         // switch to network thread
         thread_yield();
     }
+    info!("network lib init finished");
 }
 
 #[no_mangle]
@@ -485,6 +494,7 @@ pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
 
 #[no_mangle]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
+    trace!("tcp_listener_accept");
     let socket = AsyncSocket::new();
     let (addr, port) = block_on(socket.accept(port), None)?.map_err(|_| ())?;
 

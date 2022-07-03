@@ -82,17 +82,17 @@ impl Core {
 
     fn run(&mut self, t: Thread) {
         if let Some(prev) = self.running_thread() {
-            debug!("switch thread from {} to {}", prev.tid(), t.tid());
+            trace!("switch thread from [{}] to [{}]", prev.tid(), t.tid());
             // Note: normal switch
             prev.set_context(*self.context());
             // add back to scheduler queue
             if prev.runnable() {
                 scheduler().add(prev.clone());
             }
-            // debug!("next ctx:\n {}", t.context());
+            trace!("next ctx:\n {}", t.context());
             *self.context_mut() = t.context();
         } else {
-            debug!("run thread {}",t.tid());
+            trace!("run thread {}",t.tid());
             if self.context.is_some() {
                 // Note: previous process has been destroyed
                 // debug!("previous process has been destroyed, next ctx:\n {}", t.context());
@@ -100,7 +100,7 @@ impl Core {
             } else {
                 // Note: this is first run
                 // `loader_main` prepare the context to stack
-                debug!("first run thread {}", t.tid());
+                trace!("first run thread {}", t.tid());
             }
         }
         self.set_running_thread(Some(t.clone()));
@@ -115,7 +115,7 @@ pub fn cpu() -> &'static mut Core {
 #[no_mangle]
 fn idle_thread(_arg: usize) {
     loop {
-        info!("idle_thread {}\n", _arg);
+        trace!("idle_thread {}\n", _arg);
         // loop{}
         crate::arch::Arch::wait_for_interrupt();
     }

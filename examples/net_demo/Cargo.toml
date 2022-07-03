@@ -9,3 +9,7 @@ authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 [dependencies]
 rust_shyper_os = {path = "../../"}
 no-std-net = "0.6.0"
+
+[features]
+default = ["alloc"]
+alloc = []

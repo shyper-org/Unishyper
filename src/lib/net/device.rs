@@ -9,8 +9,6 @@ use no_std_net::Ipv4Addr;
 #[cfg(feature = "dhcpv4")]
 use smoltcp::dhcp::Dhcpv4Client;
 use smoltcp::iface::{EthernetInterfaceBuilder, NeighborCache, Routes};
-#[cfg(feature = "trace")]
-use smoltcp::phy::EthernetTracer;
 use smoltcp::phy::{self, Device, DeviceCapabilities};
 use smoltcp::socket::SocketSet;
 #[cfg(feature = "dhcpv4")]
@@ -103,14 +101,18 @@ impl NetworkInterface<ShyperNet> {
 
     #[cfg(not(feature = "dhcpv4"))]
     pub fn new() -> NetworkState {
+        info!("Network interface new:");
+        // Get mtu, Maximum transmission unit.
         let mtu = match get_mtu() {
             Ok(mtu) => mtu,
             Err(_) => {
                 return NetworkState::InitializationFailed;
             }
         };
+        // New physical device, ShyperNet.
         let device = ShyperNet::new(mtu);
 
+        // Get mac address.
         let mac: [u8; 6] = match get_mac_address() {
             Ok(mac) => mac,
             Err(_) => {
@@ -118,6 +120,7 @@ impl NetworkInterface<ShyperNet> {
             }
         };
 
+        // Generate local ip address ,gateway address and network mask.
         let myip = Ipv4Addr::new(10, 0, 5, 3);
         let myip = myip.octets();
         let mygw = Ipv4Addr::new(10, 0, 5, 1);
@@ -182,6 +185,7 @@ impl<'a> Device<'a> for ShyperNet {
     }
 
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
+        // trace!("receive_rx_buffer()");
         match receive_rx_buffer() {
             Ok((buffer, handle)) => Some((RxToken::new(buffer, handle), TxToken::new())),
             _ => None,

@@ -5,4 +5,4 @@ pub use crate::lib::synch::*;
 pub use crate::lib::thread::*;
 
 mod thread;
-mod net;
+pub mod net;

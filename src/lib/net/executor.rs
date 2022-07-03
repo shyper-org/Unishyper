@@ -19,20 +19,21 @@ use super::interface::network_delay;
 
 use crate::lib::thread::{
     get_current_thread_id, thread_block_current, thread_block_current_with_timeout,
-    thread_wake_by_tid, thread_yield,
+    thread_wake_by_tid,
 };
 use crate::lib::timer::current_ms;
 
+use crate::drivers::net::set_polling_mode;
 /// A thread handle type
 // type Tid = u32;
 use crate::lib::thread::Tid;
-use crate::drivers::net::set_polling_mode;
 
 lazy_static! {
     static ref QUEUE: SegQueue<Runnable> = SegQueue::new();
 }
 
 fn run_executor() {
+    // trace!("run executor");
     while let Some(runnable) = QUEUE.pop() {
         runnable.run();
     }
@@ -145,6 +146,7 @@ where
     F: Future<Output = T>,
 {
     // CURRENT_THREAD_NOTIFY.with(|thread_notify| {
+    trace!("block_on");
     let thread_notify = get_current_thread_notify();
 
     let start = Instant::from_millis(current_ms() as i64);
@@ -154,8 +156,11 @@ where
 
     loop {
         if let Poll::Ready(t) = future.as_mut().poll(&mut cx) {
+            trace!("block_on, Poll::Ready");
             return Ok(t);
         }
+
+        // trace!("block_on, Poll not Ready");
 
         if let Some(duration) = timeout {
             if Instant::from_millis(current_ms() as i64) >= start + duration {
@@ -167,18 +172,22 @@ where
         let delay =
             network_delay(Instant::from_millis(current_ms() as i64)).map(|d| d.total_millis());
 
+        // trace!("block_on, Poll not Ready, get delay {:?}", delay);
+
         if delay.is_none() || delay.unwrap() > 100 {
             let unparked = thread_notify.unparked.swap(false, Ordering::Acquire);
+            // trace!("block_on, Poll not Ready, unparked {}", unparked);
             if !unparked {
                 match delay {
                     Some(d) => thread_block_current_with_timeout(d),
                     None => thread_block_current(),
                 };
-                thread_yield();
+                // thread_yield();
                 thread_notify.unparked.store(false, Ordering::Release);
                 run_executor()
             }
         } else {
+            // trace!("block_on, Poll not Ready, delay or delay < 100");
             run_executor()
         }
     }

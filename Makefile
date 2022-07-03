@@ -56,7 +56,7 @@ user_emu: user
 		-kernel ${USER_KERNEL}.bin -s
 
 net_emu: net_demo
-	qemu-system-aarch64 -M virt -cpu cortex-a53 \
+	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
 		-device loader,file=${NET_KERNEL},addr=0x80000000,force-raw=on \
 		-serial stdio -display none \
 		${QEMU_NETWORK_OPTIONS} \

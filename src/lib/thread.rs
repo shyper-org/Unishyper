@@ -171,8 +171,8 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
     let mut map = THREAD_MAP.lock();
     map.insert(id, t.clone());
 
-    debug!(
-        "thread_alloc success id {} sp [{:x} to {:x}]",
+    trace!(
+        "thread_alloc success id [{}] sp [{:x} to {:x}]",
         id,
         sp - PAGE_SIZE,
         sp
@@ -221,9 +221,10 @@ pub fn thread_wake_by_tid(tid: Tid) {
 
 // Todo: do not use sleep as Status.
 pub fn thread_block_current() {
+    trace!("thread_block_current");
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
         let t = &current_thread;
-        let reason = Status::Sleep;
+        let reason = Status::Blocked;
         assert_ne!(reason, Status::Runnable);
         let mut status = t.0.inner_mut.status.lock();
         *status = reason;
@@ -240,11 +241,11 @@ pub fn thread_block_current() {
 
 // Todo: do not use sleep as Status.
 pub fn thread_block_current_with_timeout(timeout: u64) {
-    info!("wait for implementation! {}", timeout);
+    // debug!("wait for implementation! {}", timeout);
 }
 
 pub fn thread_sleep(t: &Thread, reason: Status) {
-    debug!("thread_sleep sleep thread [{}] status {:?}", t.tid(), reason);
+    trace!("thread_sleep sleep thread [{}] status {:?}", t.tid(), reason);
     assert_ne!(reason, Status::Runnable);
     let mut status = t.0.inner_mut.status.lock();
     *status = reason;
@@ -260,6 +261,7 @@ pub fn thread_sleep(t: &Thread, reason: Status) {
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
     // debug!("\n***\nthread yield begin on Thread [{}]", get_current_thread_id());
+    trace!("thread_yield is called on Thread [{}]", get_current_thread_id());
     crate::arch::switch_to();
     // debug!("\n***\nthread yield end, back to Thread [{}]", get_current_thread_id());
     // let icntr2 = crate::lib::timer::current_cycle();

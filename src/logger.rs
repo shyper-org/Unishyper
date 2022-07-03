@@ -10,7 +10,8 @@ static LOCK: Mutex<()> = Mutex::new(());
 
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Debug
+        metadata.level() <= Level::Trace
+        // metadata.level() <= Level::Debug
         // metadata.level() <= Level::Info
     }
 

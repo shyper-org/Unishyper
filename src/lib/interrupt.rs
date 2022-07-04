@@ -21,7 +21,7 @@ pub trait InterruptController {
 
 #[no_mangle]
 pub fn irq_install_handler(irq_number: u32, handler: fn(), name: &'static str) {
-    debug!("[{}] Install handler for interrupt {} irq_num [32+{}]", name, irq_number, irq_number);
+    trace!("[{}] Install handler for interrupt {} irq_num [32+{}]", name, irq_number, irq_number);
     let mut irq_name_lock = IRQ_NAMES.lock();
     let mut irq_handler_lock = IRQ_HANDLERS.lock();
 
@@ -32,7 +32,7 @@ pub fn irq_install_handler(irq_number: u32, handler: fn(), name: &'static str) {
 }
 
 pub fn interrupt(int: Interrupt) {
-    debug!("external interrupt {}", int);
+    trace!("external interrupt {}", int);
     let lock = IRQ_HANDLERS.lock();
     // During exception handling, nested interrupt is not permitted.
     if let Some(handler) = lock.get(&(int as u32)) {

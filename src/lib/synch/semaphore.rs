@@ -1,4 +1,4 @@
-use crate::lib::thread::{current_thread, thread_sleep, thread_wake, thread_yield, Thread};
+use crate::lib::thread::{current_thread, thread_block_current, thread_wake_to_front, Thread, thread_yield};
 use alloc::collections::VecDeque;
 
 use super::spinlock::SpinlockIrqSave;
@@ -34,11 +34,15 @@ impl Semaphore {
     /// This method will block until the internal count of the semaphore is at
     /// least 1.
     pub fn acquire(&self) {
+
+        // Loop until we have acquired the semaphore.
         loop {
+            trace!("acquire loop");
             match current_thread() {
                 Ok(t) => {
                     let mut inner = self.inner.lock();
                     if inner.value == 0 {
+                        thread_block_current();
                         if let Some(queue) = &mut inner.queue {
                             queue.push_back(t.clone());
                         } else {
@@ -48,10 +52,12 @@ impl Semaphore {
                         }
                         /* Before yield, we need to drop the lock. */
                         drop(inner);
-                        thread_sleep(&t, crate::lib::thread::Status::Blocked);
+                        thread_yield();
+                        trace!("return to this thread");
                     } else {
+                        // Successfully acquired the semaphore.
                         inner.value -= 1;
-                        // debug!("semaphore acquire success, current value {}, return", inner.value);
+                        trace!("semaphore acquire success, current value {}, return", inner.value);
                         return;
                     }
                 }
@@ -80,8 +86,7 @@ impl Semaphore {
             if let Some(t) = queue.pop_front() {
                 /* Before yield, we need to drop the lock. */
                 drop(inner);
-                thread_wake(&t);
-                thread_yield();
+                thread_wake_to_front(&t);
             }
         }
     }

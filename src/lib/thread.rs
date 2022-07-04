@@ -190,7 +190,7 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 }
 
 pub fn thread_destroy(t: Thread) {
-    debug!("Destroy t{}", t.tid());
+    trace!("Destroy t{}", t.tid());
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
         if t.tid() == current_thread.tid() {
             crate::lib::cpu::cpu().set_running_thread(None);
@@ -205,7 +205,7 @@ pub fn thread_destroy(t: Thread) {
 }
 
 pub fn thread_wake(t: &Thread) {
-    debug!("thread_wake set thread [{}] Runnable", t.tid());
+    trace!("thread_wake set thread [{}] Runnable", t.tid());
     let mut status = t.0.inner_mut.status.lock();
     *status = Status::Runnable;
     scheduler().add(t.clone());
@@ -219,7 +219,13 @@ pub fn thread_wake_by_tid(tid: Tid) {
     }
 }
 
-// Todo: do not use sleep as Status.
+pub fn thread_wake_to_front(t: &Thread) {
+    trace!("thread_wake set thread [{}] as next thread", t.tid());
+    let mut status = t.0.inner_mut.status.lock();
+    *status = Status::Runnable;
+    scheduler().add_front(t.clone());
+}
+
 pub fn thread_block_current() {
     trace!("thread_block_current");
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
@@ -229,19 +235,15 @@ pub fn thread_block_current() {
         let mut status = t.0.inner_mut.status.lock();
         *status = reason;
         drop(status);
-        if let Some(current) = cpu().running_thread() {
-            if current.tid() == t.tid() {
-                thread_yield();
-            }
-        }
     } else {
         warn!("No Running Thread!");
     }
+    // thread_yield();
 }
 
 // Todo: do not use sleep as Status.
 pub fn thread_block_current_with_timeout(timeout: u64) {
-    // debug!("wait for implementation! {}", timeout);
+    // trace!("thread_block_current_with_timeout, wip! {}", timeout);
 }
 
 pub fn thread_sleep(t: &Thread, reason: Status) {
@@ -257,6 +259,9 @@ pub fn thread_sleep(t: &Thread, reason: Status) {
     }
 }
 
+
+// Todo: make thread yield more efficient.
+
 #[no_mangle]
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
@@ -269,10 +274,10 @@ pub fn thread_yield() {
 }
 
 #[no_mangle]
-pub fn _thread_yield() {
-    // debug!("_thread_yield begin\n");
+pub fn thread_schedule() {
+    trace!("thread_schedule\n");
     cpu().schedule();
-    // debug!("_thread_yield end\n");
+    debug!("thread_schedule end\n");
 }
 
 pub fn get_current_thread_id() -> Tid {

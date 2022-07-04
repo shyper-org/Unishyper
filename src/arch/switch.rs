@@ -23,7 +23,7 @@ unsafe extern "C" fn set_cpu_context(ctx: *mut ContextFrame) {
         let core = crate::lib::cpu::cpu();
         core.set_context(ctx);
         // debug!("core set_context success");
-        crate::lib::thread::_thread_yield();
+        crate::lib::thread::thread_schedule();
         core.clear_context();
     });
     // debug!("core clear_context success");

@@ -19,7 +19,7 @@ use super::interface::network_delay;
 
 use crate::lib::thread::{
     get_current_thread_id, thread_block_current, thread_block_current_with_timeout,
-    thread_wake_by_tid,
+    thread_wake_by_tid, thread_yield,
 };
 use crate::lib::timer::current_ms;
 
@@ -182,7 +182,7 @@ where
                     Some(d) => thread_block_current_with_timeout(d),
                     None => thread_block_current(),
                 };
-                // thread_yield();
+                thread_yield();
                 thread_notify.unparked.store(false, Ordering::Release);
                 run_executor()
             }

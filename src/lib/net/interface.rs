@@ -55,7 +55,6 @@ const DEFAULT_KEEP_ALIVE_INTERVAL: u64 = 75000;
 static LOCAL_ENDPOINT: AtomicU16 = AtomicU16::new(0);
 
 pub struct NetworkInterface<T: for<'a> Device<'a>> {
-    #[cfg(not(feature = "trace"))]
     pub iface: smoltcp::iface::EthernetInterface<'static, T>,
     pub sockets: SocketSet<'static>,
     #[cfg(feature = "dhcpv4")]

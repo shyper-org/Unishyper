@@ -35,6 +35,34 @@ use crate::lib::synch::{
 
 static NET_SEM: Semaphore = Semaphore::new(0);
 
+pub extern "C" fn netwait() {
+	trace!("netwait");
+	NET_SEM.acquire();
+	trace!("netwait acquire, return");
+}
+
+#[no_mangle]
+pub fn netwakeup() {
+	trace!("netwakeup");
+	NET_SEM.release();
+}
+
+pub fn network_irqhandler() {
+	trace!("Receive network interrupt");
+
+	let check_scheduler = match get_network_driver() {
+		Some(driver) => driver.lock().handle_interrupt(),
+		_ => {
+			debug!("Unable to handle interrupt!");
+			false
+		}
+	};
+
+	if check_scheduler {
+		crate::lib::thread::thread_schedule();
+	}
+}
+
 /// set driver in polling mode and threads will not be blocked
 pub extern "C" fn set_polling_mode(value: bool) {
 	static THREADS_IN_POLLING_MODE: SpinlockIrqSave<usize> = SpinlockIrqSave::new(0);
@@ -57,34 +85,6 @@ pub extern "C" fn set_polling_mode(value: bool) {
 				driver.lock().set_polling_mode(value)
 			}
 		}
-	}
-}
-
-
-
-pub extern "C" fn netwait() {
-	debug!("netwait");
-	NET_SEM.acquire();
-}
-
-pub fn netwakeup() {
-	debug!("netwakeup");
-	NET_SEM.release();
-}
-
-pub fn network_irqhandler() {
-	debug!("Receive network interrupt");
-
-	let check_scheduler = match get_network_driver() {
-		Some(driver) => driver.lock().handle_interrupt(),
-		_ => {
-			debug!("Unable to handle interrupt!");
-			false
-		}
-	};
-
-	if check_scheduler {
-		crate::lib::thread::thread_yield();
 	}
 }
 

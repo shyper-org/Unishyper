@@ -12,12 +12,13 @@ core::arch::global_asm!(include_str!("exception.S"));
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
-    error!("current_el_sp0_synchronous EC {:#X} \n{}", ec, ctx.read());
-    loop {}
+    panic!("current_el_sp0_synchronous EC {:#X} \n{}", ec, ctx.read());
+    // loop {}
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
+    trace!("current_el_sp0_irq \n{}", ctx.read());
     use crate::lib::interrupt::*;
     let core = crate::lib::cpu::cpu();
     core.set_context(ctx);
@@ -53,11 +54,13 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
     // let page_fault = ESR_EL1.matches_all(ESR_EL1::EC::InstrAbortCurrentEL)
     //     | ESR_EL1.matches_all(ESR_EL1::EC::DataAbortCurrentEL);
     //   crate::lib::exception::handle_kernel(ctx.as_ref().unwrap(), page_fault);
-    loop {}
+    panic!("current_el_spx_synchronous EC {:#X} \n{}", ec, ctx.read());
+    // loop {}
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
+    trace!("current_el_spx_irq");
     current_el_sp0_irq(ctx);
 }
 

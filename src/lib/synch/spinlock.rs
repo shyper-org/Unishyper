@@ -206,6 +206,7 @@ impl<'a, T: ?Sized> DerefMut for SpinlockIrqSaveGuard<'a, T> {
 impl<'a, T: ?Sized> Drop for SpinlockIrqSaveGuard<'a, T> {
 	/// The dropping of the SpinlockGuard will release the lock it was created from.
 	fn drop(&mut self) {
+		// println!("Drop SpinlockIrqSave\n");
 		irq::nested_enable(*self.irq);
 	}
 }

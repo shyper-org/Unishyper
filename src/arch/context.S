@@ -4,8 +4,11 @@
 .global set_cpu_context
 .global save_context
 save_context:
+    msr daifset, 0b111
     // Save original sp here.
-    mov x0, sp
+    mov x10, sp
+    // Get kernel stack.
+    mov sp, x0
     // Alloc sp space for context frame.
     sub	sp, sp, #SIZE_OF_CONTEXT_FRAME
     stp x18,x19, [sp, #(9 * 16)]
@@ -16,8 +19,8 @@ save_context:
     stp x28,x29, [sp, #(14 * 16)]
     // Save the spsr_el1 here, may it's not necessary.
     mrs x1, spsr_el1
-    stp x30, x1, [sp, #(15 * 16)]
-    stp x30, x0,  [sp, #(16 * 16)]
+    stp x30, x1, [sp, #(15 * 16)]   // x30, spsr
+    stp x30, x10,  [sp, #(16 * 16)]  // elr, sp
     mov fp, 0
     mov x0, sp
     bl set_cpu_context
@@ -42,7 +45,9 @@ save_context:
     // If the thread is yielded firstly, register after x3 is useless.
     // If the thread is yielded before, we don't need to care about x10.
     ldr x10, [sp, #(33 * 8)]
+    add	sp, sp, #SIZE_OF_CONTEXT_FRAME
     mov sp, x10
+    msr daifclr, 0b111
     // Return to PC at x30.
     ret
 

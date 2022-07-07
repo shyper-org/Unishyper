@@ -1,12 +1,14 @@
 use log::{Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
-use spin::Mutex;
+// use spin::Mutex;
 
-use crate::util::irqsave;
+// use crate::util::irqsave;
+
+use crate::lib::synch::spinlock::SpinlockIrqSave;
 
 struct SimpleLogger;
 
-static LOCK: Mutex<()> = Mutex::new(());
+static LOCK: SpinlockIrqSave<()> = SpinlockIrqSave::new(());
 
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
@@ -16,29 +18,29 @@ impl log::Log for SimpleLogger {
     }
 
     fn log(&self, record: &Record) {
-        irqsave(|| {
-            let lock = LOCK.lock();
-            if self.enabled(record.metadata()) {
-                let ms = crate::lib::timer::current_ms();
-                let s = ms / 1000;
-                let ms = ms % 1000;
-                print!("[{:04}.{:03}]", s, ms);
+        // irqsave(|| {
+        let lock = LOCK.lock();
+        if self.enabled(record.metadata()) {
+            let ms = crate::lib::timer::current_ms();
+            let s = ms / 1000;
+            let ms = ms % 1000;
+            print!("[{:04}.{:03}]", s, ms);
 
-                match record.level() {
-                    Level::Error => print!("[E]"),
-                    Level::Warn => print!("[W]"),
-                    Level::Info => print!("[I]"),
-                    Level::Debug => print!("[D]"),
-                    Level::Trace => print!("[T]"),
-                }
-                if let Some(m) = record.module_path() {
-                    print!("[{}]", m);
-                }
-                print!(" {}", record.args());
-                println!();
+            match record.level() {
+                Level::Error => print!("[E]"),
+                Level::Warn => print!("[W]"),
+                Level::Info => print!("[I]"),
+                Level::Debug => print!("[D]"),
+                Level::Trace => print!("[T]"),
             }
-            drop(lock);
-        });
+            if let Some(m) = record.module_path() {
+                print!("[{}]", m);
+            }
+            print!(" {}", record.args());
+            println!();
+        }
+        drop(lock);
+        // });
     }
 
     fn flush(&self) {}

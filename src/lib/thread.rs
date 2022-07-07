@@ -241,7 +241,6 @@ pub fn thread_block_current() {
     // thread_yield();
 }
 
-// Todo: do not use sleep as Status.
 pub fn thread_block_current_with_timeout(timeout: u64) {
     // trace!("thread_block_current_with_timeout, wip! {}", timeout);
 }

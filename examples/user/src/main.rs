@@ -88,9 +88,19 @@ use rust_shyper_os::*;
 //     }
 // }
 
+
+
 use rust_shyper_os::exported::semaphore::Semaphore;
 
 static TEST_SEM: Semaphore = Semaphore::new(0);
+
+fn test_acquire() {
+    println!("\n[Acquire Thread] test_acquire\n");
+    TEST_SEM.acquire();
+    println!("\n[Acquire Thread] test_acquire return\n");
+}
+
+
 extern "C" fn test_semaphore_acquire(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
@@ -102,7 +112,7 @@ extern "C" fn test_semaphore_acquire(arg: usize) {
     let mut i = 0;
     loop {
         println!("\n[Acquire Thread] acquire round {}\n", i);
-        TEST_SEM.acquire();
+        test_acquire();
         println!("\n[Acquire Thread] acquired success on round {}\n", i);
         i += 1;
     }
@@ -119,6 +129,7 @@ extern "C" fn test_semaphore_release(arg: usize) {
     for i in 0..arg {
         println!("\n[Release Thread] release round {}\n", i);
         TEST_SEM.release();
+        thread_yield();
     }
 }
 

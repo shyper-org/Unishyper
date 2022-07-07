@@ -356,6 +356,10 @@ extern "C" fn nic_thread(_: usize) {
             debug!("NetworkState Initialized success, poll_common");
             nic.poll_common(Instant::from_millis(current_ms() as i64));
         }
+        // It's maybe wrong, just try to fix, see net wake up.
+        // Todo: During network irq process, how can we ensure it can not be interrupt by timer?
+        // trace!("[nic_thread] nested_enable");
+        // crate::arch::irq::nested_enable(true);
     }
 }
 

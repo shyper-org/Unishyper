@@ -12,6 +12,13 @@ pub fn init() {
             .lock()
             .init(range.start.pa2kva(), range.end - range.start)
     }
+    println!(
+        "Heap range: pa [{:x} - {:x}] kva [{:x} - {:x}]",
+        range.start,
+        range.end,
+        range.start.pa2kva(),
+        range.end.pa2kva()
+    )
 }
 
 #[global_allocator]

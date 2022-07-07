@@ -23,8 +23,8 @@ use super::transport::mmio::{ComCfg, NotifCfg};
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
-use alloc::vec::Vec;
 use alloc::vec;
+use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::ops::{BitAnd, Deref, DerefMut};
 
@@ -36,25 +36,25 @@ use core::ops::{BitAnd, Deref, DerefMut};
 pub struct VqIndex(u16);
 
 impl From<u16> for VqIndex {
-	fn from(val: u16) -> Self {
-		VqIndex(val)
-	}
+    fn from(val: u16) -> Self {
+        VqIndex(val)
+    }
 }
 
 impl From<VqIndex> for u16 {
-	fn from(i: VqIndex) -> Self {
-		i.0
-	}
+    fn from(i: VqIndex) -> Self {
+        i.0
+    }
 }
 
 impl From<u32> for VqIndex {
-	fn from(val: u32) -> Self {
-		if val > u16::MAX as u32 {
-			VqIndex(u16::MAX)
-		} else {
-			VqIndex(val as u16)
-		}
-	}
+    fn from(val: u32) -> Self {
+        if val > u16::MAX as u32 {
+            VqIndex(u16::MAX)
+        } else {
+            VqIndex(val as u16)
+        }
+    }
 }
 
 /// A u16 newtype. If instantiated via ``VqSize::from(T)``, the newtype is ensured to be
@@ -65,39 +65,39 @@ impl From<u32> for VqIndex {
 pub struct VqSize(u16);
 
 impl From<u16> for VqSize {
-	fn from(val: u16) -> Self {
-		VqSize(val)
-	}
+    fn from(val: u16) -> Self {
+        VqSize(val)
+    }
 }
 
 impl From<u32> for VqSize {
-	fn from(val: u32) -> Self {
-		if val > u16::MAX as u32 {
-			VqSize(u16::MAX)
-		} else {
-			VqSize(val as u16)
-		}
-	}
+    fn from(val: u32) -> Self {
+        if val > u16::MAX as u32 {
+            VqSize(u16::MAX)
+        } else {
+            VqSize(val as u16)
+        }
+    }
 }
 
 impl From<VqSize> for u16 {
-	fn from(val: VqSize) -> Self {
-		val.0
-	}
+    fn from(val: VqSize) -> Self {
+        val.0
+    }
 }
 
 /// Enum that defines which virtqueue shall be created when used via the `Virtq::new()` function.
 pub enum VqType {
-	Split,
+    Split,
 }
 
 /// The General Descriptor struct for both Packed and SplitVq.
 #[repr(C, align(16))]
 struct Descriptor {
-	address: u64,
-	len: u32,
-	buff_id: u16,
-	flags: u16,
+    address: u64,
+    len: u32,
+    buff_id: u16,
+    flags: u16,
 }
 
 /// The Virtq enum unifies access to the two different Virtqueue types
@@ -108,159 +108,159 @@ struct Descriptor {
 /// do need these features should refrain from providing support for both
 /// Virtqueue types and use the structs directly instead.
 pub enum Virtq {
-	Split(SplitVq),
+    Split(SplitVq),
 }
 
 // Private Interface of the Virtq
 impl Virtq {
-	/// Entry function which the TransferTokens can use, when they are dispatching
-	/// themselves via their `Rc<Virtq>` reference
-	///
-	/// The `notif` parameter indicates if the driver wants to have a notification for this specific
-	/// transfer. This is only for performance optimization. As it is NOT ensured, that the device sees the
-	/// updated notification flags before finishing transfers!
-	fn dispatch(&self, tkn: TransferToken, notif: bool) -> Transfer {
-		match self {
-			Virtq::Split(vq) => vq.dispatch(tkn, notif),
-		}
-	}
+    /// Entry function which the TransferTokens can use, when they are dispatching
+    /// themselves via their `Rc<Virtq>` reference
+    ///
+    /// The `notif` parameter indicates if the driver wants to have a notification for this specific
+    /// transfer. This is only for performance optimization. As it is NOT ensured, that the device sees the
+    /// updated notification flags before finishing transfers!
+    fn dispatch(&self, tkn: TransferToken, notif: bool) -> Transfer {
+        match self {
+            Virtq::Split(vq) => vq.dispatch(tkn, notif),
+        }
+    }
 }
 
 // Public interface of Virtq
 impl Virtq {
-	/// Enables interrupts for this virtqueue upon receiving a transfer
-	pub fn enable_notifs(&self) {
-		match self {
-			Virtq::Split(vq) => vq.enable_notifs(),
-		}
-	}
+    /// Enables interrupts for this virtqueue upon receiving a transfer
+    pub fn enable_notifs(&self) {
+        match self {
+            Virtq::Split(vq) => vq.enable_notifs(),
+        }
+    }
 
-	/// Disables interrupts for this virtqueue upon receiving a transfer
-	pub fn disable_notifs(&self) {
-		match self {
-			Virtq::Split(vq) => vq.disable_notifs(),
-		}
-	}
+    /// Disables interrupts for this virtqueue upon receiving a transfer
+    pub fn disable_notifs(&self) {
+        match self {
+            Virtq::Split(vq) => vq.disable_notifs(),
+        }
+    }
 
-	/// Checks if new used descriptors have been written by the device.
-	/// This activates the queue and polls the descriptor ring of the queue.
-	///
-	/// * `TransferTokens` which hold an `await_queue` will be placed into
-	/// these queues.
-	/// * All finished `TransferTokens` will have a state of `TransferState::Finished`.
-	pub fn poll(&self) {
-		match self {
-			Virtq::Split(vq) => vq.poll(),
-		}
-	}
+    /// Checks if new used descriptors have been written by the device.
+    /// This activates the queue and polls the descriptor ring of the queue.
+    ///
+    /// * `TransferTokens` which hold an `await_queue` will be placed into
+    /// these queues.
+    /// * All finished `TransferTokens` will have a state of `TransferState::Finished`.
+    pub fn poll(&self) {
+        match self {
+            Virtq::Split(vq) => vq.poll(),
+        }
+    }
 
-	/// Does maintenance of the queue. This involces currently only, checking if early dropped transfers
-	/// have been finished and removes them and frees their ID's and memory areas.
-	///
-	/// This function is especially useful if ones memory pool is empty and one uses early drop of transfers
-	/// in order to fire-and-forget.
-	pub fn clean_up(&self) {
-		match self {
-			Virtq::Split(vq) => vq.clean_up(),
-		}
-	}
+    /// Does maintenance of the queue. This involces currently only, checking if early dropped transfers
+    /// have been finished and removes them and frees their ID's and memory areas.
+    ///
+    /// This function is especially useful if ones memory pool is empty and one uses early drop of transfers
+    /// in order to fire-and-forget.
+    pub fn clean_up(&self) {
+        match self {
+            Virtq::Split(vq) => vq.clean_up(),
+        }
+    }
 
-	/// Creates a new Virtq of the specified (VqType)[VqType], (VqSize)[VqSize] and the (VqIndex)[VqIndex].
-	/// The index represents the "ID" of the virtqueue.
-	/// Upon creation the virtqueue is "registered" at the device via the `ComCfg` struct.
-	///
-	/// Be aware, that devices define a maximum number of queues and a maximal size they can handle.
-	pub fn new(
-		com_cfg: &mut ComCfg,
-		notif_cfg: &NotifCfg,
-		size: VqSize,
-		vq_type: VqType,
-		index: VqIndex,
-		feats: u64,
-	) -> Self {
-		match vq_type {
-			VqType::Split => match SplitVq::new(com_cfg, notif_cfg, size, index, feats) {
-				Ok(split_vq) => Virtq::Split(split_vq),
-				Err(_vq_error) => panic!("Currently panics if queue fails to be created"),
-			},
-		}
-	}
+    /// Creates a new Virtq of the specified (VqType)[VqType], (VqSize)[VqSize] and the (VqIndex)[VqIndex].
+    /// The index represents the "ID" of the virtqueue.
+    /// Upon creation the virtqueue is "registered" at the device via the `ComCfg` struct.
+    ///
+    /// Be aware, that devices define a maximum number of queues and a maximal size they can handle.
+    pub fn new(
+        com_cfg: &mut ComCfg,
+        notif_cfg: &NotifCfg,
+        size: VqSize,
+        vq_type: VqType,
+        index: VqIndex,
+        feats: u64,
+    ) -> Self {
+        match vq_type {
+            VqType::Split => match SplitVq::new(com_cfg, notif_cfg, size, index, feats) {
+                Ok(split_vq) => Virtq::Split(split_vq),
+                Err(_vq_error) => panic!("Currently panics if queue fails to be created"),
+            },
+        }
+    }
 
-	/// Returns the size of a Virtqueue. This represents the overall size and not the capacity the
-	/// queue currently has for new descriptors.
-	pub fn size(&self) -> VqSize {
-		match self {
-			Virtq::Split(vq) => vq.size(),
-		}
-	}
+    /// Returns the size of a Virtqueue. This represents the overall size and not the capacity the
+    /// queue currently has for new descriptors.
+    pub fn size(&self) -> VqSize {
+        match self {
+            Virtq::Split(vq) => vq.size(),
+        }
+    }
 
-	// Returns the index (ID) of a Virtqueue.
-	pub fn index(&self) -> VqIndex {
-		match self {
-			Virtq::Split(vq) => vq.index(),
-		}
-	}
+    // Returns the index (ID) of a Virtqueue.
+    pub fn index(&self) -> VqIndex {
+        match self {
+            Virtq::Split(vq) => vq.index(),
+        }
+    }
 
-	/// Provides the calley with empty buffers as specified via the `send` and `recv` function parameters, (see [BuffSpec](BuffSpec)), in form of
-	/// a [BufferToken](BufferToken).
-	/// Fails upon multiple circumstances.
-	///
-	/// **Parameters**
-	/// * send: `Option<BuffSpec>`
-	///     * None: No send buffers are provided to the device
-	///     * Some:
-	///         * [BuffSpec](BuffSpec) defines the size of the buffer and how the buffer is
-	///         Buffer will be structured. See documentation on `BuffSpec` for details.
-	/// * recv: `Option<BuffSpec>`
-	///     * None: No buffers, which are writable for the device are provided to the device.
-	///     * Some:
-	///         * [BuffSpec](BuffSpec) defines the size of the buffer and how the buffer is
-	///         Buffer will be structured. See documentation on `BuffSpec` for details.
-	///
-	/// **Reasons for Failure:**
-	/// * Queue does not have enough descriptors left to create the desired amount of descriptors as indicated by the `BuffSpec`.
-	/// * Calley mixed `Indirect (Direct::Indirect())` with `Direct(BuffSpec::Single() or BuffSpec::Multiple())` descriptors.
-	/// * Systerm does not have enough memory resources left.
-	///
-	/// **Details on Usage:**
-	/// * `(Single, _ )` or `(_ , Single)` -> Results in one descriptor in the queue, hence Consumes one element.
-	/// * `(Multiple, _ )` or `(_ , Multiple)` -> Results in a list of descriptors in the queue. Consumes `Multiple.len()` elements.
-	/// * `(Singe, Single)` -> Results in a descriptor list of two chained descriptors, hence Consumes two elements in the queue
-	/// * `(Single, Multiple)` or `(Multiple, Single)` -> Results in a descripotr list of `1 + Multiple.len(). Consumes equally
-	/// many elements in the queue.
-	/// * `(Indirect, _ )` or `(_, Indirect)` -> Resulsts in one descriptor in the queue, hence Consumes one element.
-	/// * `(Indirect, Indirect)` -> Resulsts in one descriptor in the queue, hence Consumes one element.
-	///    * Calley is not allowed to mix `Indirect` and `Direct` descriptors. Furthermore if the calley decides to use `Indirect`
-	/// descriptors, the queue will merge the send and recv structure as follows:
-	/// ```text
-	/// //+++++++++++++++++++++++
-	/// //+        Queue        +
-	/// //+++++++++++++++++++++++
-	/// //+ Indirect descriptor + -> refers to a descriptor list in the form of ->  ++++++++++++++++++++++++++
-	/// //+         ...         +                                                   +     Descriptors for T  +
-	/// //+++++++++++++++++++++++                                                   +     Descriptors for K  +
-	/// //                                                                          ++++++++++++++++++++++++++
-	/// ```
-	/// As a result indirect descriptors result in a single descriptor consumption in the actual queue.
-	pub fn prep_buffer(
-		&self,
-		rc_self: Rc<Virtq>,
-		send: Option<BuffSpec<'_>>,
-		recv: Option<BuffSpec<'_>>,
-	) -> Result<BufferToken, VirtqError> {
-		match self {
-			Virtq::Split(vq) => vq.prep_buffer(rc_self, send, recv),
-		}
-	}
+    /// Provides the calley with empty buffers as specified via the `send` and `recv` function parameters, (see [BuffSpec](BuffSpec)), in form of
+    /// a [BufferToken](BufferToken).
+    /// Fails upon multiple circumstances.
+    ///
+    /// **Parameters**
+    /// * send: `Option<BuffSpec>`
+    ///     * None: No send buffers are provided to the device
+    ///     * Some:
+    ///         * [BuffSpec](BuffSpec) defines the size of the buffer and how the buffer is
+    ///         Buffer will be structured. See documentation on `BuffSpec` for details.
+    /// * recv: `Option<BuffSpec>`
+    ///     * None: No buffers, which are writable for the device are provided to the device.
+    ///     * Some:
+    ///         * [BuffSpec](BuffSpec) defines the size of the buffer and how the buffer is
+    ///         Buffer will be structured. See documentation on `BuffSpec` for details.
+    ///
+    /// **Reasons for Failure:**
+    /// * Queue does not have enough descriptors left to create the desired amount of descriptors as indicated by the `BuffSpec`.
+    /// * Calley mixed `Indirect (Direct::Indirect())` with `Direct(BuffSpec::Single() or BuffSpec::Multiple())` descriptors.
+    /// * Systerm does not have enough memory resources left.
+    ///
+    /// **Details on Usage:**
+    /// * `(Single, _ )` or `(_ , Single)` -> Results in one descriptor in the queue, hence Consumes one element.
+    /// * `(Multiple, _ )` or `(_ , Multiple)` -> Results in a list of descriptors in the queue. Consumes `Multiple.len()` elements.
+    /// * `(Singe, Single)` -> Results in a descriptor list of two chained descriptors, hence Consumes two elements in the queue
+    /// * `(Single, Multiple)` or `(Multiple, Single)` -> Results in a descripotr list of `1 + Multiple.len(). Consumes equally
+    /// many elements in the queue.
+    /// * `(Indirect, _ )` or `(_, Indirect)` -> Resulsts in one descriptor in the queue, hence Consumes one element.
+    /// * `(Indirect, Indirect)` -> Resulsts in one descriptor in the queue, hence Consumes one element.
+    ///    * Calley is not allowed to mix `Indirect` and `Direct` descriptors. Furthermore if the calley decides to use `Indirect`
+    /// descriptors, the queue will merge the send and recv structure as follows:
+    /// ```text
+    /// //+++++++++++++++++++++++
+    /// //+        Queue        +
+    /// //+++++++++++++++++++++++
+    /// //+ Indirect descriptor + -> refers to a descriptor list in the form of ->  ++++++++++++++++++++++++++
+    /// //+         ...         +                                                   +     Descriptors for T  +
+    /// //+++++++++++++++++++++++                                                   +     Descriptors for K  +
+    /// //                                                                          ++++++++++++++++++++++++++
+    /// ```
+    /// As a result indirect descriptors result in a single descriptor consumption in the actual queue.
+    pub fn prep_buffer(
+        &self,
+        rc_self: Rc<Virtq>,
+        send: Option<BuffSpec<'_>>,
+        recv: Option<BuffSpec<'_>>,
+    ) -> Result<BufferToken, VirtqError> {
+        match self {
+            Virtq::Split(vq) => vq.prep_buffer(rc_self, send, recv),
+        }
+    }
 
-	/// Early drop provides a mechanism for the queue to detect, if an ongoing transfer or a transfer not yet polled by the driver
-	/// has been dropped. The queue implementation is responsible for taking care what should happen to the respective TransferToken
-	/// and BufferToken.
-	fn early_drop(&self, transfer_tk: Pinned<TransferToken>) {
-		match self {
-			Virtq::Split(vq) => vq.early_drop(transfer_tk),
-		}
-	}
+    /// Early drop provides a mechanism for the queue to detect, if an ongoing transfer or a transfer not yet polled by the driver
+    /// has been dropped. The queue implementation is responsible for taking care what should happen to the respective TransferToken
+    /// and BufferToken.
+    fn early_drop(&self, transfer_tk: Pinned<TransferToken>) {
+        match self {
+            Virtq::Split(vq) => vq.early_drop(transfer_tk),
+        }
+    }
 }
 
 /// The trait needs to be implemented on structures which are to be used via the `prep_transfer()` function of virtqueues and for
@@ -276,35 +276,35 @@ impl Virtq {
 /// the representation the device expects. It is advised to only use `#[repr(C)]` and to check the output
 /// of `as_slice_u8` and `as_slice_u8_mut`.
 pub trait AsSliceU8 {
-	/// Returns a slice of the given structure.
-	///
-	/// ** WARN:**
-	/// * The slice must be little endian coded in order to be understood by the device
-	/// * The slice must serialize the actual structure the device expects, as the queue will use
-	/// the addresses of the slice in order to refer to the structure.
-	fn as_slice_u8(&self) -> &[u8] {
-		unsafe {
-			core::slice::from_raw_parts(
-				(self as *const Self) as *const u8,
-				core::mem::size_of_val(self),
-			)
-		}
-	}
+    /// Returns a slice of the given structure.
+    ///
+    /// ** WARN:**
+    /// * The slice must be little endian coded in order to be understood by the device
+    /// * The slice must serialize the actual structure the device expects, as the queue will use
+    /// the addresses of the slice in order to refer to the structure.
+    fn as_slice_u8(&self) -> &[u8] {
+        unsafe {
+            core::slice::from_raw_parts(
+                (self as *const Self) as *const u8,
+                core::mem::size_of_val(self),
+            )
+        }
+    }
 
-	/// Returns a mutable slice of the given structure.
-	///
-	/// ** WARN:**
-	/// * The slice must be little endian coded in order to be understood by the device
-	/// * The slice must serialize the actual structure the device expects, as the queue will use
-	/// the addresses of the slice in order to refer to the structure.
-	fn as_slice_u8_mut(&mut self) -> &mut [u8] {
-		unsafe {
-			core::slice::from_raw_parts_mut(
-				(self as *const Self) as *mut u8,
-				core::mem::size_of_val(self),
-			)
-		}
-	}
+    /// Returns a mutable slice of the given structure.
+    ///
+    /// ** WARN:**
+    /// * The slice must be little endian coded in order to be understood by the device
+    /// * The slice must serialize the actual structure the device expects, as the queue will use
+    /// the addresses of the slice in order to refer to the structure.
+    fn as_slice_u8_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            core::slice::from_raw_parts_mut(
+                (self as *const Self) as *mut u8,
+                core::mem::size_of_val(self),
+            )
+        }
+    }
 }
 
 /// The [Transfer](Transfer) will be received when a [TransferToken](TransferToken) is dispatched via `TransferToken.dispatch()` or
@@ -331,355 +331,355 @@ pub trait AsSliceU8 {
 /// A warning here: The respective queue implementation is taking care of handling this case and there are no guarantees that the queue
 /// won't be unusable afterwards.
 pub struct Transfer {
-	/// Needs to be Option<Pinned<TransferToken>> in order to prevent deallocation via None
-	// See custom drop function for clarity
-	transfer_tkn: Option<Pinned<TransferToken>>,
+    /// Needs to be Option<Pinned<TransferToken>> in order to prevent deallocation via None
+    // See custom drop function for clarity
+    transfer_tkn: Option<Pinned<TransferToken>>,
 }
 
 impl Drop for Transfer {
-	/// When an unclosed transfer is dropped. The [Pinned](Pinned)<[TransferToken](struct.TransferToken.html)> is returned to the respective
-	/// virtqueue, who is responsible of handling these situations.
-	fn drop(&mut self) {
-		if let Some(tkn) = self.transfer_tkn.take() {
-			// Unwrapping is okay here, as TransferToken MUST hold a BufferToken
-			let vq_ref = Rc::clone(&tkn.buff_tkn.as_ref().unwrap().vq);
-			vq_ref.early_drop(tkn)
-		}
-	}
+    /// When an unclosed transfer is dropped. The [Pinned](Pinned)<[TransferToken](struct.TransferToken.html)> is returned to the respective
+    /// virtqueue, who is responsible of handling these situations.
+    fn drop(&mut self) {
+        if let Some(tkn) = self.transfer_tkn.take() {
+            // Unwrapping is okay here, as TransferToken MUST hold a BufferToken
+            let vq_ref = Rc::clone(&tkn.buff_tkn.as_ref().unwrap().vq);
+            vq_ref.early_drop(tkn)
+        }
+    }
 }
 
 // Public Interface of Transfer
 impl Transfer {
-	/// Used to poll the current state of the transfer.
-	/// * true = Transfer is finished and can be closed, reused or return data
-	/// * false = Transfer is ongoing
-	pub fn poll(&self) -> bool {
-		// Unwrapping is okay here, as Transfers must hold a TransferToken
-		match self.transfer_tkn.as_ref().unwrap().state {
+    /// Used to poll the current state of the transfer.
+    /// * true = Transfer is finished and can be closed, reused or return data
+    /// * false = Transfer is ongoing
+    pub fn poll(&self) -> bool {
+        // Unwrapping is okay here, as Transfers must hold a TransferToken
+        match self.transfer_tkn.as_ref().unwrap().state {
             TransferState::Finished => true,
             TransferState::Ready => unreachable!("Transfers owned by other than queue should have Tokens, of Finished or Processing State!"),
             TransferState::Processing => false,
         }
-	}
+    }
 
-	/// Returns a vector of immutable slices to the underlying memory areas.
-	///
-	/// The vectors contain the slices in creation order.
-	/// E.g.:
-	/// * Driver creates buffer as
-	///   * send buffer: 50 bytes, 60 bytes
-	///   * receive buffer: 10 bytes
-	/// * The return tuple will be:
-	///  * `(Some(vec[50, 60]), Some(vec[10]))`
-	///  * Where 50 refers to a slice of u8 of length 50.
-	/// The other numbers follow the same principle.
-	pub fn as_slices(&self) -> Result<(Option<Vec<&[u8]>>, Option<Vec<&[u8]>>), VirtqError> {
-		match &self.transfer_tkn.as_ref().unwrap().state {
-			TransferState::Finished => {
-				// Unwrapping is okay here, as TransferToken must hold a BufferToken
-				let send_data = match &self
-					.transfer_tkn
-					.as_ref()
-					.unwrap()
-					.buff_tkn
-					.as_ref()
-					.unwrap()
-					.send_buff
-				{
-					Some(buff) => {
-						let mut arr = Vec::with_capacity(buff.as_slice().len());
+    /// Returns a vector of immutable slices to the underlying memory areas.
+    ///
+    /// The vectors contain the slices in creation order.
+    /// E.g.:
+    /// * Driver creates buffer as
+    ///   * send buffer: 50 bytes, 60 bytes
+    ///   * receive buffer: 10 bytes
+    /// * The return tuple will be:
+    ///  * `(Some(vec[50, 60]), Some(vec[10]))`
+    ///  * Where 50 refers to a slice of u8 of length 50.
+    /// The other numbers follow the same principle.
+    pub fn as_slices(&self) -> Result<(Option<Vec<&[u8]>>, Option<Vec<&[u8]>>), VirtqError> {
+        match &self.transfer_tkn.as_ref().unwrap().state {
+            TransferState::Finished => {
+                // Unwrapping is okay here, as TransferToken must hold a BufferToken
+                let send_data = match &self
+                    .transfer_tkn
+                    .as_ref()
+                    .unwrap()
+                    .buff_tkn
+                    .as_ref()
+                    .unwrap()
+                    .send_buff
+                {
+                    Some(buff) => {
+                        let mut arr = Vec::with_capacity(buff.as_slice().len());
 
-						for desc in buff.as_slice() {
-							arr.push(desc.deref())
-						}
+                        for desc in buff.as_slice() {
+                            arr.push(desc.deref())
+                        }
 
-						Some(arr)
-					}
-					None => None,
-				};
+                        Some(arr)
+                    }
+                    None => None,
+                };
 
-				let recv_data = match &self
-					.transfer_tkn
-					.as_ref()
-					.unwrap()
-					.buff_tkn
-					.as_ref()
-					.unwrap()
-					.recv_buff
-				{
-					Some(buff) => {
-						let mut arr = Vec::with_capacity(buff.as_slice().len());
+                let recv_data = match &self
+                    .transfer_tkn
+                    .as_ref()
+                    .unwrap()
+                    .buff_tkn
+                    .as_ref()
+                    .unwrap()
+                    .recv_buff
+                {
+                    Some(buff) => {
+                        let mut arr = Vec::with_capacity(buff.as_slice().len());
 
-						for desc in buff.as_slice() {
-							arr.push(desc.deref())
-						}
+                        for desc in buff.as_slice() {
+                            arr.push(desc.deref())
+                        }
 
-						Some(arr)
-					}
-					None => None,
-				};
+                        Some(arr)
+                    }
+                    None => None,
+                };
 
-				Ok((send_data, recv_data))
-			}
-			TransferState::Processing => Err(VirtqError::OngoingTransfer(None)),
-			TransferState::Ready => unreachable!(
-				"Transfers not owned by a queue Must have state Finished or Processing!"
-			),
-		}
-	}
+                Ok((send_data, recv_data))
+            }
+            TransferState::Processing => Err(VirtqError::OngoingTransfer(None)),
+            TransferState::Ready => unreachable!(
+                "Transfers not owned by a queue Must have state Finished or Processing!"
+            ),
+        }
+    }
 
-	/// Returns a vector of mutable slices to the underlying memory areas.
-	///
-	/// The vectors contain the slices in creation order.
-	/// E.g.:
-	/// * Driver creates buffer as
-	///   * send buffer: 50 bytes, 60 bytes
-	///   * receive buffer: 10 bytes
-	/// * The return tuple will be:
-	///  * `(Some(vec[50, 60]), Some(vec[10]))`
-	///  * Where 50 refers to a slice of u8 of length 50.
-	/// The other numbers follow the same principle.
-	pub fn as_slices_mut(
-		&mut self,
-	) -> Result<(Option<Vec<&mut [u8]>>, Option<Vec<&mut [u8]>>), VirtqError> {
-		match &self.transfer_tkn.as_ref().unwrap().state {
-			TransferState::Finished => {
-				let (send_buff, recv_buff) = {
-					let BufferToken {
-						send_buff,
-						recv_buff,
-						..
-					} = self
-						.transfer_tkn
-						.as_mut()
-						.unwrap()
-						.buff_tkn
-						.as_mut()
-						.unwrap();
+    /// Returns a vector of mutable slices to the underlying memory areas.
+    ///
+    /// The vectors contain the slices in creation order.
+    /// E.g.:
+    /// * Driver creates buffer as
+    ///   * send buffer: 50 bytes, 60 bytes
+    ///   * receive buffer: 10 bytes
+    /// * The return tuple will be:
+    ///  * `(Some(vec[50, 60]), Some(vec[10]))`
+    ///  * Where 50 refers to a slice of u8 of length 50.
+    /// The other numbers follow the same principle.
+    pub fn as_slices_mut(
+        &mut self,
+    ) -> Result<(Option<Vec<&mut [u8]>>, Option<Vec<&mut [u8]>>), VirtqError> {
+        match &self.transfer_tkn.as_ref().unwrap().state {
+            TransferState::Finished => {
+                let (send_buff, recv_buff) = {
+                    let BufferToken {
+                        send_buff,
+                        recv_buff,
+                        ..
+                    } = self
+                        .transfer_tkn
+                        .as_mut()
+                        .unwrap()
+                        .buff_tkn
+                        .as_mut()
+                        .unwrap();
 
-					(send_buff.as_mut(), recv_buff.as_mut())
-				};
+                    (send_buff.as_mut(), recv_buff.as_mut())
+                };
 
-				// Unwrapping is okay here, as TransferToken must hold a BufferToken
-				let send_data = match send_buff {
-					Some(buff) => {
-						let mut arr = Vec::with_capacity(buff.as_slice().len());
+                // Unwrapping is okay here, as TransferToken must hold a BufferToken
+                let send_data = match send_buff {
+                    Some(buff) => {
+                        let mut arr = Vec::with_capacity(buff.as_slice().len());
 
-						for desc in buff.as_mut_slice() {
-							arr.push(desc.deref_mut())
-						}
+                        for desc in buff.as_mut_slice() {
+                            arr.push(desc.deref_mut())
+                        }
 
-						Some(arr)
-					}
-					None => None,
-				};
+                        Some(arr)
+                    }
+                    None => None,
+                };
 
-				let recv_data = match recv_buff {
-					Some(buff) => {
-						let mut arr = Vec::with_capacity(buff.as_slice().len());
+                let recv_data = match recv_buff {
+                    Some(buff) => {
+                        let mut arr = Vec::with_capacity(buff.as_slice().len());
 
-						for desc in buff.as_mut_slice() {
-							arr.push(desc.deref_mut())
-						}
+                        for desc in buff.as_mut_slice() {
+                            arr.push(desc.deref_mut())
+                        }
 
-						Some(arr)
-					}
-					None => None,
-				};
+                        Some(arr)
+                    }
+                    None => None,
+                };
 
-				Ok((send_data, recv_data))
-			}
-			TransferState::Processing => Err(VirtqError::OngoingTransfer(None)),
-			TransferState::Ready => unreachable!(
-				"Transfers not owned by a queue Must have state Finished or Processing!"
-			),
-		}
-	}
+                Ok((send_data, recv_data))
+            }
+            TransferState::Processing => Err(VirtqError::OngoingTransfer(None)),
+            TransferState::Ready => unreachable!(
+                "Transfers not owned by a queue Must have state Finished or Processing!"
+            ),
+        }
+    }
 
-	/// Closes an transfer. If the transfer was ongoing the respective transfer token will be returned to the virtqueue.
-	/// If it was finished the resources will be cleaned up.
-	pub fn close(mut self) {
-		match self.transfer_tkn.as_ref().unwrap().state {
-			TransferState::Processing => {
-				// Unwrapping is okay here, as TransferToken must hold a BufferToken
-				let vq = Rc::clone(&self.transfer_tkn.as_ref().unwrap().get_vq());
-				let transfer_tkn = self.transfer_tkn.take().unwrap();
-				vq.early_drop(transfer_tkn);
-			}
-			TransferState::Ready => {
-				unreachable!("Transfers MUST have tokens of states Processing or Finished.")
-			}
-			TransferState::Finished => (), // Do nothing and free everything.
-		}
-	}
+    /// Closes an transfer. If the transfer was ongoing the respective transfer token will be returned to the virtqueue.
+    /// If it was finished the resources will be cleaned up.
+    pub fn close(mut self) {
+        match self.transfer_tkn.as_ref().unwrap().state {
+            TransferState::Processing => {
+                // Unwrapping is okay here, as TransferToken must hold a BufferToken
+                let vq = Rc::clone(&self.transfer_tkn.as_ref().unwrap().get_vq());
+                let transfer_tkn = self.transfer_tkn.take().unwrap();
+                vq.early_drop(transfer_tkn);
+            }
+            TransferState::Ready => {
+                unreachable!("Transfers MUST have tokens of states Processing or Finished.")
+            }
+            TransferState::Finished => (), // Do nothing and free everything.
+        }
+    }
 
-	/// If the transfer was finished returns the BufferToken inside the transfer else returns an error.
-	///
-	/// **WARN:**
-	///
-	/// This function does restore the actual size of the Buffer at creation but does NOT reset the
-	/// written memory areas to zero! If this is needed please use `Transfer.reuse_reset`
-	pub fn reuse(mut self) -> Result<BufferToken, VirtqError> {
-		// Unwrapping is okay here, as TransferToken must hold a BufferToken
-		match self.transfer_tkn.as_ref().unwrap().state {
-			TransferState::Finished => {
-				if self
-					.transfer_tkn
-					.as_ref()
-					.unwrap()
-					.buff_tkn
-					.as_ref()
-					.unwrap()
-					.reusable
-				{
-					let tkn = self
-						.transfer_tkn
-						.take()
-						.unwrap()
-						.unpin()
-						.buff_tkn
-						.take()
-						.unwrap();
+    /// If the transfer was finished returns the BufferToken inside the transfer else returns an error.
+    ///
+    /// **WARN:**
+    ///
+    /// This function does restore the actual size of the Buffer at creation but does NOT reset the
+    /// written memory areas to zero! If this is needed please use `Transfer.reuse_reset`
+    pub fn reuse(mut self) -> Result<BufferToken, VirtqError> {
+        // Unwrapping is okay here, as TransferToken must hold a BufferToken
+        match self.transfer_tkn.as_ref().unwrap().state {
+            TransferState::Finished => {
+                if self
+                    .transfer_tkn
+                    .as_ref()
+                    .unwrap()
+                    .buff_tkn
+                    .as_ref()
+                    .unwrap()
+                    .reusable
+                {
+                    let tkn = self
+                        .transfer_tkn
+                        .take()
+                        .unwrap()
+                        .unpin()
+                        .buff_tkn
+                        .take()
+                        .unwrap();
 
-					Ok(tkn.reset())
-				} else {
-					Err(VirtqError::NoReuseBuffer)
-				}
-			}
-			TransferState::Processing => Err(VirtqError::OngoingTransfer(Some(self))),
-			TransferState::Ready => unreachable!(
-				"Transfers coming from outside the queue must be Processing or Finished"
-			),
-		}
-	}
+                    Ok(tkn.reset())
+                } else {
+                    Err(VirtqError::NoReuseBuffer)
+                }
+            }
+            TransferState::Processing => Err(VirtqError::OngoingTransfer(Some(self))),
+            TransferState::Ready => unreachable!(
+                "Transfers coming from outside the queue must be Processing or Finished"
+            ),
+        }
+    }
 
-	/// If the transfer was finished returns the BufferToken inside the transfer else returns an error.
-	///
-	///
-	/// This function does restore the actual size of the Buffer at creation and does reset the
-	/// written memory areas to zero! Depending on the size of the Buffer this might take some time and
-	/// one could prefer to allocate a new token via prep_buffer() of the wanted size.
-	pub fn reuse_reset(mut self) -> Result<BufferToken, VirtqError> {
-		// Unwrapping is okay here, as TransferToken must hold a BufferToken
-		match self.transfer_tkn.as_ref().unwrap().state {
-			TransferState::Finished => {
-				if self
-					.transfer_tkn
-					.as_ref()
-					.unwrap()
-					.buff_tkn
-					.as_ref()
-					.unwrap()
-					.reusable
-				{
-					let tkn = self
-						.transfer_tkn
-						.take()
-						.unwrap()
-						.unpin()
-						.buff_tkn
-						.take()
-						.unwrap();
+    /// If the transfer was finished returns the BufferToken inside the transfer else returns an error.
+    ///
+    ///
+    /// This function does restore the actual size of the Buffer at creation and does reset the
+    /// written memory areas to zero! Depending on the size of the Buffer this might take some time and
+    /// one could prefer to allocate a new token via prep_buffer() of the wanted size.
+    pub fn reuse_reset(mut self) -> Result<BufferToken, VirtqError> {
+        // Unwrapping is okay here, as TransferToken must hold a BufferToken
+        match self.transfer_tkn.as_ref().unwrap().state {
+            TransferState::Finished => {
+                if self
+                    .transfer_tkn
+                    .as_ref()
+                    .unwrap()
+                    .buff_tkn
+                    .as_ref()
+                    .unwrap()
+                    .reusable
+                {
+                    let tkn = self
+                        .transfer_tkn
+                        .take()
+                        .unwrap()
+                        .unpin()
+                        .buff_tkn
+                        .take()
+                        .unwrap();
 
-					Ok(tkn.reset_purge())
-				} else {
-					Err(VirtqError::NoReuseBuffer)
-				}
-			}
-			TransferState::Processing => Err(VirtqError::OngoingTransfer(Some(self))),
-			TransferState::Ready => unreachable!(
-				"Transfers coming from outside the queue must be Processing or Finished"
-			),
-		}
-	}
+                    Ok(tkn.reset_purge())
+                } else {
+                    Err(VirtqError::NoReuseBuffer)
+                }
+            }
+            TransferState::Processing => Err(VirtqError::OngoingTransfer(Some(self))),
+            TransferState::Ready => unreachable!(
+                "Transfers coming from outside the queue must be Processing or Finished"
+            ),
+        }
+    }
 }
 
 /// Enum indicates the current state of a transfer.
 #[derive(PartialEq, Copy, Clone, Debug)]
 enum TransferState {
-	/// Queue finished transfer
-	Finished,
-	/// Transfer is ongoing and still processed by queue
-	Processing,
-	/// Transfer is ready to be sended
-	Ready,
+    /// Queue finished transfer
+    Finished,
+    /// Transfer is ongoing and still processed by queue
+    Processing,
+    /// Transfer is ready to be sended
+    Ready,
 }
 
 /// The struct represents buffers which are ready to be send via the
 /// virtqueue. Buffers can no longer be written or retrieved.
 pub struct TransferToken {
-	state: TransferState,
-	/// Must be some in order to prevent drop
-	/// upon reuse.
-	buff_tkn: Option<BufferToken>,
-	/// Structure which allows to await Transfers
-	/// If Some, finished TransferTokens will be placed here
-	/// as finished `Transfers`. If None, only the state
-	/// of the Token will be changed.
-	await_queue: Option<Rc<RefCell<VecDeque<Transfer>>>>,
+    state: TransferState,
+    /// Must be some in order to prevent drop
+    /// upon reuse.
+    buff_tkn: Option<BufferToken>,
+    /// Structure which allows to await Transfers
+    /// If Some, finished TransferTokens will be placed here
+    /// as finished `Transfers`. If None, only the state
+    /// of the Token will be changed.
+    await_queue: Option<Rc<RefCell<VecDeque<Transfer>>>>,
 }
 
 /// Public Interface for TransferToken
 impl TransferToken {
-	/// Returns a reference to the holding virtqueue
-	pub fn get_vq(&self) -> Rc<Virtq> {
-		// Unwrapping is okay here, as TransferToken must hold a BufferToken
-		Rc::clone(&self.buff_tkn.as_ref().unwrap().vq)
-	}
+    /// Returns a reference to the holding virtqueue
+    pub fn get_vq(&self) -> Rc<Virtq> {
+        // Unwrapping is okay here, as TransferToken must hold a BufferToken
+        Rc::clone(&self.buff_tkn.as_ref().unwrap().vq)
+    }
 
-	/// Dispatches a TransferToken and awaits it at the specified queue.
-	///
-	/// The `notif` parameter indicates if the driver wants to have a notification for this specific
-	/// transfer. This is only for performance optimization. As it is NOT ensured, that the device sees the
-	/// updated notification flags before finishing transfers!
-	pub fn dispatch_await(mut self, await_queue: Rc<RefCell<VecDeque<Transfer>>>, notif: bool) {
-		self.await_queue = Some(Rc::clone(&await_queue));
+    /// Dispatches a TransferToken and awaits it at the specified queue.
+    ///
+    /// The `notif` parameter indicates if the driver wants to have a notification for this specific
+    /// transfer. This is only for performance optimization. As it is NOT ensured, that the device sees the
+    /// updated notification flags before finishing transfers!
+    pub fn dispatch_await(mut self, await_queue: Rc<RefCell<VecDeque<Transfer>>>, notif: bool) {
+        self.await_queue = Some(Rc::clone(&await_queue));
 
-		// Prevent TransferToken from being dropped
-		// I.e. do NOT run the custom constructor which will
-		// deallocate memory.
-		self.get_vq()
-			.dispatch(self, notif)
-			.transfer_tkn
-			.take()
-			.unwrap()
-			.into_raw();
-	}
+        // Prevent TransferToken from being dropped
+        // I.e. do NOT run the custom constructor which will
+        // deallocate memory.
+        self.get_vq()
+            .dispatch(self, notif)
+            .transfer_tkn
+            .take()
+            .unwrap()
+            .into_raw();
+    }
 
-	/// Dispatches the provided TransferToken to the respective queue and returns a transfer.
-	///
-	/// The `notif` parameter indicates if the driver wants to have a notification for this specific
-	/// transfer. This is only for performance optimization. As it is NOT ensured, that the device sees the
-	/// updated notification flags before finishing transfers!
-	pub fn dispatch(self, notif: bool) -> Transfer {
-		self.get_vq().dispatch(self, notif)
-	}
+    /// Dispatches the provided TransferToken to the respective queue and returns a transfer.
+    ///
+    /// The `notif` parameter indicates if the driver wants to have a notification for this specific
+    /// transfer. This is only for performance optimization. As it is NOT ensured, that the device sees the
+    /// updated notification flags before finishing transfers!
+    pub fn dispatch(self, notif: bool) -> Transfer {
+        self.get_vq().dispatch(self, notif)
+    }
 
-	/// Dispatches the provided TransferToken to the respectuve queue and does
-	/// return when, the queue finished the transfer.
-	///
-	/// The resultaing [TransferState](TransferState) in this case is of course
-	/// finished and the returned [Transfer](Transfer) can be reused, copied from
-	/// or return the underlying buffers.
-	///
-	/// **INFO:**
-	/// Currently this function is constantly polling the queue while keeping the notifications disabled.
-	/// Upon finish notifications are enabled again.
-	pub fn dispatch_blocking(self) -> Result<Transfer, VirtqError> {
-		let vq = self.get_vq();
-		let transfer = self.get_vq().dispatch(self, false);
+    /// Dispatches the provided TransferToken to the respectuve queue and does
+    /// return when, the queue finished the transfer.
+    ///
+    /// The resultaing [TransferState](TransferState) in this case is of course
+    /// finished and the returned [Transfer](Transfer) can be reused, copied from
+    /// or return the underlying buffers.
+    ///
+    /// **INFO:**
+    /// Currently this function is constantly polling the queue while keeping the notifications disabled.
+    /// Upon finish notifications are enabled again.
+    pub fn dispatch_blocking(self) -> Result<Transfer, VirtqError> {
+        let vq = self.get_vq();
+        let transfer = self.get_vq().dispatch(self, false);
 
-		vq.disable_notifs();
+        vq.disable_notifs();
 
-		while transfer.transfer_tkn.as_ref().unwrap().state != TransferState::Finished {
-			// Keep Spinning until the state changes to Finished
-			vq.poll()
-		}
+        while transfer.transfer_tkn.as_ref().unwrap().state != TransferState::Finished {
+            // Keep Spinning until the state changes to Finished
+            vq.poll()
+        }
 
-		vq.enable_notifs();
+        vq.enable_notifs();
 
-		Ok(transfer)
-	}
+        Ok(transfer)
+    }
 }
 
 /// The struct represents buffers which are ready to be written or to be send.
@@ -709,831 +709,863 @@ impl TransferToken {
 /// respective virtqueue.
 /// The maximum number of descriptors per buffer is bounded by the size of the virtqueue.
 pub struct BufferToken {
-	send_buff: Option<Buffer>,
-	//send_desc_lst: Option<Vec<usize>>,
-	recv_buff: Option<Buffer>,
-	//recv_desc_lst: Option<Vec<usize>>,
-	vq: Rc<Virtq>,
-	/// Indicates whether the buff is returnable
-	ret_send: bool,
-	ret_recv: bool,
-	/// Indicates if the token is allowed
-	/// to be reused.
-	reusable: bool,
+    send_buff: Option<Buffer>,
+    //send_desc_lst: Option<Vec<usize>>,
+    recv_buff: Option<Buffer>,
+    //recv_desc_lst: Option<Vec<usize>>,
+    vq: Rc<Virtq>,
+    /// Indicates whether the buff is returnable
+    ret_send: bool,
+    ret_recv: bool,
+    /// Indicates if the token is allowed
+    /// to be reused.
+    reusable: bool,
 }
 
 // Private interface of BufferToken
 impl BufferToken {
-	/// Returns the overall number of descriptors.
-	fn num_descr(&self) -> usize {
-		let mut len = 0usize;
+    /// Returns the overall number of descriptors.
+    fn num_descr(&self) -> usize {
+        let mut len = 0usize;
 
-		if let Some(buffer) = &self.recv_buff {
-			len += buffer.num_descr();
-		}
+        if let Some(buffer) = &self.recv_buff {
+            len += buffer.num_descr();
+        }
 
-		if let Some(buffer) = &self.send_buff {
-			len += buffer.num_descr();
-		}
-		len
-	}
+        if let Some(buffer) = &self.send_buff {
+            len += buffer.num_descr();
+        }
+        len
+    }
 
-	/// Returns the number of descritprors that will be placed in the queue.
-	/// This number can differ from the `BufferToken.num_descr()` function value
-	/// as indirect buffers only consume one descriptor in the queue, but can have
-	/// more descriptors that are accessible via the descriptor in the queue.
-	fn num_consuming_descr(&self) -> usize {
-		let mut len = 0usize;
+    /// Returns the number of descritprors that will be placed in the queue.
+    /// This number can differ from the `BufferToken.num_descr()` function value
+    /// as indirect buffers only consume one descriptor in the queue, but can have
+    /// more descriptors that are accessible via the descriptor in the queue.
+    fn num_consuming_descr(&self) -> usize {
+        let mut len = 0usize;
 
-		if let Some(buffer) = &self.send_buff {
-			match buffer.get_ctrl_desc() {
-				Some(_) => len += 1,
-				None => len += buffer.num_descr(),
-			}
-		}
+        if let Some(buffer) = &self.send_buff {
+            match buffer.get_ctrl_desc() {
+                Some(_) => len += 1,
+                None => len += buffer.num_descr(),
+            }
+        }
 
-		if let Some(buffer) = &self.recv_buff {
-			match buffer.get_ctrl_desc() {
-				Some(_) => len += 1,
-				None => len += buffer.num_descr(),
-			}
-		}
-		len
-	}
+        if let Some(buffer) = &self.recv_buff {
+            match buffer.get_ctrl_desc() {
+                Some(_) => len += 1,
+                None => len += buffer.num_descr(),
+            }
+        }
+        len
+    }
 
-	/// Resets all properties from the previous transfer.
-	///
-	/// Includes:
-	/// * Resetting the write status inside the MemDescr. -> Allowing to rewrite the buffers
-	/// * Resetting the MemDescr length at initialization. This length might be reduced upon writes
-	/// of the driver or the device.
-	/// * Erazing all memory areas with zeros
-	fn reset_purge(mut self) -> Self {
-		let mut ctrl_desc_cnt = 0usize;
+    /// Resets all properties from the previous transfer.
+    ///
+    /// Includes:
+    /// * Resetting the write status inside the MemDescr. -> Allowing to rewrite the buffers
+    /// * Resetting the MemDescr length at initialization. This length might be reduced upon writes
+    /// of the driver or the device.
+    /// * Erazing all memory areas with zeros
+    fn reset_purge(mut self) -> Self {
+        let mut ctrl_desc_cnt = 0usize;
 
-		if let Some(buff) = self.send_buff.as_mut() {
-			buff.reset_write();
-			let mut init_buff_len = 0usize;
+        if let Some(buff) = self.send_buff.as_mut() {
+            buff.reset_write();
+            let mut init_buff_len = 0usize;
 
-			match buff.get_ctrl_desc_mut() {
-				Some(ctrl_desc) => {
-					let ind_desc_lst = unsafe {
-						let size = core::mem::size_of::<Descriptor>();
-						core::slice::from_raw_parts_mut(
-							ctrl_desc.ptr as *mut Descriptor,
-							ctrl_desc.len / size,
-						)
-					};
+            match buff.get_ctrl_desc_mut() {
+                Some(ctrl_desc) => {
+                    let ind_desc_lst = unsafe {
+                        let size = core::mem::size_of::<Descriptor>();
+                        core::slice::from_raw_parts_mut(
+                            ctrl_desc.ptr as *mut Descriptor,
+                            ctrl_desc.len / size,
+                        )
+                    };
 
-					for desc in buff.as_mut_slice() {
-						desc.len = desc._init_len;
-						// This is fine as the length of the descriptors is restricted
-						// by u32::MAX (see also Bytes::new())
-						ind_desc_lst[ctrl_desc_cnt].len = desc._init_len as u32;
-						ctrl_desc_cnt += 1;
-						init_buff_len += desc._init_len;
+                    for desc in buff.as_mut_slice() {
+                        desc.len = desc._init_len;
+                        // This is fine as the length of the descriptors is restricted
+                        // by u32::MAX (see also Bytes::new())
+                        ind_desc_lst[ctrl_desc_cnt].len = desc._init_len as u32;
+                        ctrl_desc_cnt += 1;
+                        init_buff_len += desc._init_len;
 
-						// Resetting written memory
-						for byte in desc.deref_mut() {
-							*byte = 0;
-						}
-					}
-				}
-				None => {
-					for desc in buff.as_mut_slice() {
-						desc.len = desc._init_len;
-						init_buff_len += desc._init_len;
+                        // Resetting written memory
+                        for byte in desc.deref_mut() {
+                            *byte = 0;
+                        }
+                    }
+                }
+                None => {
+                    for desc in buff.as_mut_slice() {
+                        desc.len = desc._init_len;
+                        init_buff_len += desc._init_len;
 
-						// Resetting written memory
-						for byte in desc.deref_mut() {
-							*byte = 0;
-						}
-					}
-				}
-			}
+                        // Resetting written memory
+                        for byte in desc.deref_mut() {
+                            *byte = 0;
+                        }
+                    }
+                }
+            }
 
-			buff.reset_len(init_buff_len);
-		}
+            buff.reset_len(init_buff_len);
+        }
 
-		if let Some(buff) = self.recv_buff.as_mut() {
-			buff.reset_write();
-			let mut init_buff_len = 0usize;
+        if let Some(buff) = self.recv_buff.as_mut() {
+            buff.reset_write();
+            let mut init_buff_len = 0usize;
 
-			match buff.get_ctrl_desc_mut() {
-				Some(ctrl_desc) => {
-					let ind_desc_lst = unsafe {
-						let size = core::mem::size_of::<Descriptor>();
-						core::slice::from_raw_parts_mut(
-							ctrl_desc.ptr as *mut Descriptor,
-							ctrl_desc.len / size,
-						)
-					};
+            match buff.get_ctrl_desc_mut() {
+                Some(ctrl_desc) => {
+                    let ind_desc_lst = unsafe {
+                        let size = core::mem::size_of::<Descriptor>();
+                        core::slice::from_raw_parts_mut(
+                            ctrl_desc.ptr as *mut Descriptor,
+                            ctrl_desc.len / size,
+                        )
+                    };
 
-					for desc in buff.as_mut_slice() {
-						desc.len = desc._init_len;
-						// This is fine as the length of the descriptors is restricted
-						// by u32::MAX (see also Bytes::new())
-						ind_desc_lst[ctrl_desc_cnt].len = desc._init_len as u32;
-						ctrl_desc_cnt += 1;
-						init_buff_len += desc._init_len;
+                    for desc in buff.as_mut_slice() {
+                        desc.len = desc._init_len;
+                        // This is fine as the length of the descriptors is restricted
+                        // by u32::MAX (see also Bytes::new())
+                        ind_desc_lst[ctrl_desc_cnt].len = desc._init_len as u32;
+                        ctrl_desc_cnt += 1;
+                        init_buff_len += desc._init_len;
 
-						// Resetting written memory
-						for byte in desc.deref_mut() {
-							*byte = 0;
-						}
-					}
-				}
-				None => {
-					for desc in buff.as_mut_slice() {
-						desc.len = desc._init_len;
-						init_buff_len += desc._init_len;
+                        // Resetting written memory
+                        for byte in desc.deref_mut() {
+                            *byte = 0;
+                        }
+                    }
+                }
+                None => {
+                    for desc in buff.as_mut_slice() {
+                        desc.len = desc._init_len;
+                        init_buff_len += desc._init_len;
 
-						// Resetting written memory
-						for byte in desc.deref_mut() {
-							*byte = 0;
-						}
-					}
-				}
-			}
+                        // Resetting written memory
+                        for byte in desc.deref_mut() {
+                            *byte = 0;
+                        }
+                    }
+                }
+            }
 
-			buff.reset_len(init_buff_len);
-		}
-		self
-	}
+            buff.reset_len(init_buff_len);
+        }
+        self
+    }
 
-	/// Resets all properties from the previous transfer.
-	///
-	/// Includes:
-	/// * Resetting the write status inside the MemDescr. -> Allowing to rewrite the buffers
-	/// * Resetting the MemDescr length at initialization. This length might be reduced upon writes
-	/// of the driver or the device.
-	fn reset(mut self) -> Self {
-		let mut ctrl_desc_cnt = 0usize;
+    /// Resets all properties from the previous transfer.
+    ///
+    /// Includes:
+    /// * Resetting the write status inside the MemDescr. -> Allowing to rewrite the buffers
+    /// * Resetting the MemDescr length at initialization. This length might be reduced upon writes
+    /// of the driver or the device.
+    fn reset(mut self) -> Self {
+        let mut ctrl_desc_cnt = 0usize;
 
-		if let Some(buff) = self.send_buff.as_mut() {
-			buff.reset_write();
-			let mut init_buff_len = 0usize;
+        if let Some(buff) = self.send_buff.as_mut() {
+            buff.reset_write();
+            let mut init_buff_len = 0usize;
 
-			match buff.get_ctrl_desc_mut() {
-				Some(ctrl_desc) => {
-					let ind_desc_lst = unsafe {
-						let size = core::mem::size_of::<Descriptor>();
-						core::slice::from_raw_parts_mut(
-							ctrl_desc.ptr as *mut Descriptor,
-							ctrl_desc.len / size,
-						)
-					};
+            match buff.get_ctrl_desc_mut() {
+                Some(ctrl_desc) => {
+                    let ind_desc_lst = unsafe {
+                        let size = core::mem::size_of::<Descriptor>();
+                        core::slice::from_raw_parts_mut(
+                            ctrl_desc.ptr as *mut Descriptor,
+                            ctrl_desc.len / size,
+                        )
+                    };
 
-					for desc in buff.as_mut_slice() {
-						desc.len = desc._init_len;
-						// This is fine as the length of the descriptors is restricted
-						// by u32::MAX (see also Bytes::new())
-						ind_desc_lst[ctrl_desc_cnt].len = desc._init_len as u32;
-						ctrl_desc_cnt += 1;
-						init_buff_len += desc._init_len;
-					}
-				}
-				None => {
-					for desc in buff.as_mut_slice() {
-						desc.len = desc._init_len;
-						init_buff_len += desc._init_len;
-					}
-				}
-			}
+                    for desc in buff.as_mut_slice() {
+                        desc.len = desc._init_len;
+                        // This is fine as the length of the descriptors is restricted
+                        // by u32::MAX (see also Bytes::new())
+                        ind_desc_lst[ctrl_desc_cnt].len = desc._init_len as u32;
+                        ctrl_desc_cnt += 1;
+                        init_buff_len += desc._init_len;
+                    }
+                }
+                None => {
+                    for desc in buff.as_mut_slice() {
+                        desc.len = desc._init_len;
+                        init_buff_len += desc._init_len;
+                    }
+                }
+            }
 
-			buff.reset_len(init_buff_len);
-		}
+            buff.reset_len(init_buff_len);
+        }
 
-		if let Some(buff) = self.recv_buff.as_mut() {
-			buff.reset_write();
-			let mut init_buff_len = 0usize;
+        if let Some(buff) = self.recv_buff.as_mut() {
+            buff.reset_write();
+            let mut init_buff_len = 0usize;
 
-			match buff.get_ctrl_desc_mut() {
-				Some(ctrl_desc) => {
-					let ind_desc_lst = unsafe {
-						let size = core::mem::size_of::<Descriptor>();
-						core::slice::from_raw_parts_mut(
-							ctrl_desc.ptr as *mut Descriptor,
-							ctrl_desc.len / size,
-						)
-					};
+            match buff.get_ctrl_desc_mut() {
+                Some(ctrl_desc) => {
+                    let ind_desc_lst = unsafe {
+                        let size = core::mem::size_of::<Descriptor>();
+                        core::slice::from_raw_parts_mut(
+                            ctrl_desc.ptr as *mut Descriptor,
+                            ctrl_desc.len / size,
+                        )
+                    };
 
-					for desc in buff.as_mut_slice() {
-						desc.len = desc._init_len;
-						// This is fine as the length of the descriptors is restricted
-						// by u32::MAX (see also Bytes::new())
-						ind_desc_lst[ctrl_desc_cnt].len = desc._init_len as u32;
-						ctrl_desc_cnt += 1;
-						init_buff_len += desc._init_len;
-					}
-				}
-				None => {
-					for desc in buff.as_mut_slice() {
-						desc.len = desc._init_len;
-						init_buff_len += desc._init_len;
-					}
-				}
-			}
+                    for desc in buff.as_mut_slice() {
+                        desc.len = desc._init_len;
+                        // This is fine as the length of the descriptors is restricted
+                        // by u32::MAX (see also Bytes::new())
+                        ind_desc_lst[ctrl_desc_cnt].len = desc._init_len as u32;
+                        ctrl_desc_cnt += 1;
+                        init_buff_len += desc._init_len;
+                    }
+                }
+                None => {
+                    for desc in buff.as_mut_slice() {
+                        desc.len = desc._init_len;
+                        init_buff_len += desc._init_len;
+                    }
+                }
+            }
 
-			buff.reset_len(init_buff_len);
-		}
-		self
-	}
+            buff.reset_len(init_buff_len);
+        }
+        self
+    }
 }
 
 // Public interface of BufferToken
 impl BufferToken {
-	/// Restricts the size of a given BufferToken. One must specify either a `new_send_len` or/and `new_recv_len`. If possible
-	/// the function will restrict the respective buffers size to this value. This is especially useful if one has to provide the
-	/// user-space or the device with a buffer and has already a free buffer at hand, which is to large. With this method the user
-	/// of the buffer will only see the given sizes. Although the buffer is NOT reallocated.
-	///
-	/// **INFO:**
-	/// * Upon Transfer.reuse() call the Buffers will restore their original size, which was provided at creation time!
-	/// * Fails if buffer to be restricted is non existing -> VirtqError::NoBufferAvail
-	/// * Fails if buffer to be restricted is to small (i.e. `buff.len < new_len`) -> VirtqError::General
-	pub fn restr_size(
-		&mut self,
-		new_send_len: Option<usize>,
-		new_recv_len: Option<usize>,
-	) -> Result<(usize, usize), VirtqError> {
-		let send_len = match new_send_len {
-			Some(new_len) => {
-				match self.send_buff.as_mut() {
-					Some(send_buff) => {
-						let mut ctrl_desc_cnt = 0usize;
+    /// Restricts the size of a given BufferToken. One must specify either a `new_send_len` or/and `new_recv_len`. If possible
+    /// the function will restrict the respective buffers size to this value. This is especially useful if one has to provide the
+    /// user-space or the device with a buffer and has already a free buffer at hand, which is to large. With this method the user
+    /// of the buffer will only see the given sizes. Although the buffer is NOT reallocated.
+    ///
+    /// **INFO:**
+    /// * Upon Transfer.reuse() call the Buffers will restore their original size, which was provided at creation time!
+    /// * Fails if buffer to be restricted is non existing -> VirtqError::NoBufferAvail
+    /// * Fails if buffer to be restricted is to small (i.e. `buff.len < new_len`) -> VirtqError::General
+    pub fn restr_size(
+        &mut self,
+        new_send_len: Option<usize>,
+        new_recv_len: Option<usize>,
+    ) -> Result<(usize, usize), VirtqError> {
+        let send_len = match new_send_len {
+            Some(new_len) => {
+                match self.send_buff.as_mut() {
+                    Some(send_buff) => {
+                        let mut ctrl_desc_cnt = 0usize;
 
-						match send_buff.get_ctrl_desc() {
-							None => {
-								if send_buff.len() < new_len {
-									return Err(VirtqError::General);
-								} else {
-									let mut len_now = 0usize;
-									let mut rest_zero = false;
-									for desc in send_buff.as_mut_slice() {
-										len_now += desc.len;
+                        match send_buff.get_ctrl_desc() {
+                            None => {
+                                if send_buff.len() < new_len {
+                                    return Err(VirtqError::General);
+                                } else {
+                                    let mut len_now = 0usize;
+                                    let mut rest_zero = false;
+                                    for desc in send_buff.as_mut_slice() {
+                                        len_now += desc.len;
 
-										if len_now >= new_len && !rest_zero {
-											desc.len -= len_now - new_len;
-											rest_zero = true;
-										} else if rest_zero {
-											desc.len = 0;
-										}
-									}
+                                        if len_now >= new_len && !rest_zero {
+                                            desc.len -= len_now - new_len;
+                                            rest_zero = true;
+                                        } else if rest_zero {
+                                            desc.len = 0;
+                                        }
+                                    }
 
-									send_buff.restr_len(new_len);
-									new_len
-								}
-							}
-							Some(ctrl_desc) => {
-								if send_buff.len() < new_len {
-									return Err(VirtqError::General);
-								} else {
-									let ind_desc_lst = unsafe {
-										let size = core::mem::size_of::<Descriptor>();
-										core::slice::from_raw_parts_mut(
-											ctrl_desc.ptr as *mut Descriptor,
-											ctrl_desc.len / size,
-										)
-									};
+                                    send_buff.restr_len(new_len);
+                                    new_len
+                                }
+                            }
+                            Some(ctrl_desc) => {
+                                if send_buff.len() < new_len {
+                                    return Err(VirtqError::General);
+                                } else {
+                                    let ind_desc_lst = unsafe {
+                                        let size = core::mem::size_of::<Descriptor>();
+                                        core::slice::from_raw_parts_mut(
+                                            ctrl_desc.ptr as *mut Descriptor,
+                                            ctrl_desc.len / size,
+                                        )
+                                    };
 
-									let mut len_now = 0usize;
-									let mut rest_zero = false;
+                                    let mut len_now = 0usize;
+                                    let mut rest_zero = false;
 
-									for desc in send_buff.as_mut_slice() {
-										len_now += desc.len;
+                                    for desc in send_buff.as_mut_slice() {
+                                        len_now += desc.len;
 
-										if len_now >= new_len && !rest_zero {
-											desc.len -= len_now - new_len;
-											// As u32 is save here as all buffers length is restricted by u32::MAX
-											ind_desc_lst[ctrl_desc_cnt].len -=
-												(len_now - new_len) as u32;
+                                        if len_now >= new_len && !rest_zero {
+                                            desc.len -= len_now - new_len;
+                                            // As u32 is save here as all buffers length is restricted by u32::MAX
+                                            ind_desc_lst[ctrl_desc_cnt].len -=
+                                                (len_now - new_len) as u32;
 
-											rest_zero = true;
-										} else if rest_zero {
-											desc.len = 0;
-											ind_desc_lst[ctrl_desc_cnt].len = 0;
-										}
-										ctrl_desc_cnt += 1;
-									}
+                                            rest_zero = true;
+                                        } else if rest_zero {
+                                            desc.len = 0;
+                                            ind_desc_lst[ctrl_desc_cnt].len = 0;
+                                        }
+                                        ctrl_desc_cnt += 1;
+                                    }
 
-									send_buff.restr_len(new_len);
-									new_len
-								}
-							}
-						}
-					}
-					None => return Err(VirtqError::NoBufferAvail),
-				}
-			}
-			None => match self.send_buff.as_mut() {
-				Some(send_buff) => send_buff.len(),
-				None => 0,
-			},
-		};
+                                    send_buff.restr_len(new_len);
+                                    new_len
+                                }
+                            }
+                        }
+                    }
+                    None => return Err(VirtqError::NoBufferAvail),
+                }
+            }
+            None => match self.send_buff.as_mut() {
+                Some(send_buff) => send_buff.len(),
+                None => 0,
+            },
+        };
 
-		let recv_len = match new_recv_len {
-			Some(new_len) => {
-				match self.recv_buff.as_mut() {
-					Some(recv_buff) => {
-						let mut ctrl_desc_cnt = 0usize;
+        let recv_len = match new_recv_len {
+            Some(new_len) => {
+                match self.recv_buff.as_mut() {
+                    Some(recv_buff) => {
+                        let mut ctrl_desc_cnt = 0usize;
 
-						match recv_buff.get_ctrl_desc() {
-							None => {
-								if recv_buff.len() < new_len {
-									return Err(VirtqError::General);
-								} else {
-									let mut len_now = 0usize;
-									let mut rest_zero = false;
-									for desc in recv_buff.as_mut_slice() {
-										len_now += desc.len;
+                        match recv_buff.get_ctrl_desc() {
+                            None => {
+                                if recv_buff.len() < new_len {
+                                    return Err(VirtqError::General);
+                                } else {
+                                    let mut len_now = 0usize;
+                                    let mut rest_zero = false;
+                                    for desc in recv_buff.as_mut_slice() {
+                                        len_now += desc.len;
 
-										if len_now >= new_len && !rest_zero {
-											desc.len -= len_now - new_len;
-											rest_zero = true;
-										} else if rest_zero {
-											desc.len = 0;
-										}
-									}
+                                        if len_now >= new_len && !rest_zero {
+                                            desc.len -= len_now - new_len;
+                                            rest_zero = true;
+                                        } else if rest_zero {
+                                            desc.len = 0;
+                                        }
+                                    }
 
-									recv_buff.restr_len(new_len);
-									new_len
-								}
-							}
-							Some(ctrl_desc) => {
-								if recv_buff.len() < new_len {
-									return Err(VirtqError::General);
-								} else {
-									let ind_desc_lst = unsafe {
-										let size = core::mem::size_of::<Descriptor>();
-										core::slice::from_raw_parts_mut(
-											ctrl_desc.ptr as *mut Descriptor,
-											ctrl_desc.len / size,
-										)
-									};
+                                    recv_buff.restr_len(new_len);
+                                    new_len
+                                }
+                            }
+                            Some(ctrl_desc) => {
+                                if recv_buff.len() < new_len {
+                                    return Err(VirtqError::General);
+                                } else {
+                                    let ind_desc_lst = unsafe {
+                                        let size = core::mem::size_of::<Descriptor>();
+                                        core::slice::from_raw_parts_mut(
+                                            ctrl_desc.ptr as *mut Descriptor,
+                                            ctrl_desc.len / size,
+                                        )
+                                    };
 
-									let mut len_now = 0usize;
-									let mut rest_zero = false;
+                                    let mut len_now = 0usize;
+                                    let mut rest_zero = false;
 
-									for desc in recv_buff.as_mut_slice() {
-										len_now += desc.len;
+                                    for desc in recv_buff.as_mut_slice() {
+                                        len_now += desc.len;
 
-										if len_now >= new_len && !rest_zero {
-											desc.len -= len_now - new_len;
-											// As u32 is save here as all buffers length is restricted by u32::MAX
-											ind_desc_lst[ctrl_desc_cnt].len -=
-												(len_now - new_len) as u32;
+                                        if len_now >= new_len && !rest_zero {
+                                            desc.len -= len_now - new_len;
+                                            // As u32 is save here as all buffers length is restricted by u32::MAX
+                                            ind_desc_lst[ctrl_desc_cnt].len -=
+                                                (len_now - new_len) as u32;
 
-											rest_zero = true;
-										} else if rest_zero {
-											desc.len = 0;
-											ind_desc_lst[ctrl_desc_cnt].len = 0;
-										}
-										ctrl_desc_cnt += 1;
-									}
+                                            rest_zero = true;
+                                        } else if rest_zero {
+                                            desc.len = 0;
+                                            ind_desc_lst[ctrl_desc_cnt].len = 0;
+                                        }
+                                        ctrl_desc_cnt += 1;
+                                    }
 
-									recv_buff.restr_len(new_len);
-									new_len
-								}
-							}
-						}
-					}
-					None => return Err(VirtqError::NoBufferAvail),
-				}
-			}
-			None => match self.recv_buff.as_mut() {
-				Some(recv_buff) => recv_buff.len(),
-				None => 0,
-			},
-		};
+                                    recv_buff.restr_len(new_len);
+                                    new_len
+                                }
+                            }
+                        }
+                    }
+                    None => return Err(VirtqError::NoBufferAvail),
+                }
+            }
+            None => match self.recv_buff.as_mut() {
+                Some(recv_buff) => recv_buff.len(),
+                None => 0,
+            },
+        };
 
-		Ok((send_len, recv_len))
-	}
+        Ok((send_len, recv_len))
+    }
 
-	/// Returns the overall number of bytes in the send and receive memory area
-	/// respectively for this BufferToken
-	pub fn len(&self) -> (usize, usize) {
-		match (self.send_buff.as_ref(), self.recv_buff.as_ref()) {
-			(Some(send_buff), Some(recv_buff)) => (send_buff.len(), recv_buff.len()),
-			(Some(send_buff), None) => (send_buff.len(), 0),
-			(None, Some(recv_buff)) => (0, recv_buff.len()),
-			(None, None) => unreachable!("Empty BufferToken not allowed!"),
-		}
-	}
-	/// Returns the underlying raw pointers to the user accessible memory hold by the Buffertoken. This is mostly
-	/// useful in order to provide the user space with pointers to write to. Return tuple has the form
-	/// (`pointer_to_mem_area`, `length_of_accessible_mem_area`).
-	///
-	/// **INFO:**
-	///
-	/// The length of the given memory area MUST NOT express the actual allocated memory area. This is due to the behaviour
-	/// of the allocation function. Although it is ensured that the allocated memory area length is always larger or equal
-	/// to the "accessible memory area". Hence one MUST NOT use this information in order to deallocate the underlying memory.
-	/// If this is wanted the savest way is to simpyl drop the BufferToken.
-	///
-	///
-	/// **WARN:** The Buffertoken is controlling the memory and must not be dropped as long as
-	/// userspace has access to it!
-	pub fn raw_ptrs(
-		&mut self,
-	) -> (
-		Option<Box<[(*mut u8, usize)]>>,
-		Option<Box<[(*mut u8, usize)]>>,
-	) {
-		let mut send_ptrs = Vec::new();
-		let mut recv_ptrs = Vec::new();
+    /// Returns the overall number of bytes in the send and receive memory area
+    /// respectively for this BufferToken
+    pub fn len(&self) -> (usize, usize) {
+        match (self.send_buff.as_ref(), self.recv_buff.as_ref()) {
+            (Some(send_buff), Some(recv_buff)) => (send_buff.len(), recv_buff.len()),
+            (Some(send_buff), None) => (send_buff.len(), 0),
+            (None, Some(recv_buff)) => (0, recv_buff.len()),
+            (None, None) => unreachable!("Empty BufferToken not allowed!"),
+        }
+    }
+    /// Returns the underlying raw pointers to the user accessible memory hold by the Buffertoken. This is mostly
+    /// useful in order to provide the user space with pointers to write to. Return tuple has the form
+    /// (`pointer_to_mem_area`, `length_of_accessible_mem_area`).
+    ///
+    /// **INFO:**
+    ///
+    /// The length of the given memory area MUST NOT express the actual allocated memory area. This is due to the behaviour
+    /// of the allocation function. Although it is ensured that the allocated memory area length is always larger or equal
+    /// to the "accessible memory area". Hence one MUST NOT use this information in order to deallocate the underlying memory.
+    /// If this is wanted the savest way is to simpyl drop the BufferToken.
+    ///
+    ///
+    /// **WARN:** The Buffertoken is controlling the memory and must not be dropped as long as
+    /// userspace has access to it!
+    pub fn raw_ptrs(
+        &mut self,
+    ) -> (
+        Option<Box<[(*mut u8, usize)]>>,
+        Option<Box<[(*mut u8, usize)]>>,
+    ) {
+        let mut send_ptrs = Vec::new();
+        let mut recv_ptrs = Vec::new();
+        let mut i = 0;
 
-		if let Some(buff) = self.send_buff.as_mut() {
-			for desc in buff.as_slice() {
-				send_ptrs.push((desc.ptr, desc.len()));
-			}
-		}
+        if let Some(buff) = self.send_buff.as_mut() {
+            for desc in buff.as_slice() {
+                send_ptrs.push((desc.ptr, desc.len()));
+                trace!(
+                    "[{}] send ptrs, desc.ptr {:x} desc.len {:x}",
+                    i,
+                    desc.ptr as usize,
+                    desc.len()
+                );
+                i += 1;
+            }
+            if i > 0 {
+                trace!(
+                    "send_ptrs size {} start addr {:p} end addr {:p}",
+                    send_ptrs.len(),
+                    &send_ptrs[0],
+                    &send_ptrs[send_ptrs.len() - 1]
+                );
+            }
+        }
 
-		if let Some(buff) = self.recv_buff.as_ref() {
-			for desc in buff.as_slice() {
-				recv_ptrs.push((desc.ptr, desc.len()));
-			}
-		}
+        i = 0;
+        if let Some(buff) = self.recv_buff.as_ref() {
+            for desc in buff.as_slice() {
+                recv_ptrs.push((desc.ptr, desc.len()));
+                trace!(
+                    "[{}] recv ptrs, desc.ptr {:x} desc.len {:x}",
+                    i,
+                    desc.ptr as usize,
+                    desc.len()
+                );
+                i += 1;
+            }
+            if i > 0 {
+                trace!(
+                    "recv_ptrs size {} start addr {:p} end addr {:p}",
+                    recv_ptrs.len(),
+                    &recv_ptrs[0],
+                    &recv_ptrs[recv_ptrs.len() - 1]
+                );
+            }
+        }
 
-		match (send_ptrs.is_empty(), recv_ptrs.is_empty()) {
-			(true, true) => unreachable!("Empty transfer, Not allowed"),
-			(false, true) => (Some(send_ptrs.into_boxed_slice()), None),
-			(true, false) => (None, Some(recv_ptrs.into_boxed_slice())),
-			(false, false) => (
-				Some(send_ptrs.into_boxed_slice()),
-				Some(recv_ptrs.into_boxed_slice()),
-			),
-		}
-	}
+        match (send_ptrs.is_empty(), recv_ptrs.is_empty()) {
+            (true, true) => unreachable!("Empty transfer, Not allowed"),
+            (false, true) => (Some(send_ptrs.into_boxed_slice()), None),
+            (true, false) => (None, Some(recv_ptrs.into_boxed_slice())),
+            (false, false) => (
+                Some(send_ptrs.into_boxed_slice()),
+                Some(recv_ptrs.into_boxed_slice()),
+            ),
+        }
+    }
 
-	/// Writes the provided datastructures into the respective buffers. `K` into `self.send_buff` and `H` into
-	/// `self.recv_buff`.
-	/// If the provided datastructures do not "fit" into the respective buffers, the function will return an error. Even
-	/// if only one of the two structures is to large.
-	/// The same error will be triggered in case the respective buffer wasn't even existing, as not all transfers consist
-	/// of send and recv buffers.
-	///
-	/// This write DOES NOT reduce the overall size of the buffer to length_of(`K` or `H`). The device will observe the length of
-	/// the buffer as given by `BufferToken.len()`.
-	/// Use `BufferToken.restr_size()` in order to change this property.
-	///
-	///
-	/// # Detailed Description
-	/// The respective send and recv buffers (see [BufferToken](BufferToken) docs for details on buffers) consist of multiple
-	/// descriptors.
-	/// The `write()` function does NOT take into account the distinct descriptors of a buffer but treats the buffer as a single continuous
-	/// memory element and as a result writes `T` or `H` as a slice of bytes into this memory.
-	pub fn write<K: AsSliceU8, H: AsSliceU8>(
-		mut self,
-		send: Option<K>,
-		recv: Option<H>,
-	) -> Result<TransferToken, VirtqError> {
-		if let Some(data) = send {
-			match self.send_buff.as_mut() {
-				Some(buff) => {
-					if buff.len() < data.as_slice_u8().len() {
-						return Err(VirtqError::WriteToLarge(self));
-					} else {
-						let data_slc = data.as_slice_u8();
-						let mut from = 0usize;
+    /// Writes the provided datastructures into the respective buffers. `K` into `self.send_buff` and `H` into
+    /// `self.recv_buff`.
+    /// If the provided datastructures do not "fit" into the respective buffers, the function will return an error. Even
+    /// if only one of the two structures is to large.
+    /// The same error will be triggered in case the respective buffer wasn't even existing, as not all transfers consist
+    /// of send and recv buffers.
+    ///
+    /// This write DOES NOT reduce the overall size of the buffer to length_of(`K` or `H`). The device will observe the length of
+    /// the buffer as given by `BufferToken.len()`.
+    /// Use `BufferToken.restr_size()` in order to change this property.
+    ///
+    ///
+    /// # Detailed Description
+    /// The respective send and recv buffers (see [BufferToken](BufferToken) docs for details on buffers) consist of multiple
+    /// descriptors.
+    /// The `write()` function does NOT take into account the distinct descriptors of a buffer but treats the buffer as a single continuous
+    /// memory element and as a result writes `T` or `H` as a slice of bytes into this memory.
+    pub fn write<K: AsSliceU8, H: AsSliceU8>(
+        mut self,
+        send: Option<K>,
+        recv: Option<H>,
+    ) -> Result<TransferToken, VirtqError> {
+        if let Some(data) = send {
+            match self.send_buff.as_mut() {
+                Some(buff) => {
+                    if buff.len() < data.as_slice_u8().len() {
+                        return Err(VirtqError::WriteToLarge(self));
+                    } else {
+                        let data_slc = data.as_slice_u8();
+                        let mut from = 0usize;
 
-						for i in 0..buff.num_descr() {
-							// Must check array boundaries, as allocated buffer might be larger
-							// than actual data to be written.
-							let to = if (buff.as_slice()[i].len() + from) > data_slc.len() {
-								data_slc.len()
-							} else {
-								from + buff.as_slice()[i].len()
-							};
+                        for i in 0..buff.num_descr() {
+                            // Must check array boundaries, as allocated buffer might be larger
+                            // than actual data to be written.
+                            let to = if (buff.as_slice()[i].len() + from) > data_slc.len() {
+                                data_slc.len()
+                            } else {
+                                from + buff.as_slice()[i].len()
+                            };
 
-							// Unwrapping is okay here as sizes are checked above
-							from += buff.next_write(&data_slc[from..to]).unwrap();
-						}
-					}
-				}
-				None => return Err(VirtqError::NoBufferAvail),
-			}
-		}
+                            // Unwrapping is okay here as sizes are checked above
+                            from += buff.next_write(&data_slc[from..to]).unwrap();
+                        }
+                    }
+                }
+                None => return Err(VirtqError::NoBufferAvail),
+            }
+        }
 
-		if let Some(data) = recv {
-			match self.recv_buff.as_mut() {
-				Some(buff) => {
-					if buff.len() < data.as_slice_u8().len() {
-						return Err(VirtqError::WriteToLarge(self));
-					} else {
-						let data_slc = data.as_slice_u8();
-						let mut from = 0usize;
+        if let Some(data) = recv {
+            match self.recv_buff.as_mut() {
+                Some(buff) => {
+                    if buff.len() < data.as_slice_u8().len() {
+                        return Err(VirtqError::WriteToLarge(self));
+                    } else {
+                        let data_slc = data.as_slice_u8();
+                        let mut from = 0usize;
 
-						for i in 0..buff.num_descr() {
-							// Must check array boundaries, as allocated buffer might be larger
-							// than actual data to be written.
-							let to = if (buff.as_slice()[i].len() + from) > data_slc.len() {
-								data_slc.len()
-							} else {
-								from + buff.as_slice()[i].len()
-							};
+                        for i in 0..buff.num_descr() {
+                            // Must check array boundaries, as allocated buffer might be larger
+                            // than actual data to be written.
+                            let to = if (buff.as_slice()[i].len() + from) > data_slc.len() {
+                                data_slc.len()
+                            } else {
+                                from + buff.as_slice()[i].len()
+                            };
 
-							// Unwrapping is okay here as sizes are checked above
-							from += buff.next_write(&data_slc[from..to]).unwrap();
-						}
-					}
-				}
-				None => return Err(VirtqError::NoBufferAvail),
-			}
-		}
+                            // Unwrapping is okay here as sizes are checked above
+                            from += buff.next_write(&data_slc[from..to]).unwrap();
+                        }
+                    }
+                }
+                None => return Err(VirtqError::NoBufferAvail),
+            }
+        }
 
-		Ok(TransferToken {
-			state: TransferState::Ready,
-			buff_tkn: Some(self),
-			await_queue: None,
-		})
-	}
+        Ok(TransferToken {
+            state: TransferState::Ready,
+            buff_tkn: Some(self),
+            await_queue: None,
+        })
+    }
 
-	/// Writes `K` or `H` respectively into the next buffer descriptor.
-	/// Will return an VirtqError, if the `mem_size_of_val(K or H)` is larger than the respective buffer descriptor.
-	///
-	/// # Detailed Description
-	/// A write procedure to the buffers of the BufferToken could look like the following:
-	///
-	/// * First Write: `write_seq(Some(8 bytes), Some(3 bytes))`:
-	///   * Will result in 8 bytes written to the first buffer descriptor of the send buffer and 3 bytes written to the first buffer descriptor of the recv buffer.
-	/// * Second Write: `write_seq(None, Some(4 bytes))`:
-	///   * Will result in 4 bytes written to the second buffer descriptor of the recv buffer. Nothing is written into the second buffer descriptor.
-	/// * Third Write: `write_seq(Some(10 bytes, Some(4 bytes))`:
-	///   * Will result in 10 bytes written to the second buffer descriptor of the send buffer and 4 bytes written to the third buffer descriptor of the recv buffer.
-	pub fn write_seq<K: AsSliceU8, H: AsSliceU8>(
-		mut self,
-		send_seq: Option<K>,
-		recv_seq: Option<H>,
-	) -> Result<Self, VirtqError> {
-		if let Some(data) = send_seq {
-			match self.send_buff.as_mut() {
-				Some(buff) => {
-					match buff.next_write(data.as_slice_u8()) {
-						Ok(_) => (), // Do nothing, write fitted inside descriptor and not to many writes to buffer happened
-						Err(_) => {
-							// Need no match here, as result is the same, but for the future one could
-							// pass on the actual BufferError wrapped inside a VirtqError, for better recovery
-							return Err(VirtqError::WriteToLarge(self));
-						}
-					}
-				}
-				None => return Err(VirtqError::NoBufferAvail),
-			}
-		}
+    /// Writes `K` or `H` respectively into the next buffer descriptor.
+    /// Will return an VirtqError, if the `mem_size_of_val(K or H)` is larger than the respective buffer descriptor.
+    ///
+    /// # Detailed Description
+    /// A write procedure to the buffers of the BufferToken could look like the following:
+    ///
+    /// * First Write: `write_seq(Some(8 bytes), Some(3 bytes))`:
+    ///   * Will result in 8 bytes written to the first buffer descriptor of the send buffer and 3 bytes written to the first buffer descriptor of the recv buffer.
+    /// * Second Write: `write_seq(None, Some(4 bytes))`:
+    ///   * Will result in 4 bytes written to the second buffer descriptor of the recv buffer. Nothing is written into the second buffer descriptor.
+    /// * Third Write: `write_seq(Some(10 bytes, Some(4 bytes))`:
+    ///   * Will result in 10 bytes written to the second buffer descriptor of the send buffer and 4 bytes written to the third buffer descriptor of the recv buffer.
+    pub fn write_seq<K: AsSliceU8, H: AsSliceU8>(
+        mut self,
+        send_seq: Option<K>,
+        recv_seq: Option<H>,
+    ) -> Result<Self, VirtqError> {
+        if let Some(data) = send_seq {
+            match self.send_buff.as_mut() {
+                Some(buff) => {
+                    match buff.next_write(data.as_slice_u8()) {
+                        Ok(_) => (), // Do nothing, write fitted inside descriptor and not to many writes to buffer happened
+                        Err(_) => {
+                            // Need no match here, as result is the same, but for the future one could
+                            // pass on the actual BufferError wrapped inside a VirtqError, for better recovery
+                            return Err(VirtqError::WriteToLarge(self));
+                        }
+                    }
+                }
+                None => return Err(VirtqError::NoBufferAvail),
+            }
+        }
 
-		if let Some(data) = recv_seq {
-			match self.recv_buff.as_mut() {
-				Some(buff) => {
-					match buff.next_write(data.as_slice_u8()) {
-						Ok(_) => (), // Do nothing, write fitted inside descriptor and not to many writes to buffer happened
-						Err(_) => {
-							// Need no match here, as result is the same, but for the future one could
-							// pass on the actual BufferError wrapped inside a VirtqError, for better recovery
-							return Err(VirtqError::WriteToLarge(self));
-						}
-					}
-				}
-				None => return Err(VirtqError::NoBufferAvail),
-			}
-		}
+        if let Some(data) = recv_seq {
+            match self.recv_buff.as_mut() {
+                Some(buff) => {
+                    match buff.next_write(data.as_slice_u8()) {
+                        Ok(_) => (), // Do nothing, write fitted inside descriptor and not to many writes to buffer happened
+                        Err(_) => {
+                            // Need no match here, as result is the same, but for the future one could
+                            // pass on the actual BufferError wrapped inside a VirtqError, for better recovery
+                            return Err(VirtqError::WriteToLarge(self));
+                        }
+                    }
+                }
+                None => return Err(VirtqError::NoBufferAvail),
+            }
+        }
 
-		Ok(self)
-	}
+        Ok(self)
+    }
 
-	/// Consumes the [BufferToken](BufferToken) and returns a [TransferToken](TransferToken), that can be used to actually start the transfer.
-	///
-	/// After this call, the buffers are no longer writable.
-	pub fn provide(self) -> TransferToken {
-		TransferToken {
-			state: TransferState::Ready,
-			buff_tkn: Some(self),
-			await_queue: None,
-		}
-	}
+    /// Consumes the [BufferToken](BufferToken) and returns a [TransferToken](TransferToken), that can be used to actually start the transfer.
+    ///
+    /// After this call, the buffers are no longer writable.
+    pub fn provide(self) -> TransferToken {
+        TransferToken {
+            state: TransferState::Ready,
+            buff_tkn: Some(self),
+            await_queue: None,
+        }
+    }
 }
 
 /// Describes the type of a buffer and unifies them.
 enum Buffer {
-	/// A buffer consisting of a single [Memory Descriptor](MemDescr).
-	Single {
-		desc_lst: Box<[MemDescr]>,
-		len: usize,
-		next_write: usize,
-	},
-	/// A buffer consisting of a chain of [Memory Descriptors](MemDescr).
-	/// Especially useful if one wants to send multiple structures to a device,
-	/// as he can sequentially write (see [BufferToken](BufferToken) `write_seq()`)
-	/// those structs into the descriptors.
-	Multiple {
-		desc_lst: Box<[MemDescr]>,
-		len: usize,
-		next_write: usize,
-	},
-	/// A buffer consisting of a single descriptor in the actual virtqueue,
-	/// referencing a list of descriptors somewhere in memory.
-	/// Especially useful of one wants to extend the capacity of the virtqueue.
-	/// Also has the same advantages as a `Buffer::Multiple`.
-	Indirect {
-		desc_lst: Box<[MemDescr]>,
-		ctrl_desc: MemDescr,
-		len: usize,
-		next_write: usize,
-	},
+    /// A buffer consisting of a single [Memory Descriptor](MemDescr).
+    Single {
+        desc_lst: Box<[MemDescr]>,
+        len: usize,
+        next_write: usize,
+    },
+    /// A buffer consisting of a chain of [Memory Descriptors](MemDescr).
+    /// Especially useful if one wants to send multiple structures to a device,
+    /// as he can sequentially write (see [BufferToken](BufferToken) `write_seq()`)
+    /// those structs into the descriptors.
+    Multiple {
+        desc_lst: Box<[MemDescr]>,
+        len: usize,
+        next_write: usize,
+    },
+    /// A buffer consisting of a single descriptor in the actual virtqueue,
+    /// referencing a list of descriptors somewhere in memory.
+    /// Especially useful of one wants to extend the capacity of the virtqueue.
+    /// Also has the same advantages as a `Buffer::Multiple`.
+    Indirect {
+        desc_lst: Box<[MemDescr]>,
+        ctrl_desc: MemDescr,
+        len: usize,
+        next_write: usize,
+    },
 }
 
 // Private Interface of Buffer
 impl Buffer {
-	/// Resets the Buffers length to the given len. This MUST be the length at initialization.
-	fn reset_len(&mut self, init_len: usize) {
-		match self {
-			Buffer::Single { len, .. }
-			| Buffer::Multiple { len, .. }
-			| Buffer::Indirect { len, .. } => *len = init_len,
-		}
-	}
+    /// Resets the Buffers length to the given len. This MUST be the length at initialization.
+    fn reset_len(&mut self, init_len: usize) {
+        match self {
+            Buffer::Single { len, .. }
+            | Buffer::Multiple { len, .. }
+            | Buffer::Indirect { len, .. } => *len = init_len,
+        }
+    }
 
-	/// Restricts the Buffers length to the given len. This length MUST NOT be larger than the
-	/// length at initialization or smaller-equal 0.
-	fn restr_len(&mut self, new_len: usize) {
-		match self {
-			Buffer::Single { len, .. }
-			| Buffer::Multiple { len, .. }
-			| Buffer::Indirect { len, .. } => *len = new_len,
-		}
-	}
+    /// Restricts the Buffers length to the given len. This length MUST NOT be larger than the
+    /// length at initialization or smaller-equal 0.
+    fn restr_len(&mut self, new_len: usize) {
+        match self {
+            Buffer::Single { len, .. }
+            | Buffer::Multiple { len, .. }
+            | Buffer::Indirect { len, .. } => *len = new_len,
+        }
+    }
 
-	/// Writes a given slice into a Descriptor element of a Buffer. Hereby the function ensures, that the
-	/// slice fits into the memory area and that not to many writes already have happened.
-	fn next_write(&mut self, slice: &[u8]) -> Result<usize, BufferError> {
-		match self {
-			Buffer::Single {
-				desc_lst,
-				next_write,
-				..
-			}
-			| Buffer::Multiple {
-				desc_lst,
-				next_write,
-				..
-			}
-			| Buffer::Indirect {
-				desc_lst,
-				next_write,
-				..
-			} => {
-				if (desc_lst.len() - 1) < *next_write {
-					Err(BufferError::ToManyWrites)
-				} else if desc_lst.get(*next_write).unwrap().len() < slice.len() {
-					Err(BufferError::WriteToLarge)
-				} else {
-					desc_lst[*next_write].deref_mut()[0..slice.len()].copy_from_slice(slice);
-					*next_write += 1;
+    /// Writes a given slice into a Descriptor element of a Buffer. Hereby the function ensures, that the
+    /// slice fits into the memory area and that not to many writes already have happened.
+    fn next_write(&mut self, slice: &[u8]) -> Result<usize, BufferError> {
+        match self {
+            Buffer::Single {
+                desc_lst,
+                next_write,
+                ..
+            }
+            | Buffer::Multiple {
+                desc_lst,
+                next_write,
+                ..
+            }
+            | Buffer::Indirect {
+                desc_lst,
+                next_write,
+                ..
+            } => {
+                if (desc_lst.len() - 1) < *next_write {
+                    Err(BufferError::ToManyWrites)
+                } else if desc_lst.get(*next_write).unwrap().len() < slice.len() {
+                    Err(BufferError::WriteToLarge)
+                } else {
+                    desc_lst[*next_write].deref_mut()[0..slice.len()].copy_from_slice(slice);
+                    *next_write += 1;
 
-					Ok(slice.len())
-				}
-			}
-		}
-	}
+                    Ok(slice.len())
+                }
+            }
+        }
+    }
 
-	/// Resets the write status of a Buffertoken in order to be able to reuse a Buffertoken.
-	fn reset_write(&mut self) {
-		match self {
-			Buffer::Single { next_write, .. }
-			| Buffer::Multiple { next_write, .. }
-			| Buffer::Indirect { next_write, .. } => *next_write = 0,
-		}
-	}
+    /// Resets the write status of a Buffertoken in order to be able to reuse a Buffertoken.
+    fn reset_write(&mut self) {
+        match self {
+            Buffer::Single { next_write, .. }
+            | Buffer::Multiple { next_write, .. }
+            | Buffer::Indirect { next_write, .. } => *next_write = 0,
+        }
+    }
 
-	/// This consumes the the given buffer and returns the raw information (i.e. a `*mut u8` and a `usize` inidacting the start and
-	/// length of the buffers memory).
-	///
-	/// After this call the users is responsible for deallocating the given memory via the kernel `mem::dealloc` function.
-	fn into_raw(self) -> Vec<(*mut u8, usize)> {
-		match self {
-			Buffer::Single { mut desc_lst, .. }
-			| Buffer::Multiple { mut desc_lst, .. }
-			| Buffer::Indirect { mut desc_lst, .. } => {
-				let mut arr = Vec::with_capacity(desc_lst.len());
+    /// This consumes the the given buffer and returns the raw information (i.e. a `*mut u8` and a `usize` inidacting the start and
+    /// length of the buffers memory).
+    ///
+    /// After this call the users is responsible for deallocating the given memory via the kernel `mem::dealloc` function.
+    fn into_raw(self) -> Vec<(*mut u8, usize)> {
+        match self {
+            Buffer::Single { mut desc_lst, .. }
+            | Buffer::Multiple { mut desc_lst, .. }
+            | Buffer::Indirect { mut desc_lst, .. } => {
+                let mut arr = Vec::with_capacity(desc_lst.len());
 
-				for desc in desc_lst.iter_mut() {
-					// Need to be a little careful here.
-					desc.dealloc = Dealloc::Not;
-					arr.push((desc.ptr, desc._mem_len));
-				}
-				arr
-			}
-		}
-	}
+                for desc in desc_lst.iter_mut() {
+                    // Need to be a little careful here.
+                    desc.dealloc = Dealloc::Not;
+                    arr.push((desc.ptr, desc._mem_len));
+                }
+                arr
+            }
+        }
+    }
 
-	/// Returns a copy of the buffer.
-	fn cpy(&self) -> Box<[u8]> {
-		match &self {
-			Buffer::Single { desc_lst, len, .. }
-			| Buffer::Multiple { desc_lst, len, .. }
-			| Buffer::Indirect { desc_lst, len, .. } => {
-				let mut arr = Vec::with_capacity(*len);
+    /// Returns a copy of the buffer.
+    fn cpy(&self) -> Box<[u8]> {
+        match &self {
+            Buffer::Single { desc_lst, len, .. }
+            | Buffer::Multiple { desc_lst, len, .. }
+            | Buffer::Indirect { desc_lst, len, .. } => {
+                let mut arr = Vec::with_capacity(*len);
 
-				for desc in desc_lst.iter() {
-					arr.append(&mut desc.cpy_into_vec());
-				}
-				arr.into_boxed_slice()
-			}
-		}
-	}
+                for desc in desc_lst.iter() {
+                    arr.append(&mut desc.cpy_into_vec());
+                }
+                arr.into_boxed_slice()
+            }
+        }
+    }
 
-	/// Returns a scattered copy of the buffer, which preserves the structure of the
-	/// buffer being possibly split up between different descriptors.
-	fn scat_cpy(&self) -> Vec<Box<[u8]>> {
-		match &self {
-			Buffer::Single { desc_lst, .. }
-			| Buffer::Multiple { desc_lst, .. }
-			| Buffer::Indirect { desc_lst, .. } => {
-				let mut arr = Vec::with_capacity(desc_lst.len());
+    /// Returns a scattered copy of the buffer, which preserves the structure of the
+    /// buffer being possibly split up between different descriptors.
+    fn scat_cpy(&self) -> Vec<Box<[u8]>> {
+        match &self {
+            Buffer::Single { desc_lst, .. }
+            | Buffer::Multiple { desc_lst, .. }
+            | Buffer::Indirect { desc_lst, .. } => {
+                let mut arr = Vec::with_capacity(desc_lst.len());
 
-				for desc in desc_lst.iter() {
-					arr.push(desc.cpy_into_box());
-				}
-				arr
-			}
-		}
-	}
+                for desc in desc_lst.iter() {
+                    arr.push(desc.cpy_into_box());
+                }
+                arr
+            }
+        }
+    }
 
-	/// Returns the number of usable descriptors inside a buffer.
-	/// In case of Indirect Buffers this will return the number of
-	/// descriptors inside the indirect descriptor table. As a result
-	/// the return value most certainly IS NOT equall to the number of
-	/// descriptors that will be placed inside the virtqueue.
-	/// In order to retrieve this value, please use `BufferToken.num_consuming_desc()`.
-	fn num_descr(&self) -> usize {
-		match &self {
-			Buffer::Single { desc_lst, .. }
-			| Buffer::Multiple { desc_lst, .. }
-			| Buffer::Indirect { desc_lst, .. } => desc_lst.len(),
-		}
-	}
+    /// Returns the number of usable descriptors inside a buffer.
+    /// In case of Indirect Buffers this will return the number of
+    /// descriptors inside the indirect descriptor table. As a result
+    /// the return value most certainly IS NOT equall to the number of
+    /// descriptors that will be placed inside the virtqueue.
+    /// In order to retrieve this value, please use `BufferToken.num_consuming_desc()`.
+    fn num_descr(&self) -> usize {
+        match &self {
+            Buffer::Single { desc_lst, .. }
+            | Buffer::Multiple { desc_lst, .. }
+            | Buffer::Indirect { desc_lst, .. } => desc_lst.len(),
+        }
+    }
 
-	/// Returns the overall number of bytes in this Buffer.
-	///
-	/// In case of a Indirect descriptor, this describes the accumulated length of the memory area of the descriptors
-	/// inside the indirect descriptor list. NOT the length of the memory area of the indirect descriptor placed in the actual
-	/// descriptor area!
-	fn len(&self) -> usize {
-		match &self {
-			Buffer::Single { len, .. }
-			| Buffer::Multiple { len, .. }
-			| Buffer::Indirect { len, .. } => *len,
-		}
-	}
+    /// Returns the overall number of bytes in this Buffer.
+    ///
+    /// In case of a Indirect descriptor, this describes the accumulated length of the memory area of the descriptors
+    /// inside the indirect descriptor list. NOT the length of the memory area of the indirect descriptor placed in the actual
+    /// descriptor area!
+    fn len(&self) -> usize {
+        match &self {
+            Buffer::Single { len, .. }
+            | Buffer::Multiple { len, .. }
+            | Buffer::Indirect { len, .. } => *len,
+        }
+    }
 
-	/// Returns the complete Buffer as a mutable slice of MemDescr, which themselves deref into a `&mut [u8]`.
-	///
-	/// As Buffers are able to consist of multiple descriptors
-	/// this will return one element
-	/// (`&mut [u8]`) for each descriptor.
-	fn as_mut_slice(&mut self) -> &mut [MemDescr] {
-		match self {
-			Buffer::Single { desc_lst, .. }
-			| Buffer::Multiple { desc_lst, .. }
-			| Buffer::Indirect { desc_lst, .. } => desc_lst.as_mut(),
-		}
-	}
+    /// Returns the complete Buffer as a mutable slice of MemDescr, which themselves deref into a `&mut [u8]`.
+    ///
+    /// As Buffers are able to consist of multiple descriptors
+    /// this will return one element
+    /// (`&mut [u8]`) for each descriptor.
+    fn as_mut_slice(&mut self) -> &mut [MemDescr] {
+        match self {
+            Buffer::Single { desc_lst, .. }
+            | Buffer::Multiple { desc_lst, .. }
+            | Buffer::Indirect { desc_lst, .. } => desc_lst.as_mut(),
+        }
+    }
 
-	/// Returns the complete Buffer as a slice of MemDescr, which themselves deref into a `&[u8]`.
-	///
-	/// As Buffers are able to consist of multiple descriptors
-	/// this will return one element
-	/// (`&[u8]`) for each descriptor.
-	fn as_slice(&self) -> &[MemDescr] {
-		match self {
-			Buffer::Single { desc_lst, .. } => desc_lst.as_ref(),
-			Buffer::Multiple { desc_lst, .. } => desc_lst.as_ref(),
-			Buffer::Indirect { desc_lst, .. } => desc_lst.as_ref(),
-		}
-	}
+    /// Returns the complete Buffer as a slice of MemDescr, which themselves deref into a `&[u8]`.
+    ///
+    /// As Buffers are able to consist of multiple descriptors
+    /// this will return one element
+    /// (`&[u8]`) for each descriptor.
+    fn as_slice(&self) -> &[MemDescr] {
+        match self {
+            Buffer::Single { desc_lst, .. } => desc_lst.as_ref(),
+            Buffer::Multiple { desc_lst, .. } => desc_lst.as_ref(),
+            Buffer::Indirect { desc_lst, .. } => desc_lst.as_ref(),
+        }
+    }
 
-	/// Returns a reference to the buffers ctrl descriptor if available.
-	fn get_ctrl_desc(&self) -> Option<&MemDescr> {
-		if let Buffer::Indirect { ctrl_desc, .. } = self {
-			Some(ctrl_desc)
-		} else {
-			None
-		}
-	}
+    /// Returns a reference to the buffers ctrl descriptor if available.
+    fn get_ctrl_desc(&self) -> Option<&MemDescr> {
+        if let Buffer::Indirect { ctrl_desc, .. } = self {
+            Some(ctrl_desc)
+        } else {
+            None
+        }
+    }
 
-	/// Returns a mutable reference to the buffers ctrl descriptor if available.
-	fn get_ctrl_desc_mut(&mut self) -> Option<&mut MemDescr> {
-		if let Buffer::Indirect { ctrl_desc, .. } = self {
-			Some(ctrl_desc)
-		} else {
-			None
-		}
-	}
+    /// Returns a mutable reference to the buffers ctrl descriptor if available.
+    fn get_ctrl_desc_mut(&mut self) -> Option<&mut MemDescr> {
+        if let Buffer::Indirect { ctrl_desc, .. } = self {
+            Some(ctrl_desc)
+        } else {
+            None
+        }
+    }
 
-	/// Returns true if the buffer is an indirect one
-	fn is_indirect(&self) -> bool {
-		matches!(self, Buffer::Indirect { .. })
-	}
+    /// Returns true if the buffer is an indirect one
+    fn is_indirect(&self) -> bool {
+        matches!(self, Buffer::Indirect { .. })
+    }
 }
 
 /// Describes a chunk of heap allocated memory. This memory chunk will
@@ -1545,122 +1577,120 @@ impl Buffer {
 /// cases the `MemDesc` field `dealloc: bool` allows to prevent the deallocation
 /// during drop of the object.
 struct MemDescr {
-	/// Points to the controlled memory area
-	ptr: *mut u8,
-	/// Defines the len of the memory area that is accessible by users
-	/// Can change after the device wrote to the memory area partially.
-	/// Hence, this always defines the length of the memory area that has
-	/// useful information or is accessible.
-	len: usize,
-	/// Defines the len of the memory area that is accessible by users
-	/// This field is needed as the `MemDescr.len` field might change
-	/// after writes of the device, but the Descriptors need to be reset
-	/// in case they are reused. So the initial length must be preserved.
-	_init_len: usize,
-	/// Defines the length of the controlled memory area
-	/// starting a `ptr: *mut u8`. Never Changes.
-	_mem_len: usize,
-	/// If `id == None` this is an untracked memory descriptor
-	/// * Meaining: The descriptor does NOT count as a descriptor
-	/// taken from the [MemPool](MemPool).
-	id: Option<MemDescrId>,
-	/// Refers to the controlling [memory pool](MemPool)
-	pool: Rc<MemPool>,
-	/// Controls whether the memory area is deallocated
-	/// upon drop.
-	/// * Should NEVER be set to true, when false.
-	///   * As false will be set after creation and indicates
-	///     that someone else is "controlling" area and takes
-	///     of deallocation.
-	/// * Default is true.
-	dealloc: Dealloc,
+    /// Points to the controlled memory area
+    ptr: *mut u8,
+    /// Defines the len of the memory area that is accessible by users
+    /// Can change after the device wrote to the memory area partially.
+    /// Hence, this always defines the length of the memory area that has
+    /// useful information or is accessible.
+    len: usize,
+    /// Defines the len of the memory area that is accessible by users
+    /// This field is needed as the `MemDescr.len` field might change
+    /// after writes of the device, but the Descriptors need to be reset
+    /// in case they are reused. So the initial length must be preserved.
+    _init_len: usize,
+    /// Defines the length of the controlled memory area
+    /// starting a `ptr: *mut u8`. Never Changes.
+    _mem_len: usize,
+    /// If `id == None` this is an untracked memory descriptor
+    /// * Meaining: The descriptor does NOT count as a descriptor
+    /// taken from the [MemPool](MemPool).
+    id: Option<MemDescrId>,
+    /// Refers to the controlling [memory pool](MemPool)
+    pool: Rc<MemPool>,
+    /// Controls whether the memory area is deallocated
+    /// upon drop.
+    /// * Should NEVER be set to true, when false.
+    ///   * As false will be set after creation and indicates
+    ///     that someone else is "controlling" area and takes
+    ///     of deallocation.
+    /// * Default is true.
+    dealloc: Dealloc,
 }
 
 impl MemDescr {
-	/// Provides a handle to the given memory area by
-	/// giving a Box ownership to it.
-	fn into_vec(mut self) -> Vec<u8> {
-		// Prevent double frees, as ownership will be tracked by
-		// Box from now on.
-		self.dealloc = Dealloc::Not;
+    /// Provides a handle to the given memory area by
+    /// giving a Box ownership to it.
+    fn into_vec(mut self) -> Vec<u8> {
+        // Prevent double frees, as ownership will be tracked by
+        // Box from now on.
+        self.dealloc = Dealloc::Not;
 
-		unsafe { Vec::from_raw_parts(self.ptr, self._mem_len, 0) }
-	}
+        unsafe { Vec::from_raw_parts(self.ptr, self._mem_len, 0) }
+    }
 
-	/// Copies the given memory area into a Vector.
-	fn cpy_into_vec(&self) -> Vec<u8> {
-		let mut vec = vec![0u8; self.len];
-		vec.copy_from_slice(self.deref());
-		vec
-	}
+    /// Copies the given memory area into a Vector.
+    fn cpy_into_vec(&self) -> Vec<u8> {
+        let mut vec = vec![0u8; self.len];
+        vec.copy_from_slice(self.deref());
+        vec
+    }
 
-	/// Copies the given memory area into a Box.
-	fn cpy_into_box(&self) -> Box<[u8]> {
-		let mut vec = vec![0u8; self.len];
-		vec.copy_from_slice(self.deref());
-		vec.into_boxed_slice()
-	}
+    /// Copies the given memory area into a Box.
+    fn cpy_into_box(&self) -> Box<[u8]> {
+        let mut vec = vec![0u8; self.len];
+        vec.copy_from_slice(self.deref());
+        vec.into_boxed_slice()
+    }
 
-	/// Returns the raw pointer from where the controlled
-	/// memory area starts.
-	fn raw_ptr(&self) -> *mut u8 {
-		self.ptr
-	}
+    /// Returns the raw pointer from where the controlled
+    /// memory area starts.
+    fn raw_ptr(&self) -> *mut u8 {
+        self.ptr
+    }
 
-	/// Returns the length of the accessible memory area.
-	fn len(&self) -> usize {
-		self.len
-	}
+    /// Returns the length of the accessible memory area.
+    fn len(&self) -> usize {
+        self.len
+    }
 
-	/// Returns a "clone" of the Object, which will NOT be deallocated in order
-	/// to prevent double frees!
-	///
-	/// **WARNING**
-	///
-	/// Be cautious with the usage of clones of `MemDescr`. Typically this function
-	/// should only be used to create a second controlling descriptor of an
-	/// indirect buffer. See [Buffer](Buffer) `Buffer::Indirect` for details!
-	fn no_dealloc_clone(&self) -> Self {
-		MemDescr {
-			ptr: self.ptr,
-			len: self.len,
-			_init_len: self.len(),
-			_mem_len: self._mem_len,
-			id: None,
-			pool: Rc::clone(&self.pool),
-			dealloc: Dealloc::Not,
-		}
-	}
+    /// Returns a "clone" of the Object, which will NOT be deallocated in order
+    /// to prevent double frees!
+    ///
+    /// **WARNING**
+    ///
+    /// Be cautious with the usage of clones of `MemDescr`. Typically this function
+    /// should only be used to create a second controlling descriptor of an
+    /// indirect buffer. See [Buffer](Buffer) `Buffer::Indirect` for details!
+    fn no_dealloc_clone(&self) -> Self {
+        MemDescr {
+            ptr: self.ptr,
+            len: self.len,
+            _init_len: self.len(),
+            _mem_len: self._mem_len,
+            id: None,
+            pool: Rc::clone(&self.pool),
+            dealloc: Dealloc::Not,
+        }
+    }
 }
 
 impl Deref for MemDescr {
-	type Target = [u8];
-	fn deref(&self) -> &Self::Target {
-		unsafe { core::slice::from_raw_parts(self.ptr, self.len) }
-	}
+    type Target = [u8];
+    fn deref(&self) -> &Self::Target {
+        unsafe { core::slice::from_raw_parts(self.ptr, self.len) }
+    }
 }
 
 impl DerefMut for MemDescr {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		unsafe { core::slice::from_raw_parts_mut(self.ptr, self.len) }
-	}
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { core::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
 }
 
 impl Drop for MemDescr {
-	fn drop(&mut self) {
-		// Handle returning of Id's to pool
-		if let Some(id) = self.id.take() {
-			self.pool.ret_id(id);
-		}
+    fn drop(&mut self) {
+        // Handle returning of Id's to pool
+        if let Some(id) = self.id.take() {
+            self.pool.ret_id(id);
+        }
 
-		match self.dealloc {
-			Dealloc::Not => (),
-			Dealloc::AsSlice => unsafe { drop(Vec::from_raw_parts(self.ptr, self._mem_len, 0)) },
-			Dealloc::AsPage => {
-				crate::mm::deallocate(Addr::from(self.ptr as usize))
-			}
-		}
-	}
+        match self.dealloc {
+            Dealloc::Not => (),
+            Dealloc::AsSlice => unsafe { drop(Vec::from_raw_parts(self.ptr, self._mem_len, 0)) },
+            Dealloc::AsPage => crate::mm::deallocate(Addr::from(self.ptr as usize)),
+        }
+    }
 }
 
 /// A newtype for descriptor ids, for better readability.
@@ -1672,37 +1702,37 @@ pub struct Bytes(usize);
 
 // Public interface for Bytes
 impl Bytes {
-	/// Ensures the provided size is never greater than u32::MAX, as this is the maximum
-	/// allowed size in the virtio specification.
-	/// Returns a None therefore, if the size was to large.
-	pub fn new(size: usize) -> Option<Bytes> {
-		if core::mem::size_of_val(&size) <= core::mem::size_of::<u32>() {
-			// Usize is as maximum 32bit large. Smaller is not a problem for the queue
-			Some(Bytes(size))
-		} else if core::mem::size_of_val(&size) == core::mem::size_of::<u64>() {
-			// Usize is equal to 64 bit
-			if (size as u64) <= (u32::MAX as u64) {
-				Some(Bytes(size))
-			} else {
-				None
-			}
-		} else {
-			// No support for machines over 64bit
-			None
-		}
-	}
+    /// Ensures the provided size is never greater than u32::MAX, as this is the maximum
+    /// allowed size in the virtio specification.
+    /// Returns a None therefore, if the size was to large.
+    pub fn new(size: usize) -> Option<Bytes> {
+        if core::mem::size_of_val(&size) <= core::mem::size_of::<u32>() {
+            // Usize is as maximum 32bit large. Smaller is not a problem for the queue
+            Some(Bytes(size))
+        } else if core::mem::size_of_val(&size) == core::mem::size_of::<u64>() {
+            // Usize is equal to 64 bit
+            if (size as u64) <= (u32::MAX as u64) {
+                Some(Bytes(size))
+            } else {
+                None
+            }
+        } else {
+            // No support for machines over 64bit
+            None
+        }
+    }
 }
 
 impl From<Bytes> for usize {
-	fn from(byte: Bytes) -> Self {
-		byte.0
-	}
+    fn from(byte: Bytes) -> Self {
+        byte.0
+    }
 }
 
 enum Dealloc {
-	Not,
-	AsPage,
-	AsSlice,
+    Not,
+    AsPage,
+    AsSlice,
 }
 
 /// MemPool allows to easily control, request and provide memory for Virtqueues.
@@ -1719,193 +1749,193 @@ enum Dealloc {
 ///   * `fn pull_untracked`: Pulls a memory descriptor which refers to a memory of a defined size. The descriptor does NOT consume an ID and
 ///      hence does not reduce the amount of left descriptors in the pool.
 struct MemPool {
-	pool: RefCell<Vec<MemDescrId>>,
-	limit: u16,
+    pool: RefCell<Vec<MemDescrId>>,
+    limit: u16,
 }
 
 impl MemPool {
-	/// Returns a given id to the id pool
-	fn ret_id(&self, id: MemDescrId) {
-		self.pool.borrow_mut().push(id);
-	}
+    /// Returns a given id to the id pool
+    fn ret_id(&self, id: MemDescrId) {
+        self.pool.borrow_mut().push(id);
+    }
 
-	/// Returns a new instance, with a pool of the specified size.
-	fn new(size: u16) -> MemPool {
-		// Not really safe "as usize". But the minimum usize on rust is currently
-		// usize = 16bit. So it should work, as long as this does not change changes.
-		// Thus asserting here, to catch this change!
-		assert!(core::mem::size_of::<usize>() >= 2);
+    /// Returns a new instance, with a pool of the specified size.
+    fn new(size: u16) -> MemPool {
+        // Not really safe "as usize". But the minimum usize on rust is currently
+        // usize = 16bit. So it should work, as long as this does not change changes.
+        // Thus asserting here, to catch this change!
+        assert!(core::mem::size_of::<usize>() >= 2);
 
-		let mut id_vec = Vec::with_capacity(size as usize);
+        let mut id_vec = Vec::with_capacity(size as usize);
 
-		for i in 1..(size + 1) {
-			id_vec.push(MemDescrId(i));
-		}
+        for i in 1..(size + 1) {
+            id_vec.push(MemDescrId(i));
+        }
 
-		MemPool {
-			pool: RefCell::new(id_vec),
-			limit: size,
-		}
-	}
+        MemPool {
+            pool: RefCell::new(id_vec),
+            limit: size,
+        }
+    }
 
-	/// Creates a MemDescr which refers to already existing memory.
-	///
-	/// **Info on Usage:**
-	/// * `Panics` if given `slice.len() == 0`
-	/// * `Panics` if slice crosses physical page boundary
-	/// * The given slice MUST be a heap allocated slice.
-	/// * Panics if slice crosses page boundaries!
-	///
-	/// **Properties of Returned MemDescr:**
-	///
-	/// * The descriptor will consume one element of the pool.
-	/// * The referred to memory area will NOT be deallocated upon drop.
-	fn pull_from_raw(&self, rc_self: Rc<MemPool>, slice: &[u8]) -> Result<MemDescr, VirtqError> {
-		// Zero sized descriptors are NOT allowed
-		// This also prohibids a panic due to accessing wrong index below
-		assert!(!slice.is_empty());
+    /// Creates a MemDescr which refers to already existing memory.
+    ///
+    /// **Info on Usage:**
+    /// * `Panics` if given `slice.len() == 0`
+    /// * `Panics` if slice crosses physical page boundary
+    /// * The given slice MUST be a heap allocated slice.
+    /// * Panics if slice crosses page boundaries!
+    ///
+    /// **Properties of Returned MemDescr:**
+    ///
+    /// * The descriptor will consume one element of the pool.
+    /// * The referred to memory area will NOT be deallocated upon drop.
+    fn pull_from_raw(&self, rc_self: Rc<MemPool>, slice: &[u8]) -> Result<MemDescr, VirtqError> {
+        // Zero sized descriptors are NOT allowed
+        // This also prohibids a panic due to accessing wrong index below
+        assert!(!slice.is_empty());
 
-		// Assert descriptor does not cross a page barrier
-		let start_virt = (&slice[0] as *const u8) as usize;
-		let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
-		let end_phy_calc = Addr::from(start_virt).to_pa() + (slice.len() - 1);
-		let end_phy = Addr::from(end_virt).to_pa();
+        // Assert descriptor does not cross a page barrier
+        let start_virt = (&slice[0] as *const u8) as usize;
+        let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
+        let end_phy_calc = Addr::from(start_virt).to_pa() + (slice.len() - 1);
+        let end_phy = Addr::from(end_virt).to_pa();
 
-		assert_eq!(end_phy, end_phy_calc);
+        assert_eq!(end_phy, end_phy_calc);
 
-		let desc_id = match self.pool.borrow_mut().pop() {
-			Some(id) => id,
-			None => return Err(VirtqError::NoDescrAvail),
-		};
+        let desc_id = match self.pool.borrow_mut().pop() {
+            Some(id) => id,
+            None => return Err(VirtqError::NoDescrAvail),
+        };
 
-		Ok(MemDescr {
-			ptr: (&slice[0] as *const u8) as *mut u8,
-			len: slice.len(),
-			_init_len: slice.len(),
-			_mem_len: slice.len(),
-			id: Some(desc_id),
-			dealloc: Dealloc::Not,
-			pool: rc_self,
-		})
-	}
+        Ok(MemDescr {
+            ptr: (&slice[0] as *const u8) as *mut u8,
+            len: slice.len(),
+            _init_len: slice.len(),
+            _mem_len: slice.len(),
+            id: Some(desc_id),
+            dealloc: Dealloc::Not,
+            pool: rc_self,
+        })
+    }
 
-	/// Creates a MemDescr which refers to already existing memory.
-	/// The MemDescr does NOT consume a place in the pool and should
-	/// be used with `Buffer::Indirect`.
-	///
-	/// **Info on Usage:**
-	/// * `Panics` if given `slice.len() == 0`
-	/// * `Panics` if slice crosses physical page boundary
-	/// * The given slice MUST be a heap allocated slice.
-	///
-	/// **Properties of Returned MemDescr:**
-	///
-	/// * The descriptor will consume one element of the pool.
-	/// * The referred to memory area will NOT be deallocated upon drop.
-	fn pull_from_raw_untracked(&self, rc_self: Rc<MemPool>, slice: &[u8]) -> MemDescr {
-		// Zero sized descriptors are NOT allowed
-		// This also prohibids a panic due to accessing wrong index below
-		assert!(!slice.is_empty());
+    /// Creates a MemDescr which refers to already existing memory.
+    /// The MemDescr does NOT consume a place in the pool and should
+    /// be used with `Buffer::Indirect`.
+    ///
+    /// **Info on Usage:**
+    /// * `Panics` if given `slice.len() == 0`
+    /// * `Panics` if slice crosses physical page boundary
+    /// * The given slice MUST be a heap allocated slice.
+    ///
+    /// **Properties of Returned MemDescr:**
+    ///
+    /// * The descriptor will consume one element of the pool.
+    /// * The referred to memory area will NOT be deallocated upon drop.
+    fn pull_from_raw_untracked(&self, rc_self: Rc<MemPool>, slice: &[u8]) -> MemDescr {
+        // Zero sized descriptors are NOT allowed
+        // This also prohibids a panic due to accessing wrong index below
+        assert!(!slice.is_empty());
 
-		// Assert descriptor does not cross a page barrier
-		let start_virt = (&slice[0] as *const u8) as usize;
-		let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
-		let end_phy_calc = Addr::from(start_virt).to_pa() + (slice.len() - 1);
-		let end_phy = Addr::from(end_virt).to_pa();
+        // Assert descriptor does not cross a page barrier
+        let start_virt = (&slice[0] as *const u8) as usize;
+        let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
+        let end_phy_calc = Addr::from(start_virt).to_pa() + (slice.len() - 1);
+        let end_phy = Addr::from(end_virt).to_pa();
 
-		assert_eq!(end_phy, end_phy_calc);
+        assert_eq!(end_phy, end_phy_calc);
 
-		MemDescr {
-			ptr: (&slice[0] as *const u8) as *mut u8,
-			len: slice.len(),
-			_init_len: slice.len(),
-			_mem_len: slice.len(),
-			id: None,
-			dealloc: Dealloc::Not,
-			pool: rc_self,
-		}
-	}
+        MemDescr {
+            ptr: (&slice[0] as *const u8) as *mut u8,
+            len: slice.len(),
+            _init_len: slice.len(),
+            _mem_len: slice.len(),
+            id: None,
+            dealloc: Dealloc::Not,
+            pool: rc_self,
+        }
+    }
 
-	/// Pulls a memory descriptor, which owns a memory area of the specified size in bytes. The
-	/// descriptor does consume an ID and hence reduces the amount of descriptors left in the pool by one.
-	///
-	/// **INFO:**
-	/// * Fails (returns VirtqError), if the pool is empty.
-	/// * ID`s of descriptor are by no means sorted. A descriptor can contain an ID between 1 and size_of_pool.
-	/// * Calleys can NOT rely on the next pulled descriptor to contain the subsequent ID after the previously
-	///  pulled descriptor.
-	///  In essence this means MemDesc can contain arbitrary ID's. E.g.:
-	///   * First MemPool.pull -> MemDesc with id = 3
-	///   * Second MemPool.pull -> MemDesc with id = 100
-	///   * Third MemPool.pull -> MemDesc with id = 2,
-	fn pull(&self, rc_self: Rc<MemPool>, bytes: Bytes) -> Result<MemDescr, VirtqError> {
-		// debug!("pull");
-		let id = match self.pool.borrow_mut().pop() {
-			Some(id) => id,
-			None => return Err(VirtqError::NoDescrAvail),
-		};
+    /// Pulls a memory descriptor, which owns a memory area of the specified size in bytes. The
+    /// descriptor does consume an ID and hence reduces the amount of descriptors left in the pool by one.
+    ///
+    /// **INFO:**
+    /// * Fails (returns VirtqError), if the pool is empty.
+    /// * ID`s of descriptor are by no means sorted. A descriptor can contain an ID between 1 and size_of_pool.
+    /// * Calleys can NOT rely on the next pulled descriptor to contain the subsequent ID after the previously
+    ///  pulled descriptor.
+    ///  In essence this means MemDesc can contain arbitrary ID's. E.g.:
+    ///   * First MemPool.pull -> MemDesc with id = 3
+    ///   * Second MemPool.pull -> MemDesc with id = 100
+    ///   * Third MemPool.pull -> MemDesc with id = 2,
+    fn pull(&self, rc_self: Rc<MemPool>, bytes: Bytes) -> Result<MemDescr, VirtqError> {
+        // debug!("pull");
+        let id = match self.pool.borrow_mut().pop() {
+            Some(id) => id,
+            None => return Err(VirtqError::NoDescrAvail),
+        };
 
-		let len = bytes.0;
+        let len = bytes.0;
 
-		// Allocate heap memory via a vec, leak and cast
-		let _mem_len = align_up!(len, PAGE_SIZE);
-		let ptr = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
+        // Allocate heap memory via a vec, leak and cast
+        let _mem_len = align_up!(len, PAGE_SIZE);
+        let ptr = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
 
-		// Assert descriptor does not cross a page barrier
-		let start_virt = ptr as usize;
-		let end_virt = start_virt + (len - 1);
-		let end_phy_calc =Addr::from(start_virt).to_pa() + (len - 1);
-		let end_phy = Addr::from(end_virt).to_pa();
+        // Assert descriptor does not cross a page barrier
+        let start_virt = ptr as usize;
+        let end_virt = start_virt + (len - 1);
+        let end_phy_calc = Addr::from(start_virt).to_pa() + (len - 1);
+        let end_phy = Addr::from(end_virt).to_pa();
 
-		assert_eq!(end_phy, end_phy_calc);
+        assert_eq!(end_phy, end_phy_calc);
 
-		Ok(MemDescr {
-			ptr,
-			len,
-			_init_len: len,
-			_mem_len,
-			id: Some(id),
-			dealloc: Dealloc::AsPage,
-			pool: rc_self,
-		})
-	}
+        Ok(MemDescr {
+            ptr,
+            len,
+            _init_len: len,
+            _mem_len,
+            id: Some(id),
+            dealloc: Dealloc::AsPage,
+            pool: rc_self,
+        })
+    }
 
-	/// Pulls a memory descriptor, which owns a memory area of the specified size in bytes. The
-	/// descriptor consumes NO ID and hence DOES NOT reduce the amount of descriptors left in the pool.
-	/// * ID`s of descriptor are by no means sorted. A descriptor can contain an ID between 1 and size_of_pool.
-	/// * Calleys can NOT rely on the next pulled descriptor to contain the subsequent ID after the previously
-	///  pulled descriptor.
-	///  In essence this means MemDesc can contain arbitrary ID's. E.g.:
-	///   * First MemPool.pull -> MemDesc with id = 3
-	///   * Second MemPool.pull -> MemDesc with id = 100
-	///   * Third MemPool.pull -> MemDesc with id = 2,
-	fn pull_untracked(&self, rc_self: Rc<MemPool>, bytes: Bytes) -> MemDescr {
-		// debug!("pull_untracked");
-		let len = bytes.0;
+    /// Pulls a memory descriptor, which owns a memory area of the specified size in bytes. The
+    /// descriptor consumes NO ID and hence DOES NOT reduce the amount of descriptors left in the pool.
+    /// * ID`s of descriptor are by no means sorted. A descriptor can contain an ID between 1 and size_of_pool.
+    /// * Calleys can NOT rely on the next pulled descriptor to contain the subsequent ID after the previously
+    ///  pulled descriptor.
+    ///  In essence this means MemDesc can contain arbitrary ID's. E.g.:
+    ///   * First MemPool.pull -> MemDesc with id = 3
+    ///   * Second MemPool.pull -> MemDesc with id = 100
+    ///   * Third MemPool.pull -> MemDesc with id = 2,
+    fn pull_untracked(&self, rc_self: Rc<MemPool>, bytes: Bytes) -> MemDescr {
+        // debug!("pull_untracked");
+        let len = bytes.0;
 
-		// Allocate heap memory via a vec, leak and cast
-		let _mem_len = align_up!(len, PAGE_SIZE);
-		let ptr = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
+        // Allocate heap memory via a vec, leak and cast
+        let _mem_len = align_up!(len, PAGE_SIZE);
+        let ptr = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
 
-		// Assert descriptor does not cross a page barrier
-		let start_virt = ptr as usize;
-		let end_virt = start_virt + (len - 1);
-		let end_phy_calc = Addr::from(start_virt).to_pa() + (len - 1);
-		let end_phy = Addr::from(end_virt).to_pa();
+        // Assert descriptor does not cross a page barrier
+        let start_virt = ptr as usize;
+        let end_virt = start_virt + (len - 1);
+        let end_phy_calc = Addr::from(start_virt).to_pa() + (len - 1);
+        let end_phy = Addr::from(end_virt).to_pa();
 
-		assert_eq!(end_phy, end_phy_calc);
+        assert_eq!(end_phy, end_phy_calc);
 
-		debug!("end pull_untracked");
-		MemDescr {
-			ptr,
-			len,
-			_init_len: len,
-			_mem_len,
-			id: None,
-			dealloc: Dealloc::AsPage,
-			pool: rc_self,
-		}
-	}
+        debug!("end pull_untracked");
+        MemDescr {
+            ptr,
+            len,
+            _init_len: len,
+            _mem_len,
+            id: None,
+            dealloc: Dealloc::AsPage,
+            pool: rc_self,
+        }
+    }
 }
 
 /// Specifies the type of buffer and amount of memory chunks that buffer does consist of wanted.
@@ -1939,17 +1969,17 @@ impl MemPool {
 /// ```
 #[derive(Debug, Clone)]
 pub enum BuffSpec<'a> {
-	/// Create a buffer with a single descriptor of size `Bytes`
-	Single(Bytes),
-	/// Create a buffer consisting of multiple descriptors, where each descriptors size
-	// is defined by  the respective `Bytes` inside the slice. Overall buffer will be
-	// the sum of all `Bytes` in the slide
-	Multiple(&'a [Bytes]),
-	/// Create a buffer consisting of multiple descriptors, where each descriptors size
-	// is defined by  the respective `Bytes` inside the slice. Overall buffer will be
-	// the sum of all `Bytes` in the slide. But consumes only ONE descriptor of the actual
-	/// virtqueue.
-	Indirect(&'a [Bytes]),
+    /// Create a buffer with a single descriptor of size `Bytes`
+    Single(Bytes),
+    /// Create a buffer consisting of multiple descriptors, where each descriptors size
+    // is defined by  the respective `Bytes` inside the slice. Overall buffer will be
+    // the sum of all `Bytes` in the slide
+    Multiple(&'a [Bytes]),
+    /// Create a buffer consisting of multiple descriptors, where each descriptors size
+    // is defined by  the respective `Bytes` inside the slice. Overall buffer will be
+    // the sum of all `Bytes` in the slide. But consumes only ONE descriptor of the actual
+    /// virtqueue.
+    Indirect(&'a [Bytes]),
 }
 
 /// Ensures `T` is pinned at the same memory location.
@@ -1965,83 +1995,83 @@ pub enum BuffSpec<'a> {
 /// * `Pinned<T>` behaves like T and implements `Deref`.
 /// *  Drops `T` upon drop.
 pub struct Pinned<T> {
-	raw_ptr: *mut T,
-	_drop_inner: bool,
+    raw_ptr: *mut T,
+    _drop_inner: bool,
 }
 
 impl<T: Sized> Pinned<T> {
-	/// Turns a `Pinned<T>` into a *mut T. Memory will remain valid.
-	fn into_raw(mut self) -> *mut T {
-		self._drop_inner = false;
-		self.raw_ptr
-	}
+    /// Turns a `Pinned<T>` into a *mut T. Memory will remain valid.
+    fn into_raw(mut self) -> *mut T {
+        self._drop_inner = false;
+        self.raw_ptr
+    }
 
-	/// Creates a new pinned `T` by boxing and leaking it.
-	/// Be aware that this will result in a new heap allocation
-	/// for `T` to be boxed.
-	fn pin(val: T) -> Pinned<T> {
-		let boxed = Box::new(val);
-		Pinned {
-			raw_ptr: Box::into_raw(boxed),
-			_drop_inner: true,
-		}
-	}
+    /// Creates a new pinned `T` by boxing and leaking it.
+    /// Be aware that this will result in a new heap allocation
+    /// for `T` to be boxed.
+    fn pin(val: T) -> Pinned<T> {
+        let boxed = Box::new(val);
+        Pinned {
+            raw_ptr: Box::into_raw(boxed),
+            _drop_inner: true,
+        }
+    }
 
-	/// Creates a new pinned `T` from a boxed `T`.
-	fn from_boxed(boxed: Box<T>) -> Pinned<T> {
-		Pinned {
-			raw_ptr: Box::into_raw(boxed),
-			_drop_inner: true,
-		}
-	}
+    /// Creates a new pinned `T` from a boxed `T`.
+    fn from_boxed(boxed: Box<T>) -> Pinned<T> {
+        Pinned {
+            raw_ptr: Box::into_raw(boxed),
+            _drop_inner: true,
+        }
+    }
 
-	/// Create a new pinned `T` from a `*mut T`
-	fn from_raw(raw_ptr: *mut T) -> Pinned<T> {
-		Pinned {
-			raw_ptr,
-			_drop_inner: true,
-		}
-	}
+    /// Create a new pinned `T` from a `*mut T`
+    fn from_raw(raw_ptr: *mut T) -> Pinned<T> {
+        Pinned {
+            raw_ptr,
+            _drop_inner: true,
+        }
+    }
 
-	/// Unpins the pinned value and returns it. This is only
-	/// save as long as no one relies on the
-	/// memory location of `T`, as this location
-	/// will no longer be constant.
-	fn unpin(mut self) -> T {
-		self._drop_inner = false;
+    /// Unpins the pinned value and returns it. This is only
+    /// save as long as no one relies on the
+    /// memory location of `T`, as this location
+    /// will no longer be constant.
+    fn unpin(mut self) -> T {
+        self._drop_inner = false;
 
-		unsafe { *Box::from_raw(self.raw_ptr) }
-	}
+        unsafe { *Box::from_raw(self.raw_ptr) }
+    }
 
-	/// Returns a pointer to `T`. The pointer
-	/// can be assumed to be constant over the lifetime of
-	/// `Pinned<T>`.
-	fn raw_addr(&self) -> *mut T {
-		self.raw_ptr
-	}
+    /// Returns a pointer to `T`. The pointer
+    /// can be assumed to be constant over the lifetime of
+    /// `Pinned<T>`.
+    fn raw_addr(&self) -> *mut T {
+        self.raw_ptr
+    }
 }
 
 impl<T> Deref for Pinned<T> {
-	type Target = T;
-	fn deref(&self) -> &Self::Target {
-		unsafe { &*(self.raw_ptr) }
-	}
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*(self.raw_ptr) }
+    }
 }
 
 impl<T> DerefMut for Pinned<T> {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		unsafe { &mut *(self.raw_ptr) }
-	}
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *(self.raw_ptr) }
+    }
 }
 
 impl<T> Drop for Pinned<T> {
-	fn drop(&mut self) {
-		if self._drop_inner {
-			unsafe {
-				Box::from_raw(self.raw_ptr);
-			}
-		}
-	}
+    fn drop(&mut self) {
+        if self._drop_inner {
+            unsafe {
+                Box::from_raw(self.raw_ptr);
+            }
+        }
+    }
 }
 
 //impl <K> Deref for Pinned<Vec<K>>  {
@@ -2066,68 +2096,68 @@ impl<T> Drop for Pinned<T> {
 #[derive(Debug, Copy, Clone)]
 #[repr(u16)]
 pub enum DescrFlags {
-	VIRTQ_DESC_F_NEXT = 1 << 0,
-	VIRTQ_DESC_F_WRITE = 1 << 1,
-	VIRTQ_DESC_F_INDIRECT = 1 << 2,
-	VIRTQ_DESC_F_AVAIL = 1 << 7,
-	VIRTQ_DESC_F_USED = 1 << 15,
+    VIRTQ_DESC_F_NEXT = 1 << 0,
+    VIRTQ_DESC_F_WRITE = 1 << 1,
+    VIRTQ_DESC_F_INDIRECT = 1 << 2,
+    VIRTQ_DESC_F_AVAIL = 1 << 7,
+    VIRTQ_DESC_F_USED = 1 << 15,
 }
 use core::ops::Not;
 impl Not for DescrFlags {
-	type Output = u16;
+    type Output = u16;
 
-	fn not(self) -> Self::Output {
-		!(u16::from(self))
-	}
+    fn not(self) -> Self::Output {
+        !(u16::from(self))
+    }
 }
 
 use core::ops::BitOr;
 impl BitOr for DescrFlags {
-	type Output = u16;
-	fn bitor(self, rhs: DescrFlags) -> Self::Output {
-		u16::from(self) | u16::from(rhs)
-	}
+    type Output = u16;
+    fn bitor(self, rhs: DescrFlags) -> Self::Output {
+        u16::from(self) | u16::from(rhs)
+    }
 }
 
 impl BitOr<DescrFlags> for u16 {
-	type Output = u16;
-	fn bitor(self, rhs: DescrFlags) -> Self::Output {
-		self | u16::from(rhs)
-	}
+    type Output = u16;
+    fn bitor(self, rhs: DescrFlags) -> Self::Output {
+        self | u16::from(rhs)
+    }
 }
 
 impl BitAnd for DescrFlags {
-	type Output = u16;
+    type Output = u16;
 
-	fn bitand(self, rhs: Self) -> Self::Output {
-		u16::from(self) & u16::from(rhs)
-	}
+    fn bitand(self, rhs: Self) -> Self::Output {
+        u16::from(self) & u16::from(rhs)
+    }
 }
 
 impl BitAnd<DescrFlags> for u16 {
-	type Output = u16;
+    type Output = u16;
 
-	fn bitand(self, rhs: DescrFlags) -> Self::Output {
-		self & u16::from(rhs)
-	}
+    fn bitand(self, rhs: DescrFlags) -> Self::Output {
+        self & u16::from(rhs)
+    }
 }
 
 impl PartialEq<DescrFlags> for u16 {
-	fn eq(&self, other: &DescrFlags) -> bool {
-		self == other
-	}
+    fn eq(&self, other: &DescrFlags) -> bool {
+        self == other
+    }
 }
 
 impl From<DescrFlags> for u16 {
-	fn from(flag: DescrFlags) -> Self {
-		match flag {
-			DescrFlags::VIRTQ_DESC_F_NEXT => 1 << 0,
-			DescrFlags::VIRTQ_DESC_F_WRITE => 1 << 1,
-			DescrFlags::VIRTQ_DESC_F_INDIRECT => 1 << 2,
-			DescrFlags::VIRTQ_DESC_F_AVAIL => 1 << 7,
-			DescrFlags::VIRTQ_DESC_F_USED => 1 << 15,
-		}
-	}
+    fn from(flag: DescrFlags) -> Self {
+        match flag {
+            DescrFlags::VIRTQ_DESC_F_NEXT => 1 << 0,
+            DescrFlags::VIRTQ_DESC_F_WRITE => 1 << 1,
+            DescrFlags::VIRTQ_DESC_F_INDIRECT => 1 << 2,
+            DescrFlags::VIRTQ_DESC_F_AVAIL => 1 << 7,
+            DescrFlags::VIRTQ_DESC_F_USED => 1 << 15,
+        }
+    }
 }
 
 /// Virtqeueus error module.
@@ -2135,69 +2165,69 @@ impl From<DescrFlags> for u16 {
 /// This module unifies errors provided to useres of a virtqueue, independent of the underlying
 /// virtqueue implementation, realized via the different enum variants.
 pub mod error {
-	use super::{BufferToken, Transfer};
+    use super::{BufferToken, Transfer};
 
-	#[derive(Debug)]
-	// Internal Error Handling for Buffers
-	pub enum BufferError {
-		WriteToLarge,
-		ToManyWrites,
-	}
+    #[derive(Debug)]
+    // Internal Error Handling for Buffers
+    pub enum BufferError {
+        WriteToLarge,
+        ToManyWrites,
+    }
 
-	// External Error Handling for users of the virtqueue.
-	pub enum VirtqError {
-		General,
-		/// Indirect is mixed with Direct descriptors, which is not allowed
-		/// according to the specification.
-		/// See [Buffer](super::Buffer) and [BuffSpec](super::BuffSpec) for details
-		BufferInWithDirect,
-		/// Call to create a BufferToken or TransferToken without
-		/// any buffers to be inserted
-		BufferNotSpecified,
-		/// Selected queue does not exist or
-		/// is not known to the device and hence can not be used
-		QueueNotExisting(u16),
-		/// Signals, that the queue does not have any free descriptors
-		/// left.
-		/// Typically this means, that the driver either has to provide
-		/// "unsend" `TransferToken` to the queue (see Docs for details)
-		/// or the device needs to process available descriptors in the queue.
-		NoDescrAvail,
-		/// Indicates that a [BuffSpec](super.BuffSpec) does have the right size
-		/// for a given structure. Returns the structures size in bytes.
-		///
-		/// E.g: A struct `T` with size of `4 bytes` must have a `BuffSpec`, which
-		/// defines exactly 4 bytes. Regardeless of whether it is a `Single`, `Multiple`
-		/// or `Indirect` BuffSpec.
-		BufferSizeWrong(usize),
-		/// The requested BufferToken for reuse is signed as not reusable and hence
-		/// can not be used twice.
-		/// Typically this is the case if one created the BufferToken indirectly
-		/// via `Virtq.prep_transfer_from_raw()`. Due to the fact, that reusing
-		/// Buffers which refer to raw pointers seems dangerours, this is forbidden.
-		NoReuseBuffer,
-		/// Indicates that a Transfer method was called, that is only allowed to be
-		/// called when the transfer is Finished (or Ready, although this state is
-		/// only allowed for Transfer structs owned by the Virtqueue).
-		/// The Error returns the called Transfer for recovery, if called from a
-		/// consuming function as a `Some(Transfer)`. For non-consuming
-		/// functions returns `None`.
-		OngoingTransfer(Option<Transfer>),
-		/// Indicates a write into a Buffer that is not existing
-		NoBufferAvail,
-		/// Indicates that a write to a Buffer happened and the data to be written into
-		/// the buffer/descriptor was to large for the buffer.
-		WriteToLarge(BufferToken),
-		/// Indicates that a Bytes::new() call failed or generally that a buffer is to large to
-		/// be transferred as one. The Maximum size is u32::MAX. This also is the maximum for indirect
-		/// descriptors (both the one placed in the queue, as also the ones the indirect descriptor is
-		/// referring to).
-		BufferToLarge,
-	}
+    // External Error Handling for users of the virtqueue.
+    pub enum VirtqError {
+        General,
+        /// Indirect is mixed with Direct descriptors, which is not allowed
+        /// according to the specification.
+        /// See [Buffer](super::Buffer) and [BuffSpec](super::BuffSpec) for details
+        BufferInWithDirect,
+        /// Call to create a BufferToken or TransferToken without
+        /// any buffers to be inserted
+        BufferNotSpecified,
+        /// Selected queue does not exist or
+        /// is not known to the device and hence can not be used
+        QueueNotExisting(u16),
+        /// Signals, that the queue does not have any free descriptors
+        /// left.
+        /// Typically this means, that the driver either has to provide
+        /// "unsend" `TransferToken` to the queue (see Docs for details)
+        /// or the device needs to process available descriptors in the queue.
+        NoDescrAvail,
+        /// Indicates that a [BuffSpec](super.BuffSpec) does have the right size
+        /// for a given structure. Returns the structures size in bytes.
+        ///
+        /// E.g: A struct `T` with size of `4 bytes` must have a `BuffSpec`, which
+        /// defines exactly 4 bytes. Regardeless of whether it is a `Single`, `Multiple`
+        /// or `Indirect` BuffSpec.
+        BufferSizeWrong(usize),
+        /// The requested BufferToken for reuse is signed as not reusable and hence
+        /// can not be used twice.
+        /// Typically this is the case if one created the BufferToken indirectly
+        /// via `Virtq.prep_transfer_from_raw()`. Due to the fact, that reusing
+        /// Buffers which refer to raw pointers seems dangerours, this is forbidden.
+        NoReuseBuffer,
+        /// Indicates that a Transfer method was called, that is only allowed to be
+        /// called when the transfer is Finished (or Ready, although this state is
+        /// only allowed for Transfer structs owned by the Virtqueue).
+        /// The Error returns the called Transfer for recovery, if called from a
+        /// consuming function as a `Some(Transfer)`. For non-consuming
+        /// functions returns `None`.
+        OngoingTransfer(Option<Transfer>),
+        /// Indicates a write into a Buffer that is not existing
+        NoBufferAvail,
+        /// Indicates that a write to a Buffer happened and the data to be written into
+        /// the buffer/descriptor was to large for the buffer.
+        WriteToLarge(BufferToken),
+        /// Indicates that a Bytes::new() call failed or generally that a buffer is to large to
+        /// be transferred as one. The Maximum size is u32::MAX. This also is the maximum for indirect
+        /// descriptors (both the one placed in the queue, as also the ones the indirect descriptor is
+        /// referring to).
+        BufferToLarge,
+    }
 
-	impl core::fmt::Debug for VirtqError {
-		fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-			match self {
+    impl core::fmt::Debug for VirtqError {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            match self {
                 VirtqError::General => write!(f, "Virtq failure due to unknown reasons!"),
                 VirtqError::NoBufferAvail => write!(f, "Virtq detected write into non existing Buffer!"),
                 VirtqError::BufferInWithDirect => write!(f, "Virtq detected creation of Token, where Indirect and direct buffers where mixed!"),
@@ -2210,6 +2240,6 @@ pub mod error {
                 VirtqError::WriteToLarge(_) => write!(f, "Write is to large for BufferToken!"),
                 VirtqError::BufferToLarge => write!(f, "Buffer to large for queue! u32::MAX exceeded."),
             }
-		}
-	}
+        }
+    }
 }

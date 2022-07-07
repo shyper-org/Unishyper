@@ -1,3 +1,4 @@
+use crate::ArchTrait;
 use crate::arch::BOARD_CORE_NUMBER;
 use crate::arch::PAGE_SIZE;
 
@@ -23,5 +24,11 @@ static STACKS: [Stack; BOARD_CORE_NUMBER] = [STACK; BOARD_CORE_NUMBER];
 
 #[no_mangle]
 pub fn stack_of_core(core_id: usize) -> usize {
+    STACKS[core_id].top()
+}
+
+#[no_mangle]
+pub fn get_core_stack() -> usize {
+    let core_id = crate::arch::Arch::core_id();
     STACKS[core_id].top()
 }

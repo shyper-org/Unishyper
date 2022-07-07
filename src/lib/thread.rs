@@ -5,12 +5,13 @@ use core::sync::atomic::Ordering::Relaxed;
 
 use spin::Mutex;
 
-use crate::arch::{ContextFrame, PAGE_SIZE};
+use crate::arch::{ContextFrame, PAGE_SIZE, STACK_SIZE};
 use crate::lib::cpu::cpu;
 use crate::lib::error::*;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
 use crate::mm::{Addr, PhysicalFrame, Region};
+use crate::util::round_up;
 
 pub type Tid = usize;
 
@@ -36,7 +37,7 @@ struct Inner {
     uuid: usize,
     parent: Option<usize>,
     level: PrivilegedLevel,
-    stack: PhysicalFrame,
+    stack: Region,
 }
 
 struct InnerMut {
@@ -150,17 +151,19 @@ static THREAD_MAP: Mutex<BTreeMap<Tid, Thread>> = Mutex::new(BTreeMap::new());
 pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
     let id = new_tid();
 
-    let stack_frame =
-        crate::mm::page_pool::page_alloc().expect("fail to allocate user thread stack");
+    let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
+    let stack_region = crate::mm::page_pool::pages_alloc(stack_size / PAGE_SIZE)
+        .expect("fail to allocate user thread stack");
+    let stack_start = stack_region.kva();
 
-    let sp = stack_frame.kva() + PAGE_SIZE;
+    let sp = stack_start + stack_region.size();
 
     let t = Thread(Arc::new(ControlBlock {
         inner: Inner {
             uuid: id,
             parent: None,
             level: PrivilegedLevel::Kernel,
-            stack: stack_frame,
+            stack: stack_region,
         },
         inner_mut: InnerMut {
             status: Mutex::new(Status::Sleep),
@@ -174,7 +177,7 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
     trace!(
         "thread_alloc success id [{}] sp [{:x} to {:x}]",
         id,
-        sp - PAGE_SIZE,
+        stack_start,
         sp
     );
     t
@@ -246,7 +249,11 @@ pub fn thread_block_current_with_timeout(timeout: u64) {
 }
 
 pub fn thread_sleep(t: &Thread, reason: Status) {
-    trace!("thread_sleep sleep thread [{}] status {:?}", t.tid(), reason);
+    trace!(
+        "thread_sleep sleep thread [{}] status {:?}",
+        t.tid(),
+        reason
+    );
     assert_ne!(reason, Status::Runnable);
     let mut status = t.0.inner_mut.status.lock();
     *status = reason;
@@ -258,14 +265,16 @@ pub fn thread_sleep(t: &Thread, reason: Status) {
     }
 }
 
-
 // Todo: make thread yield more efficient.
 
 #[no_mangle]
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
     // debug!("\n***\nthread yield begin on Thread [{}]", get_current_thread_id());
-    trace!("thread_yield is called on Thread [{}]", get_current_thread_id());
+    trace!(
+        "thread_yield is called on Thread [{}]",
+        get_current_thread_id()
+    );
     crate::arch::switch_to();
     // debug!("\n***\nthread yield end, back to Thread [{}]", get_current_thread_id());
     // let icntr2 = crate::lib::timer::current_cycle();

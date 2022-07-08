@@ -193,7 +193,7 @@ impl<'a> Device<'a> for ShyperNet {
     }
 
     fn transmit(&'a mut self) -> Option<Self::TxToken> {
-        trace!("create TxToken to transfer data");
+        debug!("create TxToken to transfer data");
         Some(TxToken::new())
     }
 }
@@ -203,7 +203,7 @@ pub struct RxToken {
     buffer: &'static mut [u8],
     handle: usize,
 }
-
+/// A token to receive a single network packet.
 impl RxToken {
     pub fn new(buffer: &'static mut [u8], handle: usize) -> Self {
         Self { buffer, handle }
@@ -211,6 +211,13 @@ impl RxToken {
 }
 
 impl phy::RxToken for RxToken {
+    /// Consumes the token to receive a single network packet.
+    ///
+    /// This method receives a packet and then calls the given closure `f` with the raw
+    /// packet bytes as argument.
+    ///
+    /// The timestamp must be a number of milliseconds, monotonically increasing since an
+    /// arbitrary moment in time, such as system startup.
     #[allow(unused_mut)]
     fn consume<R, F>(mut self, _timestamp: Instant, f: F) -> smoltcp::Result<R>
     where
@@ -227,7 +234,7 @@ impl phy::RxToken for RxToken {
 
 #[doc(hidden)]
 pub struct TxToken;
-
+/// A token to transmit a single network packet.
 impl TxToken {
     pub fn new() -> Self {
         Self {}
@@ -235,6 +242,15 @@ impl TxToken {
 }
 
 impl phy::TxToken for TxToken {
+    /// Consumes the token to send a single network packet.
+    ///
+    /// This method constructs a transmit buffer of size `len` and calls the passed
+    /// closure `f` with a mutable reference to that buffer. The closure should construct
+    /// a valid network packet (e.g. an ethernet packet) in the buffer. When the closure
+    /// returns, the transmit buffer is sent out.
+    ///
+    /// The timestamp must be a number of milliseconds, monotonically increasing since an
+    /// arbitrary moment in time, such as system startup.
     fn consume<R, F>(self, _timestamp: Instant, len: usize, f: F) -> smoltcp::Result<R>
     where
         F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,

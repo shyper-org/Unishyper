@@ -10,7 +10,7 @@ use crate::lib::cpu::cpu;
 use crate::lib::error::*;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
-use crate::mm::{Addr, PhysicalFrame, Region};
+use crate::mm::{Addr, Region};
 use crate::util::round_up;
 
 pub type Tid = usize;
@@ -270,22 +270,20 @@ pub fn thread_sleep(t: &Thread, reason: Status) {
 #[no_mangle]
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
-    // debug!("\n***\nthread yield begin on Thread [{}]", get_current_thread_id());
     trace!(
         "thread_yield is called on Thread [{}]",
         get_current_thread_id()
     );
     crate::arch::switch_to();
-    // debug!("\n***\nthread yield end, back to Thread [{}]", get_current_thread_id());
     // let icntr2 = crate::lib::timer::current_cycle();
     // info!("as create cycle {}", icntr2 - icntr);
 }
 
 #[no_mangle]
 pub fn thread_schedule() {
-    trace!("thread_schedule\n");
+    // trace!("thread_schedule\n");
     cpu().schedule();
-    debug!("thread_schedule end\n");
+    // trace!("thread_schedule end\n");
 }
 
 pub fn get_current_thread_id() -> Tid {

@@ -4,8 +4,6 @@ use core::ops::Range;
 use spin::{Mutex, Once};
 
 use crate::arch::*;
-use crate::mm::PhysicalFrame;
-use crate::lib::error::ERROR_OOM;
 
 use super::Region;
 
@@ -38,14 +36,6 @@ impl PagePool {
             self.free.push_back(pa);
         }
     }
-
-    // pub fn allocate_page(&mut self) -> Result<PhysicalFrame, Error> {
-    //     if let Some(pa) = self.free.pop_front() {
-    //         Ok(PhysicalFrame::new(pa))
-    //     } else {
-    //         Err(ERROR_OOM)
-    //     }
-    // }
 
     // Todo: we need to organize free pages better.
     pub fn allocate_pages(&mut self, num: usize) -> Result<Region, Error> {
@@ -89,11 +79,6 @@ pub fn init() {
     let mut pool = page_pool().lock();
     pool.init(range);
 }
-
-// pub fn page_alloc() -> Result<PhysicalFrame, Error> {
-//     let mut pool = page_pool().lock();
-//     pool.allocate_page()
-// }
 
 pub fn pages_alloc(num: usize) -> Result<Region, Error> {
     let mut pool = page_pool().lock();

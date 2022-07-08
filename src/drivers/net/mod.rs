@@ -45,12 +45,12 @@ pub fn netwakeup() {
 }
 
 pub fn network_irqhandler() {
-    trace!("Receive network interrupt");
+    debug!("Receive network interrupt");
 
     let check_scheduler = match get_network_driver() {
         Some(driver) => driver.lock().handle_interrupt(),
         _ => {
-            debug!("Unable to handle interrupt!");
+            error!("Unable to handle interrupt!");
             false
         }
     };

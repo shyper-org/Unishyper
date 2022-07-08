@@ -82,14 +82,14 @@ impl Core {
 
     fn run(&mut self, t: Thread) {
         if let Some(prev) = self.running_thread() {
-            trace!("switch thread from [{}] to [{}]", prev.tid(), t.tid());
+            // trace!("switch thread from [{}] to [{}]", prev.tid(), t.tid());
             // Note: normal switch
             prev.set_context(*self.context());
             // add back to scheduler queue
             if prev.runnable() {
                 scheduler().add(prev.clone());
             }
-            trace!("next ctx:\n {}", t.context());
+            // trace!("next ctx:\n {}", t.context());
             *self.context_mut() = t.context();
         } else {
             trace!("run thread {}",t.tid());

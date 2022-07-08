@@ -1142,48 +1142,28 @@ impl BufferToken {
     ) {
         let mut send_ptrs = Vec::new();
         let mut recv_ptrs = Vec::new();
-        let mut i = 0;
 
         if let Some(buff) = self.send_buff.as_mut() {
             for desc in buff.as_slice() {
                 send_ptrs.push((desc.ptr, desc.len()));
-                trace!(
-                    "[{}] send ptrs, desc.ptr {:x} desc.len {:x}",
-                    i,
-                    desc.ptr as usize,
-                    desc.len()
-                );
-                i += 1;
-            }
-            if i > 0 {
-                trace!(
-                    "send_ptrs size {} start addr {:p} end addr {:p}",
-                    send_ptrs.len(),
-                    &send_ptrs[0],
-                    &send_ptrs[send_ptrs.len() - 1]
-                );
+                // trace!(
+                //     "[{}] send ptrs, desc.ptr {:x} desc.len {:x}",
+                //     i,
+                //     desc.ptr as usize,
+                //     desc.len()
+                // );
             }
         }
 
-        i = 0;
         if let Some(buff) = self.recv_buff.as_ref() {
             for desc in buff.as_slice() {
                 recv_ptrs.push((desc.ptr, desc.len()));
-                trace!(
-                    "[{}] recv ptrs, desc.ptr {:x} desc.len {:x}",
-                    i,
-                    desc.ptr as usize,
-                    desc.len()
-                );
-                i += 1;
-            }
-            if i > 0 {
-                trace!(
-                    "recv_ptrs size {} start addr {:p} end addr {:p}",
-                    recv_ptrs.len(),
-                    &recv_ptrs[0],
-                    &recv_ptrs[recv_ptrs.len() - 1]
-                );
+                // trace!(
+                //     "[{}] recv ptrs, desc.ptr {:x} desc.len {:x}",
+                //     i,
+                //     desc.ptr as usize,
+                //     desc.len()
+                // );
             }
         }
 

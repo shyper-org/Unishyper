@@ -1,14 +1,12 @@
 pub mod config;
 pub mod heap;
 mod mem_region;
-mod page_frame;
 pub mod page_pool;
 
 use alloc::collections::BTreeMap;
 use spin::Mutex;
 
 pub use self::mem_region::*;
-pub use self::page_frame::*;
 
 use crate::arch::PAGE_SIZE;
 use crate::lib::thread::current_thread;

@@ -19,10 +19,10 @@ use smoltcp::wire::IpAddress;
 use smoltcp::wire::{IpCidr, Ipv4Address, Ipv4Cidr};
 use smoltcp::Error;
 
+use crate::drivers::net::netwait;
 use crate::exported::thread_spawn;
 use crate::lib::thread::thread_yield;
 use crate::lib::timer::current_ms;
-use crate::drivers::net::netwait;
 
 use super::device::ShyperNet;
 use super::executor::{block_on, poll_on, spawn};
@@ -88,6 +88,7 @@ where
             .unwrap_or(true)
         {
             // just to make progress
+            debug!("NetworkInterface::poll_common::poll:send or receive packets!!!");
         }
         #[cfg(feature = "dhcpv4")]
         let config = self
@@ -198,17 +199,26 @@ impl AsyncSocket {
         future::poll_fn(|cx| {
             self.with(|s| {
                 if s.is_active() {
-                    trace!("AsyncSocket accept TcpSocket is active, state {:?}", s.state());
+                    trace!(
+                        "AsyncSocket accept TcpSocket is active, state {:?}",
+                        s.state()
+                    );
                     Poll::Ready(Ok(()))
                 } else {
-                    trace!("AsyncSocket accept TcpSocket is not active state {:?}", s.state());
+                    trace!(
+                        "AsyncSocket accept TcpSocket is not active state {:?}",
+                        s.state()
+                    );
                     match s.state() {
                         TcpState::Closed
                         | TcpState::Closing
                         | TcpState::FinWait1
                         | TcpState::FinWait2 => Poll::Ready(Err(Error::Illegal)),
                         _ => {
-                            trace!("AsyncSocket accept state {:?}, register_recv_waker, Poll Pending", s.state());
+                            trace!(
+                                "AsyncSocket accept state {:?}, register_recv_waker, Poll Pending",
+                                s.state()
+                            );
                             s.register_recv_waker(cx.waker());
                             Poll::Pending
                         }
@@ -332,7 +342,7 @@ pub fn network_delay(timestamp: Instant) -> Option<Duration> {
 }
 
 pub async fn network_run() {
-    trace!("network_run");
+    debug!("network_run");
     future::poll_fn(|cx| match NIC.lock().deref_mut() {
         NetworkState::Initialized(nic) => {
             nic.poll(cx, Instant::from_millis(current_ms() as i64));
@@ -353,17 +363,13 @@ extern "C" fn nic_thread(_: usize) {
         debug!("[nic_thread] netwait finished, try to call nic.poll_common");
 
         if let NetworkState::Initialized(nic) = NIC.lock().deref_mut() {
-            debug!("NetworkState Initialized success, poll_common");
+            // debug!("NetworkState Initialized success, poll_common");
             nic.poll_common(Instant::from_millis(current_ms() as i64));
         }
-        // It's maybe wrong, just try to fix, see net wake up.
-        // Todo: During network irq process, how can we ensure it can not be interrupt by timer?
-        // trace!("[nic_thread] nested_enable");
-        // crate::arch::irq::nested_enable(true);
     }
 }
 
-pub fn network_init(){
+pub fn network_init() {
     info!("network lib init");
     // initialize variable, which contains the next local endpoint
     LOCAL_ENDPOINT.store(start_endpoint(), Ordering::SeqCst);

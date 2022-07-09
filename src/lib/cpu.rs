@@ -100,7 +100,7 @@ impl Core {
             } else {
                 // Note: this is first run
                 // `loader_main` prepare the context to stack
-                trace!("first run thread {}", t.tid());
+                debug!("first run thread {}", t.tid());
             }
         }
         self.set_running_thread(Some(t.clone()));
@@ -115,7 +115,7 @@ pub fn cpu() -> &'static mut Core {
 #[no_mangle]
 fn idle_thread(_arg: usize) {
     loop {
-        trace!("idle_thread {}\n", _arg);
+        // info!("idle_thread {}, wfi\n", _arg);
         // loop{}
         crate::arch::Arch::wait_for_interrupt();
     }

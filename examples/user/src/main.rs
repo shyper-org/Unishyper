@@ -94,13 +94,6 @@ use rust_shyper_os::exported::semaphore::Semaphore;
 
 static TEST_SEM: Semaphore = Semaphore::new(0);
 
-fn test_acquire() {
-    println!("\n[Acquire Thread] test_acquire\n");
-    TEST_SEM.acquire();
-    println!("\n[Acquire Thread] test_acquire return\n");
-}
-
-
 extern "C" fn test_semaphore_acquire(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
@@ -112,13 +105,13 @@ extern "C" fn test_semaphore_acquire(arg: usize) {
     let mut i = 0;
     loop {
         println!("\n[Acquire Thread] acquire round {}\n", i);
-        test_acquire();
+        TEST_SEM.acquire();
         println!("\n[Acquire Thread] acquired success on round {}\n", i);
         i += 1;
     }
 }
 
-extern "C" fn test_semaphore_release(arg: usize) {
+extern "C" fn test_semaphore_release_A(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
         "\n**************************\n test_semaphore_release, core {} arg {} curent EL{}\n**************************\n",
@@ -127,8 +120,25 @@ extern "C" fn test_semaphore_release(arg: usize) {
         crate::arch::Arch::curent_privilege()
     );
     for i in 0..arg {
-        println!("\n[Release Thread] release round {}\n", i);
+        println!("\n[Release Thread A] release round {}\n", i);
         TEST_SEM.release();
+        thread_block_current_with_timeout(2000);
+        thread_yield();
+    }
+}
+
+extern "C" fn test_semaphore_release_B(arg: usize) {
+    let core_id = crate::arch::Arch::core_id();
+    println!(
+        "\n**************************\n test_semaphore_release, core {} arg {} curent EL{}\n**************************\n",
+        core_id,
+        arg,
+        crate::arch::Arch::curent_privilege()
+    );
+    for i in 0..arg {
+        println!("\n[Release Thread B] release round {}\n", i);
+        TEST_SEM.release();
+        thread_block_current_with_timeout(1000);
         thread_yield();
     }
 }
@@ -141,7 +151,8 @@ fn main() {
     // thread_spawn(test_net_sem, 1);
     thread_spawn(test_semaphore_acquire, 123);
     // // thread_yield();
-    thread_spawn(test_semaphore_release, 3);
+    thread_spawn(test_semaphore_release_A, 3);
+    thread_spawn(test_semaphore_release_B, 5);
     thread_yield();
     // for i in 0..10 {
     //     thread_spawn(test_c_thread, i + 100);

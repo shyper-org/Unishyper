@@ -9,6 +9,7 @@
 #![feature(never_type)]
 #![feature(asm_const)]
 #![feature(drain_filter)]
+#![feature(map_first_last)]
 
 #[macro_use]
 extern crate log;

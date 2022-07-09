@@ -179,7 +179,7 @@ where
             // trace!("block_on, Poll not Ready, unparked {}", unparked);
             if !unparked {
                 match delay {
-                    Some(d) => thread_block_current_with_timeout(d),
+                    Some(d) => thread_block_current_with_timeout(d as usize),
                     None => thread_block_current(),
                 };
                 thread_yield();

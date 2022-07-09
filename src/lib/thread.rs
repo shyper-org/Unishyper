@@ -174,7 +174,7 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
     let mut map = THREAD_MAP.lock();
     map.insert(id, t.clone());
 
-    trace!(
+    debug!(
         "thread_alloc success id [{}] sp [{:x} to {:x}]",
         id,
         stack_start,
@@ -193,22 +193,18 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 }
 
 pub fn thread_destroy(t: Thread) {
-    trace!("Destroy t{}", t.tid());
+    debug!("Destroy t{}", t.tid());
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
         if t.tid() == current_thread.tid() {
             crate::lib::cpu::cpu().set_running_thread(None);
         }
     }
-    // if let Some(parent) = t.parent() {
-    // Todo: maybe need to implement.
-    // thread_exit_signal(t.tid(), parent);
-    // }
     let mut map = THREAD_MAP.lock();
     map.remove(&t.tid());
 }
 
 pub fn thread_wake(t: &Thread) {
-    trace!("thread_wake set thread [{}] Runnable", t.tid());
+    debug!("thread_wake set thread [{}] Runnable", t.tid());
     let mut status = t.0.inner_mut.status.lock();
     *status = Status::Runnable;
     scheduler().add(t.clone());
@@ -230,8 +226,8 @@ pub fn thread_wake_to_front(t: &Thread) {
 }
 
 pub fn thread_block_current() {
-    trace!("thread_block_current");
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
+        debug!("Thread[{}]  thread_block_current", current_thread.tid());
         let t = &current_thread;
         let reason = Status::Blocked;
         assert_ne!(reason, Status::Runnable);
@@ -241,32 +237,35 @@ pub fn thread_block_current() {
     } else {
         warn!("No Running Thread!");
     }
-    // thread_yield();
 }
 
-pub fn thread_block_current_with_timeout(timeout: u64) {
-    // trace!("thread_block_current_with_timeout, wip! {}", timeout);
+pub fn thread_block_current_with_timeout(timeout: usize) {
+    if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
+        debug!(
+            "Thread[{}] thread_block_current_with_timeout {}",
+            current_thread.tid(),
+            timeout
+        );
+        let t = &current_thread;
+        let reason = Status::Blocked;
+        assert_ne!(reason, Status::Runnable);
+        let mut status = t.0.inner_mut.status.lock();
+        *status = reason;
+        drop(status);
+        scheduler().blocked(t.clone(), Some(timeout));
+    } else {
+        warn!("No Running Thread!");
+    }
 }
 
-pub fn thread_sleep(t: &Thread, reason: Status) {
-    trace!(
-        "thread_sleep sleep thread [{}] status {:?}",
-        t.tid(),
-        reason
-    );
-    assert_ne!(reason, Status::Runnable);
-    let mut status = t.0.inner_mut.status.lock();
-    *status = reason;
-    drop(status);
-    if let Some(current) = cpu().running_thread() {
-        if current.tid() == t.tid() {
-            thread_yield();
-        }
+pub fn handle_blocked_threads() {
+    use crate::lib::timer::current_ms;
+    while let Some(t) = scheduler().get_wakeup_thread_by_time(current_ms()) {
+        thread_wake(&t);
     }
 }
 
 // Todo: make thread yield more efficient.
-
 #[no_mangle]
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();

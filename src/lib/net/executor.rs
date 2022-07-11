@@ -172,9 +172,10 @@ where
         let delay =
             network_delay(Instant::from_millis(current_ms() as i64)).map(|d| d.total_millis());
 
-        debug!("block_on, Poll not Ready, get delay {:?}", delay);
+        // debug!("block_on, Poll not Ready, get delay {:?}", delay);
 
         if delay.is_none() || delay.unwrap() > 100 {
+            debug!("block_on, Poll not Ready, get delay {:?}", delay);
             let unparked = thread_notify.unparked.swap(false, Ordering::Acquire);
             // trace!("block_on, Poll not Ready, unparked {}", unparked);
             if !unparked {

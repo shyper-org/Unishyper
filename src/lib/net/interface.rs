@@ -333,7 +333,7 @@ impl From<Handle> for AsyncSocket {
 fn start_endpoint() -> u16 {
     use cortex_a::registers::CNTPCT_EL0;
     use tock_registers::interfaces::Readable;
-    trace!("get start endpoint {}", CNTPCT_EL0.get());
+    debug!("get start endpoint {}", CNTPCT_EL0.get());
     (CNTPCT_EL0.get() % (u16::MAX as u64)).try_into().unwrap()
 }
 

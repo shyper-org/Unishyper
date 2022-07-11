@@ -151,6 +151,7 @@ static THREAD_MAP: Mutex<BTreeMap<Tid, Thread>> = Mutex::new(BTreeMap::new());
 pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
     let id = new_tid();
 
+    // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
     let stack_region = crate::mm::page_pool::pages_alloc(stack_size / PAGE_SIZE)
         .expect("fail to allocate user thread stack");

@@ -67,7 +67,6 @@ impl RoundRobinScheduler {
             //     current_ms
             // );
         }
-        // debug!("blocked queue is empty, current time: {}", current_ms);
         return None;
     }
 }

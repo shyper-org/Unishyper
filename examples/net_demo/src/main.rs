@@ -16,14 +16,14 @@ extern crate alloc;
 extern "C" fn netdemo_server(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
-            "\n**************************\n netdemo_client, core {} arg {} curent EL{}\n**************************\n",
+            "\n**************************\n netdemo_server, core {} arg {} curent EL{}\n**************************\n",
             core_id,
             arg,
             crate::arch::Arch::curent_privilege()
         );
     let listener = TcpListener::bind(SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-        8080,
+        IpAddr::V4(Ipv4Addr::new(10, 0, 5, 3)),
+        4444,
     ))
     .unwrap();
 
@@ -39,7 +39,10 @@ extern "C" fn netdemo_server(arg: usize) {
 
     let mut buf = vec![0; 1024];
     stream.read(&mut buf).expect("server stream read error");
-    loop {}
+    use alloc::string::String;
+    let s = String::from_utf8(buf).expect("Found invalid UTF-8");
+    println!("TCP Connection read, get {:?}", s);
+    loop{}
 }
 
 extern "C" fn netdemo_client(arg: usize) {
@@ -52,7 +55,7 @@ extern "C" fn netdemo_client(arg: usize) {
         );
     if let Ok(stream) = TcpStream::connect(SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-        8080,
+        4444,
     )) {
         println!("Connection established! Ready to send...");
 
@@ -87,7 +90,7 @@ fn main() {
 
     println!("********network_init finished ******");
 
-    thread_spawn(netdemo_client, 123);
+    thread_spawn(netdemo_server, 123);
 
     exit();
     loop {}

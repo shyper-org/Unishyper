@@ -49,10 +49,10 @@ host system. For instance, the following command establish the tap device
 `tap0` on Linux:
 
 ```bash
-sudo ip tuntap add tap0 mode tap
-sudo ip addr add 10.0.5.1/24 broadcast 10.0.5.255 dev tap0
-sudo ip link set dev tap0 up
-sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
+sudo ip tuntap add tap10 mode tap
+sudo ip addr add 10.0.5.1/24 broadcast 10.0.5.255 dev tap10
+sudo ip link set dev tap10 up
+sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap10/proxy_arp'
 ```
 
 Add the feature `tcp` in the `Cargo.toml`. Rust-ShyperOS use the network stack [smoltcp](https://github.com/smoltcp-rs/smoltcp) to offer TCP/UDP communication.
@@ -90,3 +90,14 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
 						-global virtio-mmio.force-legacy=false
 ```
  You may see Makefile for details.
+
+ You can use **ping** or **traceroute** tools to check if network stacks works.
+
+ To run network test, you may follow these steps:
+
+ * use gcc to compile socket_client.c in examples/net_test dir
+   * `gcc examples/net_test/socket_client.c -o examples/net_test/client`
+ * spawn `netdemo_server ` thread in examples/net_demo/main.c
+ * run `sudo tcpdump -i tap10 -vvv -nn -e -p net 10.0.5 and not proto \\udp` to trace useful network packets
+ * run `make net_emu`
+ * run `/examples/net_test/client `

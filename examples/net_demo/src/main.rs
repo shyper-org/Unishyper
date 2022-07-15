@@ -13,6 +13,7 @@ use rust_shyper_os::*;
 #[macro_use]
 extern crate alloc;
 
+#[allow(dead_code)]
 extern "C" fn netdemo_server(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
@@ -40,11 +41,13 @@ extern "C" fn netdemo_server(arg: usize) {
     let mut buf = vec![0; 1024];
     stream.read(&mut buf).expect("server stream read error");
     use alloc::string::String;
+    
     let s = String::from_utf8(buf).expect("Found invalid UTF-8");
     println!("TCP Connection read, get {:?}", s);
     loop{}
 }
 
+#[allow(dead_code)]
 extern "C" fn netdemo_client(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
@@ -54,13 +57,19 @@ extern "C" fn netdemo_client(arg: usize) {
             crate::arch::Arch::curent_privilege()
         );
     if let Ok(stream) = TcpStream::connect(SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+        IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
         4444,
     )) {
         println!("Connection established! Ready to send...");
 
         // Create a buffer of 0s, size n_bytes, to be sent over multiple times
-        let buf = vec![0; 1024];
+        let mut buf = vec![0; 1024];
+        buf[0] = 0x48;
+        buf[1] = 0x45;
+        buf[2] = 0x4C;
+        buf[3] = 0x4C;
+        buf[4] = 0x4F;
+        buf[5] = 0x0;
 
         for _i in 0..5 {
             let mut pos = 0;
@@ -78,8 +87,7 @@ extern "C" fn netdemo_client(arg: usize) {
 
         println!("Sent everything!");
     }
-
-    loop {}
+    println!("exit");
 }
 
 #[no_mangle]
@@ -90,7 +98,8 @@ fn main() {
 
     println!("********network_init finished ******");
 
-    thread_spawn(netdemo_server, 123);
+    thread_spawn(netdemo_client, 123);
+    // thread_spawn(netdemo_server, 123);
 
     exit();
     loop {}

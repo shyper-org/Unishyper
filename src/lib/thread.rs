@@ -175,11 +175,9 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
     let mut map = THREAD_MAP.lock();
     map.insert(id, t.clone());
 
-    debug!(
+    info!(
         "thread_alloc success id [{}] sp [{:x} to {:x}]",
-        id,
-        stack_start,
-        sp
+        id, stack_start, sp
     );
     t
 }
@@ -194,7 +192,7 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 }
 
 pub fn thread_destroy(t: Thread) {
-    debug!("Destroy t{}", t.tid());
+    info!("Destroy t{}", t.tid());
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
         if t.tid() == current_thread.tid() {
             crate::lib::cpu::cpu().set_running_thread(None);
@@ -212,6 +210,10 @@ pub fn thread_wake(t: &Thread) {
 }
 
 pub fn thread_wake_by_tid(tid: Tid) {
+    if tid == current_thread_id() {
+        // debug!("Try to wake up running Thread[{}], return", tid);
+        return;
+    }
     if let Some(t) = thread_lookup(tid) {
         thread_wake(&t);
     } else {
@@ -272,7 +274,7 @@ pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
     trace!(
         "thread_yield is called on Thread [{}]",
-        get_current_thread_id()
+        current_thread_id()
     );
     crate::arch::switch_to();
     // let icntr2 = crate::lib::timer::current_cycle();
@@ -286,7 +288,7 @@ pub fn thread_schedule() {
     // trace!("thread_schedule end\n");
 }
 
-pub fn get_current_thread_id() -> Tid {
+pub fn current_thread_id() -> Tid {
     match cpu().running_thread() {
         None => 0,
         Some(t) => t.tid(),

@@ -26,7 +26,7 @@ pub fn current_sec() -> usize {
 
 pub fn interrupt() {
   crate::drivers::timer::next();
-  trace!("timer interrupt");
+//   trace!("timer interrupt");
   crate::lib::thread::handle_blocked_threads();
   crate::lib::cpu::cpu().schedule();
 }

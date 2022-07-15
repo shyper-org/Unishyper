@@ -70,7 +70,9 @@ impl Core {
 
     pub fn schedule(&mut self) {
         if let Some(t) = scheduler().pop() {
-            println!("============================================\n==== switch thread to [{}] ====\n", t.tid());
+            debug!("====================schedule==================\n");
+            scheduler().show_running_threads();
+            // println!("============================================\n==== switch thread to [{}] ====\n", t.tid());
             self.run(t);
         } else {
             self.run(self.idle_thread());

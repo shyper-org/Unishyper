@@ -28,6 +28,9 @@ impl RoundRobinScheduler {
 
     pub fn pop(&self) -> Option<Thread> {
         let mut running_queue = self.running_queue.lock();
+        // for t in running_queue.clone().into_iter() {
+        //     println!("running queue: thread [{}]", t.tid());
+        // }
         running_queue.pop_front()
     }
 
@@ -68,6 +71,20 @@ impl RoundRobinScheduler {
             // );
         }
         return None;
+    }
+
+    pub fn show_running_threads(&self) {
+        let running_queue = self.running_queue.lock();
+        for t in running_queue.iter() {
+            debug!("Running Thread[{}]", t.tid());
+        }
+    }
+
+    pub fn show_blocked_threads(&self) {
+        let blocked_queue = self.blocked_queue.lock();
+        for t in blocked_queue.iter() {
+            debug!("Blocked Thread[{}], sleep time {}ms", t.1.tid(), t.0);
+        }
     }
 }
 

@@ -151,11 +151,13 @@ pub struct AsyncSocket(Handle);
 impl AsyncSocket {
     pub fn new() -> Self {
         let handle = NIC.lock().as_nic_mut().unwrap().create_handle().unwrap();
+        println!("create handle {:?}",handle);
         Self(handle)
     }
 
     fn with<R>(&self, f: impl FnOnce(&mut TcpSocket) -> R) -> R {
-        // trace!("Async Socket with()");
+        // println!("Async Socket with(), handle {:?}", self.0);
+
         let mut guard = NIC.lock();
         let nic = guard.as_nic_mut().unwrap();
         let res = {
@@ -371,7 +373,7 @@ extern "C" fn nic_thread(_: usize) {
 
 pub fn network_init() {
     info!("network lib init");
-    // initialize variable, which contains the next local endpoint
+    // Initialize variable, which contains the next local endpoint
     LOCAL_ENDPOINT.store(start_endpoint(), Ordering::SeqCst);
 
     let mut guard = NIC.lock();
@@ -381,10 +383,10 @@ pub fn network_init() {
     if let NetworkState::Initialized(nic) = guard.deref_mut() {
         nic.poll_common(Instant::from_millis(current_ms() as i64));
 
-        // create thread, which manages the network stack
-        // use a higher priority to reduce the network latency
+        // Create thread, which manages the network stack
+        // Todo: may use a higher priority to reduce the network latency
         let tid = thread_spawn(nic_thread, 0);
-        debug!("Spawn network thread with id {}", tid);
+        info!("Spawn network thread with id {}", tid);
 
         spawn(network_run()).detach();
 
@@ -503,7 +505,7 @@ pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
 
 #[no_mangle]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
-    trace!("tcp_listener_accept");
+    info!("tcp_listener_accept");
     let socket = AsyncSocket::new();
     let (addr, port) = block_on(socket.accept(port), None)?.map_err(|_| ())?;
 

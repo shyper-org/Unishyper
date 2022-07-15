@@ -94,6 +94,7 @@ use rust_shyper_os::exported::semaphore::Semaphore;
 
 static TEST_SEM: Semaphore = Semaphore::new(0);
 
+#[allow(dead_code)]
 extern "C" fn test_semaphore_acquire(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
@@ -111,6 +112,7 @@ extern "C" fn test_semaphore_acquire(arg: usize) {
     }
 }
 
+#[allow(dead_code)]
 extern "C" fn test_semaphore_release_A(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
@@ -127,6 +129,7 @@ extern "C" fn test_semaphore_release_A(arg: usize) {
     }
 }
 
+#[allow(dead_code)]
 extern "C" fn test_semaphore_release_B(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(

@@ -18,7 +18,7 @@ unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
 
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
-    trace!("current_el_sp0_irq \n{}", ctx.read());
+    // trace!("current_el_sp0_irq \n{}", ctx.read());
     use crate::lib::interrupt::*;
     let core = crate::lib::cpu::cpu();
     core.set_context(ctx);

@@ -15,7 +15,7 @@ pub const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
 
 pub const KERNEL_STACK_SIZE: usize = 32_768; // // PAGE_SIZE * 8
 
-pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
+pub const STACK_SIZE: usize = 1_048_576; // PAGE_SIZE * 256
 
 const PA2KVA: usize = 0xFFFF_FF80_0000_0000;
 const KVA2PA: usize = 0x0000_007F_FFFF_FFFF;

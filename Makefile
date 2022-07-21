@@ -48,39 +48,36 @@ QEMU_COMMON_OPTIONS := -serial stdio -display none -smp 4 -m 2048
 emu: build
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -kernel ${KERNEL}.bin -s
 
+debug: build
+	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -kernel ${KERNEL}.bin -s -S
+
 user_emu: user
 	qemu-system-aarch64 -M virt -cpu cortex-a53 \
 		-device loader,file=${USER_KERNEL},addr=0x80000000,force-raw=on \
-		-serial stdio -display none \
-		-smp 4 -m 2048 \
+		${QEMU_COMMON_OPTIONS} \
 		${QEMU_DISK_OPTIONS} \
 		-kernel ${USER_KERNEL}.bin -s
 
 net_emu: net_demo
 	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
 		-device loader,file=${NET_KERNEL},addr=0x80000000,force-raw=on \
-		-serial stdio -display none \
+		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS} \
-		-smp 4 -m 2048 \
+		${QEMU_DISK_OPTIONS} \
 		-kernel ${NET_KERNEL}.bin -s
-
-debug: build
-	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -kernel ${KERNEL}.bin -s -S
 
 user_debug: user
 	qemu-system-aarch64 -M virt -cpu cortex-a53 \
 		-device loader,file=${USER_KERNEL},addr=0x80000000,force-raw=on \
-		-serial stdio -display none \
+		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS} \
-		-smp 4 -m 2048 \
 		-kernel ${USER_KERNEL}.bin -s -S
 
 net_debug: net_demo
 	qemu-system-aarch64 -M virt -cpu cortex-a53 \
 		-device loader,file=${NET_KERNEL},addr=0x80000000,force-raw=on \
-		-serial stdio -display none \
+		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS} \
-		-smp 4 -m 2048 \
 		-kernel ${NET_KERNEL}.bin -s -S
 
 disk:

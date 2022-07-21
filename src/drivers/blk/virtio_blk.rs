@@ -1,10 +1,9 @@
 use alloc::boxed::Box;
 use core::mem::size_of;
+use cortex_a::asm::barrier::*;
 
 use spin::Mutex;
-use tock_registers::*;
 use tock_registers::interfaces::*;
-use tock_registers::registers::*;
 
 use Operation::*;
 
@@ -12,6 +11,8 @@ use super::ring::*;
 use super::blk::*;
 use super::virtio::*;
 
+use crate::drivers::virtio::mmio::MAGIC_VALUE;
+use crate::drivers::virtio::transport::mmio::{DevId, MmioRegisterLayout};
 use crate::lib::traits::Address;
 
 const VIRTIO_MMIO_BASE: usize = 0x0a000000 | 0xFFFF_FF80_0000_0000;
@@ -79,54 +80,12 @@ struct VirtioRingDevice {
     ring: [VirtioRingDeviceElement; QUEUE_SIZE],
 }
 
-register_structs! {
-  #[allow(non_snake_case)]
-  VirtioMmioBlock {
-    (0x000 => MagicValue: ReadOnly<u32>),
-    (0x004 => Version: ReadOnly<u32>),
-    (0x008 => DeviceID: ReadOnly<u32>),
-    (0x00c => VendorID: ReadOnly<u32>),
-    (0x010 => DeviceFeatures: ReadOnly<u32>),
-    (0x014 => DeviceFeaturesSel: WriteOnly<u32>),
-    (0x018 => _reserved_0),
-    (0x020 => DriverFeatures: WriteOnly<u32>),
-    (0x024 => DriverFeaturesSel: WriteOnly<u32>),
-    (0x028 => _reserved_1),
-    (0x030 => QueueSel: WriteOnly<u32>),
-    (0x034 => QueueNumMax: ReadOnly<u32>),
-    (0x038 => QueueNum: WriteOnly<u32>),
-    (0x03c => _reserved_2),
-    (0x044 => QueueReady: ReadWrite<u32>),
-    (0x048 => _reserved_3),
-    (0x050 => QueueNotify: WriteOnly<u32>),
-    (0x054 => _reserved_4),
-    (0x060 => InterruptStatus: ReadOnly<u32>),
-    (0x064 => InterruptACK: WriteOnly<u32>),
-    (0x068 => _reserved_5),
-    (0x070 => Status: ReadWrite<u32>),
-    (0x074 => _reserved_6),
-    (0x080 => QueueDescLow: WriteOnly<u32>),
-    (0x084 => QueueDescHigh: WriteOnly<u32>),
-    (0x088 => _reserved_7),
-    (0x090 => QueueDriverLow: WriteOnly<u32>),
-    (0x094 => QueueDriverHigh: WriteOnly<u32>),
-    (0x098 => _reserved_8),
-    (0x0a0 => QueueDeviceLow: WriteOnly<u32>),
-    (0x0a4 => QueueDeviceHigh: WriteOnly<u32>),
-    (0x0a8 => _reserved_9),
-    (0x0fc => ConfigGeneration: ReadOnly<u32>),
-    (0x0fd => _reserved_10),
-    (0x100 => _reserved_config),
-    (0x200 => @END),
-  }
-}
-
 struct VirtioMmio {
     base_addr: usize,
 }
 
 impl core::ops::Deref for VirtioMmio {
-    type Target = VirtioMmioBlock;
+    type Target = MmioRegisterLayout;
     fn deref(&self) -> &Self::Target {
         unsafe { &*self.ptr() }
     }
@@ -136,7 +95,7 @@ impl VirtioMmio {
     const fn new(base_addr: usize) -> Self {
         VirtioMmio { base_addr }
     }
-    fn ptr(&self) -> *const VirtioMmioBlock {
+    fn ptr(&self) -> *const MmioRegisterLayout {
         self.base_addr as *const _
     }
 }
@@ -158,52 +117,39 @@ impl<T> BaseAddr for T {
 static VIRTIO_MMIO: VirtioMmio = VirtioMmio::new(VIRTIO_MMIO_BASE);
 
 fn virtio_mmio_setup_vq(index: usize) {
+    let index = index as u32;
     let mmio = &VIRTIO_MMIO;
-    mmio.QueueSel.set(index as u32);
-
-    let num = mmio.QueueNumMax.get();
+    let num = mmio.get_max_queue_size(index);
     if num == 0 {
         panic!("queue num max is zero");
     } else if num < QUEUE_SIZE as u32 {
         panic!("queue size not supported");
     }
-    mmio.QueueNum.set(QUEUE_SIZE as u32);
+    mmio.set_queue_size(index, QUEUE_SIZE as u32);
 
     let ring = VIRTIO_RING.lock();
 
-    mmio.QueueDescLow.set(ring.desc.base_addr_usize() as u32);
-    mmio.QueueDescHigh
-        .set((ring.desc.base_addr_usize() >> 32) as u32);
-    mmio.QueueDriverLow
-        .set(ring.driver.base_addr_usize() as u32);
-    mmio.QueueDriverHigh
-        .set((ring.driver.base_addr_usize() >> 32) as u32);
-    mmio.QueueDeviceLow
-        .set(ring.device.base_addr_usize() as u32);
-    mmio.QueueDeviceHigh
-        .set((ring.device.base_addr_usize() >> 32) as u32);
+    mmio.set_ring_addr(index, ring.desc.base_addr_usize());
+    mmio.set_drv_ctrl_addr(index, ring.driver.base_addr_usize());
+    mmio.set_dev_ctrl_addr(index, ring.device.base_addr_usize());
 
-    mmio.QueueReady.set(1);
+    mmio.enable_queue(index);
 }
 
 pub fn virtio_blk_init() {
     let mmio = &VIRTIO_MMIO;
-    if mmio.MagicValue.get() != 0x74726976
-        || mmio.Version.get() != 2
-        || mmio.DeviceID.get() != 2
-        || mmio.VendorID.get() != 0x554d4551
+    if mmio.get_magic_value() != MAGIC_VALUE
+        || mmio.get_version() != 2
+        || mmio.get_device_id() != DevId::VIRTIO_DEV_ID_BLK
+        || mmio.get_vendor_id() != 0x554d4551
     {
-        // println!("mmio.MagicValue {:x}", mmio.MagicValue.get());
-        // println!("mmio.Version {:x}", mmio.Version.get());
-        // println!("mmio.DeviceID {:x}", mmio.DeviceID.get());
-        // println!("mmio.VendorID {:x}", mmio.VendorID.get());
         panic!("could not find virtio blk")
     }
 
     let mut status = VIRTIO_CONFIG_S_ACKNOWLEDGE as u32;
-    mmio.Status.set(status);
+    mmio.status.set(status);
     status |= VIRTIO_CONFIG_S_DRIVER as u32;
-    mmio.Status.set(status);
+    mmio.status.set(status);
 
     let feature: u64 = 1 << VIRTIO_F_VERSION_1
         | 1 << VIRTIO_BLK_F_SEG_MAX
@@ -211,18 +157,16 @@ pub fn virtio_blk_init() {
         | 1 << VIRTIO_BLK_F_BLK_SIZE
         | 1 << VIRTIO_BLK_F_TOPOLOGY;
 
-    mmio.DriverFeaturesSel.set(0);
-    mmio.DriverFeatures.set(feature as u32);
-    mmio.DriverFeaturesSel.set(1);
-    mmio.DriverFeatures.set((feature >> 32) as u32);
+    mmio.set_drv_features(feature);
 
     status |= VIRTIO_CONFIG_S_FEATURES_OK as u32;
-    mmio.Status.set(status);
+    mmio.status.set(status);
 
     status |= VIRTIO_CONFIG_S_DRIVER_OK as u32;
-    mmio.Status.set(status);
+    mmio.status.set(status);
 
     virtio_mmio_setup_vq(0);
+    info!("virtio_blk_init OK");
 }
 
 pub enum Operation {
@@ -289,18 +233,20 @@ fn io(sector: usize, count: usize, buf: usize, op: Operation) {
     let avail = &mut ring.driver;
     avail.ring[(avail.idx as usize) % QUEUE_SIZE] = 0;
     unsafe {
-        use cortex_a::asm::barrier::*;
         dsb(SY);
     }
     avail.idx = avail.idx.wrapping_add(1);
 
     let mmio = &VIRTIO_MMIO;
 
-    mmio.QueueNotify.set(0); // queue num
+    mmio.queue_notify.set(0); // queue num
 
+    irq(status);
+}
+
+fn irq(status: Box<u8>) {
     loop {
         unsafe {
-            use cortex_a::asm::barrier::*;
             dsb(SY);
         }
         if *status == VIRTIO_BLK_S_OK {

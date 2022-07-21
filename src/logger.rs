@@ -12,9 +12,7 @@ static LOCK: SpinlockIrqSave<()> = SpinlockIrqSave::new(());
 
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        // metadata.level() <= Level::Trace
-        // metadata.level() <= Level::Debug
-        metadata.level() <= Level::Info
+        metadata.level() <= Level::Trace
     }
 
     fn log(&self, record: &Record) {

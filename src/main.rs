@@ -20,14 +20,14 @@ extern crate static_assertions;
 mod macros;
 
 pub mod arch;
+pub mod board;
 pub mod drivers;
+pub mod exported;
 pub mod lib;
 mod logger;
 pub mod mm;
 pub mod panic;
 pub mod util;
-pub mod board;
-pub mod exported;
 
 pub use crate::lib::traits::ArchTrait;
 
@@ -48,15 +48,16 @@ fn loader_main(core_id: usize) {
         fn main(arg: usize) -> !;
     }
 
-    let t = crate::lib::thread::thread_alloc(
-        main as usize,
-        123 as usize,
-    );
+    let t = crate::lib::thread::thread_alloc(main as usize, 123 as usize);
     lib::thread::thread_wake(&t);
 
     lib::cpu::cpu().schedule();
 
-    println!("\nHello world!\n\nWelcome to shyper lightweight os...\n\n====== entering first thread ======>>>\n");
+    println!(concat!(
+        "\nHello world!\n\n",
+        "Welcome to shyper lightweight os...\n\n",
+        "====== entering first thread ======>>>\n"
+    ));
 
     extern "C" {
         fn pop_context_first(ctx: usize, core_id: usize) -> !;

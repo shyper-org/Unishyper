@@ -1,5 +1,6 @@
 pub mod fatfs2 {
     use fatfs::{IoBase, IoError, Read, Seek, SeekFrom, Write, FsOptions, FileSystem};
+    use spin::Mutex;
     use core::slice;
 
     use crate::drivers::blk;
@@ -59,41 +60,61 @@ pub mod fatfs2 {
     struct DiskCursor {
         sector: usize,
         offset: usize,
-        // cache_sector: Option<usize>,
+        // Block Cache
         block: DataBlock,
+        cache_sector: Option<usize>,
+        lock: Mutex<()>,
     }
 
     impl DiskCursor {
-        fn new(start_sector: usize) -> Self {
+        pub fn new(start_sector: usize) -> Self {
             DiskCursor {
                 sector: start_sector,
                 offset: 0,
                 block: DataBlock::new(),
-                // cache_sector: None,
+                cache_sector: None,
+                lock: Mutex::new(()),
             }
         }
 
-        fn get_position(&self) -> usize {
+        pub fn get_position(&self) -> usize {
+            self.lock.lock();
             self.sector * BSIZE + self.offset
         }
 
-        fn set_position(&mut self, position: usize) {
+        pub fn set_position(&mut self, position: usize) {
+            self.lock.lock();
             self.sector = position / BSIZE;
             self.offset = position % BSIZE;
+            if self.cache_sector.is_some() && self.sector != self.cache_sector.unwrap() {
+                self.cache_sector = None;
+            }
         }
 
-        fn move_cursor(&mut self, amount: usize) {
+        pub fn move_cursor(&mut self, amount: usize) {
+            self.lock.lock();
             self.set_position(self.get_position() + amount)
         }
 
-        fn read_blk(&mut self, start_sector: usize, sector_count: usize) -> Result<(), AtaError> {
-            // println!("read_blk: {}, {}", start_sector, sector_count);
-            blk::read(start_sector, sector_count, self.block.0.as_ptr() as usize);
+        pub fn read_blk(
+            &mut self,
+            start_sector: usize,
+            sector_count: usize,
+        ) -> Result<(), AtaError> {
+            self.lock.lock();
+            if self.cache_sector.is_none() || self.cache_sector.unwrap() != start_sector {
+                blk::read(start_sector, sector_count, self.block.0.as_ptr() as usize);
+                self.cache_sector = Some(start_sector);
+            }
             Ok(())
         }
 
-        fn write_blk(&mut self, start_sector: usize, sector_count: usize) -> Result<(), AtaError> {
-            // println!("write_blk: {}, {}", start_sector, sector_count);
+        pub fn write_blk(
+            &mut self,
+            start_sector: usize,
+            sector_count: usize,
+        ) -> Result<(), AtaError> {
+            self.lock.lock();
             blk::write(start_sector, sector_count, self.block.0.as_ptr() as usize);
             Ok(())
         }

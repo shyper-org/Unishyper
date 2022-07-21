@@ -7,17 +7,18 @@ use tock_registers::interfaces::*;
 
 use Operation::*;
 
-use super::ring::*;
-use super::blk::*;
-use super::virtio::*;
+use super::blk;
 
 use crate::drivers::virtio::mmio::MAGIC_VALUE;
 use crate::drivers::virtio::transport::mmio::{DevId, MmioRegisterLayout};
+use crate::drivers::virtio::virtqueue::{DescrFlags};
+use crate::drivers::virtio::features::Features;
+use crate::drivers::virtio::device::Status;
+
 use crate::lib::traits::Address;
 
 const VIRTIO_MMIO_BASE: usize = 0x0a000000 | 0xFFFF_FF80_0000_0000;
 const QUEUE_SIZE: usize = 8;
-const VIRTIO_F_VERSION_1: u32 = 32;
 
 #[repr(C)]
 #[repr(align(4096))]
@@ -100,6 +101,8 @@ impl VirtioMmio {
     }
 }
 
+static VIRTIO_MMIO: VirtioMmio = VirtioMmio::new(VIRTIO_MMIO_BASE);
+
 trait BaseAddr {
     fn base_addr_u64(&self) -> u64;
     fn base_addr_usize(&self) -> usize;
@@ -113,8 +116,6 @@ impl<T> BaseAddr for T {
         (self as *const T as usize).kva2pa() as usize
     }
 }
-
-static VIRTIO_MMIO: VirtioMmio = VirtioMmio::new(VIRTIO_MMIO_BASE);
 
 fn virtio_mmio_setup_vq(index: usize) {
     let index = index as u32;
@@ -146,47 +147,48 @@ pub fn virtio_blk_init() {
         panic!("could not find virtio blk")
     }
 
-    let mut status = VIRTIO_CONFIG_S_ACKNOWLEDGE as u32;
+    let mut status = u32::from(Status::ACKNOWLEDGE);
     mmio.status.set(status);
-    status |= VIRTIO_CONFIG_S_DRIVER as u32;
+    status |= u32::from(Status::DRIVER);
     mmio.status.set(status);
 
-    let feature: u64 = 1 << VIRTIO_F_VERSION_1
-        | 1 << VIRTIO_BLK_F_SEG_MAX
-        | 1 << VIRTIO_BLK_F_GEOMETRY
-        | 1 << VIRTIO_BLK_F_BLK_SIZE
-        | 1 << VIRTIO_BLK_F_TOPOLOGY;
+    let feature = u64::from(Features::VIRTIO_F_VERSION_1)
+        | u64::from(blk::Features::VIRTIO_BLK_F_SEG_MAX)
+        | u64::from(blk::Features::VIRTIO_BLK_F_GEOMETRY)
+        | u64::from(blk::Features::VIRTIO_BLK_F_BLK_SIZE)
+        | u64::from(blk::Features::VIRTIO_BLK_F_TOPOLOGY);
 
     mmio.set_drv_features(feature);
 
-    status |= VIRTIO_CONFIG_S_FEATURES_OK as u32;
+    status |= u32::from(Status::FEATURES_OK);
     mmio.status.set(status);
 
-    status |= VIRTIO_CONFIG_S_DRIVER_OK as u32;
+    status |= u32::from(Status::DRIVER_OK);
     mmio.status.set(status);
 
     virtio_mmio_setup_vq(0);
     info!("virtio_blk_init OK");
 }
 
-pub enum Operation {
+enum Operation {
     Read,
     Write,
 }
 
 #[repr(C)]
-pub struct VirtioBlkOutHdr {
+struct VirtioBlkOutHdr {
     t: u32,
     priority: u32,
     sector: u64,
 }
 
 pub fn read(sector: usize, count: usize, buf: usize) {
+    trace!("read sector {}", sector);
     io(sector, count, buf, Read);
 }
 
-pub fn write(sector: usize, count: usize, buf: usize) /* -> Box<DiskRequest>*/
-{
+pub fn write(sector: usize, count: usize, buf: usize) {
+    trace!("write sector {}", sector);
     io(sector, count, buf, Write);
 }
 
@@ -207,23 +209,23 @@ fn io(sector: usize, count: usize, buf: usize, op: Operation) {
     let desc = ring.desc.get_mut(0).unwrap();
     desc.addr = (hdr.as_ref() as *const VirtioBlkOutHdr as usize).kva2pa() as u64;
     desc.len = size_of::<VirtioBlkOutHdr>() as u32;
-    desc.flags = VRING_DESC_F_NEXT;
+    desc.flags = u16::from(DescrFlags::VIRTQ_DESC_F_NEXT);
     desc.next = 1;
 
     let desc = ring.desc.get_mut(1).unwrap();
     desc.addr = buf.kva2pa() as u64;
     desc.len = (512 * count) as u32;
     desc.flags = match op {
-        Operation::Read => VRING_DESC_F_WRITE,
+        Operation::Read => u16::from(DescrFlags::VIRTQ_DESC_F_WRITE),
         Operation::Write => 0,
     };
-    desc.flags |= VRING_DESC_F_NEXT;
+    desc.flags |= u16::from(DescrFlags::VIRTQ_DESC_F_NEXT);
     desc.next = 2;
 
     let desc = ring.desc.get_mut(2).unwrap();
     desc.addr = (status.as_ref() as *const u8 as usize).kva2pa() as u64;
     desc.len = 1;
-    desc.flags = VRING_DESC_F_WRITE;
+    desc.flags = u16::from(DescrFlags::VIRTQ_DESC_F_WRITE);
     desc.next = 0;
 
     // avail[0] is flags
@@ -232,6 +234,7 @@ fn io(sector: usize, count: usize, buf: usize, op: Operation) {
     // we only tell device the first index in our chain of descriptors.
     let avail = &mut ring.driver;
     avail.ring[(avail.idx as usize) % QUEUE_SIZE] = 0;
+    // barrier
     unsafe {
         dsb(SY);
     }
@@ -241,21 +244,21 @@ fn io(sector: usize, count: usize, buf: usize, op: Operation) {
 
     mmio.queue_notify.set(0); // queue num
 
-    irq(status);
+    blk_irqhandler(&status);
 }
 
-fn irq(status: Box<u8>) {
+fn blk_irqhandler(status: &Box<u8>) {
     loop {
         unsafe {
             dsb(SY);
         }
-        if *status == VIRTIO_BLK_S_OK {
+        if **status == blk::VIRTIO_BLK_S_OK {
             return;
-        } else if *status == VIRTIO_BLK_S_IOERR {
+        } else if **status == blk::VIRTIO_BLK_S_IOERR {
             panic!("VIRTIO_BLK_S_IOERR");
-        } else if *status == VIRTIO_BLK_S_UNSUPP {
+        } else if **status == blk::VIRTIO_BLK_S_UNSUPP {
             panic!("VIRTIO_BLK_S_UNSUPP");
-        } else if *status == 255 {
+        } else if **status == 255 {
             continue;
         }
         // if mmio.InterruptStatus.get() == 1 {

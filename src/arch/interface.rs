@@ -3,11 +3,10 @@ use core::ops::Range;
 use cortex_a::registers::*;
 use tock_registers::interfaces::Readable;
 
-pub const BOARD_CORE_NUMBER: usize = 1;
-
 pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0x8000_0000;
 pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x4000_0000;
 
+use crate::board::BOARD_CORE_NUMBER;
 use crate::lib::traits::*;
 
 pub const PAGE_SHIFT: usize = 12;

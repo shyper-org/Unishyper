@@ -1,6 +1,6 @@
 use crate::ArchTrait;
-use crate::arch::BOARD_CORE_NUMBER;
 use crate::arch::PAGE_SIZE;
+use crate::board::BOARD_CORE_NUMBER;
 
 const STACK_PAGE_NUM: usize = 64;
 

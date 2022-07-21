@@ -85,5 +85,11 @@ disk:
 	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
 	mkfs.fat -F 32 disk.img
 
+tap_setup:
+	sudo ip tuntap add tap10 mode tap
+	sudo ip addr add 10.0.5.1/24 broadcast 10.0.5.255 dev tap10
+	sudo ip link set dev tap10 up
+	sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap10/proxy_arp'
+
 dependencies:
 	rustup component add rust-src

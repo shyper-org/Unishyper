@@ -1,6 +1,6 @@
 // use spin::barrier::Barrier;
 
-use crate::arch::BOARD_CORE_NUMBER;
+use crate::board::BOARD_CORE_NUMBER;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 static COUNT: AtomicUsize = AtomicUsize::new(0);

@@ -1,6 +1,7 @@
 use spin::Once;
 
-use crate::arch::{ContextFrame, BOARD_CORE_NUMBER};
+use crate::arch::ContextFrame;
+use crate::board::BOARD_CORE_NUMBER;
 use crate::lib::scheduler::scheduler;
 use crate::lib::thread::Thread;
 use crate::lib::traits::*;
@@ -57,7 +58,10 @@ impl Core {
     fn idle_thread(&self) -> Thread {
         match self.idle_thread.get() {
             None => {
-                info!("Alloc idle thread on core {}:",crate::arch::Arch::core_id());
+                info!(
+                    "Alloc idle thread on core {}:",
+                    crate::arch::Arch::core_id()
+                );
                 let t = crate::lib::thread::thread_alloc(
                     idle_thread as usize,
                     crate::arch::Arch::core_id(),
@@ -95,7 +99,7 @@ impl Core {
             // trace!("next ctx:\n {}", t.context());
             *self.context_mut() = t.context();
         } else {
-            trace!("run thread {}",t.tid());
+            trace!("run thread {}", t.tid());
             if self.context.is_some() {
                 // Note: previous process has been destroyed
                 // debug!("previous process has been destroyed, next ctx:\n {}", t.context());

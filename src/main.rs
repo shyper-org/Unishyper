@@ -36,28 +36,34 @@ fn loader_main(core_id: usize) {
     crate::arch::Arch::exception_init();
 
     println!("enter main, core {}", core_id);
-    mm::heap::init();
-    let _ = logger::init();
-    info!("heap init ok!!");
-    mm::page_pool::init();
-    info!("page pool init ok");
-    board::init();
-    info!("board init ok");
+    if core_id == 0 {
+        mm::heap::init();
+        let _ = logger::init();
+        info!("heap init ok!!");
+        mm::page_pool::init();
+        info!("page pool init ok");
+        board::init();
+        info!("board init ok");
 
-    extern "C" {
-        fn main(arg: usize) -> !;
+        board::launch_other_cores();
+        info!("launched other cores");
+        extern "C" {
+            fn main(arg: usize) -> !;
+        }
+
+        let t = crate::lib::thread::thread_alloc(main as usize, 123 as usize);
+        lib::thread::thread_wake(&t);
+
+        println!(concat!(
+            "\nHello world!\n\n",
+            "Welcome to shyper lightweight os...\n\n",
+            "====== entering first thread ======>>>\n"
+        ));
     }
 
-    let t = crate::lib::thread::thread_alloc(main as usize, 123 as usize);
-    lib::thread::thread_wake(&t);
+    board::init_per_core();
 
     lib::cpu::cpu().schedule();
-
-    println!(concat!(
-        "\nHello world!\n\n",
-        "Welcome to shyper lightweight os...\n\n",
-        "====== entering first thread ======>>>\n"
-    ));
 
     extern "C" {
         fn pop_context_first(ctx: usize, core_id: usize) -> !;

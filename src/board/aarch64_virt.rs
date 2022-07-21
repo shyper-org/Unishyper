@@ -1,15 +1,21 @@
 use crate::drivers::gic::INT_TIMER;
 use crate::lib::interrupt::InterruptController;
+use crate::lib::traits::{ArchTrait, Address};
+
+pub const BOARD_CORE_NUMBER: usize = 1;
 
 pub fn init() {
+    crate::drivers::init_devices();
+}
+
+pub fn init_per_core() {
     use cortex_a::registers::*;
     use tock_registers::interfaces::Writeable;
     DAIF.write(DAIF::I::Masked);
     crate::drivers::INTERRUPT_CONTROLLER.init();
-    crate::drivers::init_devices();
     crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
     crate::drivers::timer::init();
-    DAIF.write(DAIF::I::Unmasked);
+    // DAIF.write(DAIF::I::Unmasked);
 
     let pmcr = 1u64;
     let pmcntenset = 1u64 << 32;
@@ -18,5 +24,17 @@ pub fn init() {
         core::arch::asm!("msr pmcr_el0, {}", in(reg) pmcr);
         core::arch::asm!("msr pmcntenset_el0, {}", in(reg) pmcntenset);
         core::arch::asm!("msr pmuserenr_el0, {}", in(reg) pmuserenr);
+    }
+}
+
+pub fn launch_other_cores() {
+    extern "C" {
+        fn KERNEL_ENTRY();
+    }
+    let core_id = crate::arch::Arch::core_id();
+    for i in 0..BOARD_CORE_NUMBER {
+        if i != core_id {
+            crate::drivers::psci::cpu_on(i as u64, (KERNEL_ENTRY as usize).kva2pa() as u64, 0);
+        }
     }
 }

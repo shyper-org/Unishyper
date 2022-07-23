@@ -113,7 +113,7 @@ extern "C" fn test_semaphore_acquire(arg: usize) {
 }
 
 #[allow(dead_code)]
-extern "C" fn test_semaphore_release_A(arg: usize) {
+extern "C" fn test_semaphore_release_a(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
         "\n**************************\n test_semaphore_release, core {} arg {} curent EL{}\n**************************\n",
@@ -130,7 +130,7 @@ extern "C" fn test_semaphore_release_A(arg: usize) {
 }
 
 #[allow(dead_code)]
-extern "C" fn test_semaphore_release_B(arg: usize) {
+extern "C" fn test_semaphore_release_b(arg: usize) {
     let core_id = crate::arch::Arch::core_id();
     println!(
         "\n**************************\n test_semaphore_release, core {} arg {} curent EL{}\n**************************\n",
@@ -148,15 +148,16 @@ extern "C" fn test_semaphore_release_B(arg: usize) {
 
 #[no_mangle]
 fn main() {
+    println!("\n\n\tenter user main, welcome again!!!\n\n");
     // thread_spawn(test_mm_thread, 321);
     // thread_spawn(network_init, 0);
 
     // thread_spawn(test_net_sem, 1);
-    thread_spawn(test_semaphore_acquire, 123);
+    // thread_spawn(test_semaphore_acquire, 123);
     // // thread_yield();
-    thread_spawn(test_semaphore_release_A, 3);
-    thread_spawn(test_semaphore_release_B, 5);
-    thread_yield();
+    // thread_spawn(test_semaphore_release_a, 3);
+    // thread_spawn(test_semaphore_release_b, 5);
+    // thread_yield();
     // for i in 0..10 {
     //     thread_spawn(test_c_thread, i + 100);
     // }

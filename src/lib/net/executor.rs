@@ -21,24 +21,29 @@ use crate::lib::thread::{
     current_thread_id, thread_block_current_with_timeout, thread_wake_by_tid,
     thread_yield, Tid,
 };
+use crate::lib::synch::spinlock::SpinlockIrqSave;
 use crate::lib::timer::current_ms;
 
 lazy_static! {
-    static ref QUEUE: SegQueue<Runnable> = SegQueue::new();
+    static ref QUEUE: SpinlockIrqSave<SegQueue<Runnable>> = SpinlockIrqSave::new(SegQueue::new());
 }
 
 fn run_executor() {
     // println!("run executor, queue len {}", QUEUE.len());
-    let mut wake_buf: Vec<Waker> = Vec::with_capacity(QUEUE.len());
-    while let Some(runnable) = QUEUE.pop() {
+    let queue = QUEUE.lock();
+    let mut wake_buf: Vec<Waker> = Vec::with_capacity(queue.len());
+    // irqsave(|| {
+    while let Some(runnable) = queue.pop() {
         // println!("seg queue pop");
         // runnable.run();
         wake_buf.push(runnable.waker());
         runnable.run();
     }
+    drop(queue);
     for waker in wake_buf {
         waker.wake();
     }
+    // });
 }
 
 /// Spawns a future on the executor.
@@ -47,7 +52,7 @@ where
     F: Future<Output = T> + Send + 'static,
     T: Send + 'static,
 {
-    let schedule = |runnable| QUEUE.push(runnable);
+    let schedule = |runnable| QUEUE.lock().push(runnable);
     let (runnable, task) = async_task::spawn(future, schedule);
     runnable.schedule();
     task

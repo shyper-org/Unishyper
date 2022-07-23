@@ -4,6 +4,13 @@ use crate::lib::traits::{ArchTrait, Address};
 
 pub const BOARD_CORE_NUMBER: usize = 1;
 
+pub const GICD_BASE: usize = 0x08000000;
+pub const GICC_BASE: usize = 0x08010000;
+
+pub const VIRTIO_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_3e00;
+pub const VIRTIO_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_4000;
+pub const VIRTIO_NET_IRQ_NUMBER: u32 = 0x2f;
+
 pub fn init() {
     crate::drivers::init_devices();
 }

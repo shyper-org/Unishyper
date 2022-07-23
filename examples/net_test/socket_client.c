@@ -25,7 +25,7 @@ int main(int argc,char *argv[]) {
     //填充服务器地址信息
     serv_addr.sin_family 	= AF_INET; //网络层的IP协议: IPV4
     serv_addr.sin_port 		= htons(SERVPORT); //传输层的端口号
-    serv_addr.sin_addr.s_addr   = inet_addr("10.0.5.3"); //网络层的IP地址: 实际的服务器IP地址
+    serv_addr.sin_addr.s_addr   = inet_addr("10.0.0.2"); //网络层的IP地址: 实际的服务器IP地址
     bzero(&(serv_addr.sin_zero),8); //保留的8字节置零
 
     //2.发起对服务器的连接信息
@@ -38,7 +38,7 @@ int main(int argc,char *argv[]) {
     printf("connect successful! \n");
 
     //3.发送消息给服务器端
-    if((sendbytes = send(sockfd,"hello",5,0)) < 0) {
+    if((sendbytes = send(sockfd,"Hello, Shyper OS!",18,0)) < 0) {
         perror("send");
         exit(1);
     }

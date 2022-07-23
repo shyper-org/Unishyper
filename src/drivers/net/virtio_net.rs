@@ -724,7 +724,7 @@ impl VirtioNetDriver {
         let min_feats: Vec<Features> = vec![
             Features::VIRTIO_F_VERSION_1,
             Features::VIRTIO_NET_F_MAC,
-            Features::VIRTIO_NET_F_STATUS,
+            // Features::VIRTIO_NET_F_STATUS,
         ];
 
         let mut min_feat_set = FeatureSet::new(0);

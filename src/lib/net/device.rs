@@ -121,9 +121,9 @@ impl NetworkInterface<ShyperNet> {
         };
 
         // Generate local ip address ,gateway address and network mask.
-        let myip = Ipv4Addr::new(10, 0, 5, 3);
+        let myip = Ipv4Addr::new(10, 0, 0, 2);
         let myip = myip.octets();
-        let mygw = Ipv4Addr::new(10, 0, 5, 1);
+        let mygw = Ipv4Addr::new(10, 0, 0, 1);
         let mygw = mygw.octets();
         let mymask = Ipv4Addr::new(255, 255, 255, 0);
         let mymask = mymask.octets();

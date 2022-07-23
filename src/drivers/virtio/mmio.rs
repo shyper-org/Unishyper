@@ -7,15 +7,9 @@ use crate::drivers::virtio::transport::mmio::{
 };
 use crate::lib::synch::spinlock::SpinlockIrqSave;
 use crate::util::irqsave;
+use crate::board::{VIRTIO_MMIO_START, VIRTIO_MMIO_END, VIRTIO_NET_IRQ_NUMBER};
 
 pub const MAGIC_VALUE: u32 = 0x74726976;
-
-pub const VIRTIO_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_3e00;
-// pub const VIRTIO_MMIO_START: usize = 0x0a00_0000;
-pub const VIRTIO_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_4000;
-// pub const VIRTIO_MMIO_END: usize = 0x0a01_0000;
-// const IRQ_NUMBER: u32 = 12;
-const IRQ_NUMBER: u32 = 0x2f;
 
 static mut MMIO_DRIVERS: Vec<MmioDriver> = Vec::new();
 
@@ -100,12 +94,13 @@ pub fn register_driver(drv: MmioDriver) {
 pub fn init_drivers() {
     // virtio: MMIO Device Discovery
     irqsave(|| {
+        #[cfg(feature = "tcp")]
         if let Ok(mmio) = detect_network() {
             debug!(
                 "Found MMIO device, but we guess the interrupt number {}!",
-                IRQ_NUMBER
+                VIRTIO_NET_IRQ_NUMBER
             );
-            if let Ok(VirtioDriver::Network(drv)) = init_device(mmio, IRQ_NUMBER) {
+            if let Ok(VirtioDriver::Network(drv)) = init_device(mmio, VIRTIO_NET_IRQ_NUMBER) {
                 register_driver(MmioDriver::VirtioNet(SpinlockIrqSave::new(drv)))
             }
         } else {

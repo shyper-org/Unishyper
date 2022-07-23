@@ -336,6 +336,7 @@ impl core::ops::Deref for Ns16550Mmio {
 }
 
 impl Ns16550Mmio {
+    #[allow(dead_code)]
     pub const fn new(base_addr: usize) -> Self {
         Ns16550Mmio { base_addr }
     }

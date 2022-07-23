@@ -2,6 +2,7 @@ use tock_registers::*;
 use tock_registers::interfaces::{Readable, Writeable};
 use tock_registers::registers::*;
 
+use crate::board::{GICC_BASE, GICD_BASE};
 use crate::lib::interrupt::InterruptController;
 use crate::lib::traits::ArchTrait;
 
@@ -10,17 +11,6 @@ const GIC_SGI_NUM: usize = 16;
 const GIC_1_BIT_NUM: usize = GIC_INTERRUPT_NUM / 32;
 const GIC_8_BIT_NUM: usize = GIC_INTERRUPT_NUM * 8 / 32;
 const GIC_2_BIT_NUM: usize = GIC_INTERRUPT_NUM * 2 / 32;
-
-#[cfg(not(feature = "tx2"))]
-const GICD_BASE: usize = 0x08000000;
-#[cfg(not(feature = "tx2"))]
-const GICC_BASE: usize = 0x08010000;
-
-
-#[cfg(feature = "tx2")]
-const GICD_BASE: usize = 0x3881000;
-#[cfg(feature = "tx2")]
-const GICC_BASE: usize = 0x3882000;
 
 register_structs! {
   #[allow(non_snake_case)]
@@ -207,6 +197,7 @@ impl InterruptController for Gic {
 
   fn enable(&self, int: Interrupt) {
     let core_id = crate::arch::Arch::core_id();
+    debug!("core {} gic enable interrupt {}", core_id, int);
     let gicd = &GICD;
     gicd.set_enable(int);
     gicd.set_priority(int, 0x7f);

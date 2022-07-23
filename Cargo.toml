@@ -65,9 +65,10 @@ features = [
 ]
 
 [features]
-default = ["alloc","tcp","qemu"]
+# default = ["alloc","tcp","qemu"]
+default = ["alloc","tcp","shyper"]
 qemu = []
-tx2 = []
+shyper = []
 alloc = []
 debug = []
 dhcpv4 = ["smoltcp/proto-dhcpv4"]

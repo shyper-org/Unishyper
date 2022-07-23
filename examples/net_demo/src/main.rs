@@ -23,7 +23,7 @@ extern "C" fn netdemo_server(arg: usize) {
             crate::arch::Arch::curent_privilege()
         );
     let listener = TcpListener::bind(SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::new(10, 0, 5, 3)),
+        IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)),
         4444,
     ))
     .unwrap();
@@ -43,7 +43,7 @@ extern "C" fn netdemo_server(arg: usize) {
     use alloc::string::String;
     
     let s = String::from_utf8(buf).expect("Found invalid UTF-8");
-    println!("TCP Connection read, get {:?}", s);
+    println!("TCP Connection read, get \"{}\" from client", s);
     loop{}
 }
 
@@ -57,7 +57,8 @@ extern "C" fn netdemo_client(arg: usize) {
             crate::arch::Arch::curent_privilege()
         );
     if let Ok(stream) = TcpStream::connect(SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
+        // IpAddr::V4(Ipv4Addr::new(192, 168, 0, 101)),
+        IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
         4444,
     )) {
         println!("Connection established! Ready to send...");
@@ -86,8 +87,11 @@ extern "C" fn netdemo_client(arg: usize) {
         stream.shutdown(2).expect("shutdown call failed");
 
         println!("Sent everything!");
+    } else {
+        println!("connect failed");
     }
-    println!("exit");
+    // println!("exit");
+    loop{}
 }
 
 #[no_mangle]
@@ -98,9 +102,10 @@ fn main() {
 
     println!("********network_init finished ******");
 
-    thread_spawn(netdemo_client, 123);
-    // thread_spawn(netdemo_server, 123);
-
+    // let tid = thread_spawn(netdemo_client, 123);
+    let tid = thread_spawn(netdemo_server, 123);
+    println!("Spawn user network thread with id {}", tid);
+    
     exit();
     loop {}
 }

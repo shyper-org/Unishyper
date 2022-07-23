@@ -9,7 +9,7 @@ Rust-ShyperOS  now supports following platforms.
 | MACHINE | ARCH                    | Description                             |
 |---------|-------------------------|-----------------------------------------|
 | virt    | **aarch64** (AArch64)   | QEMU virt machine (qemu-system-aarch64) |
-| tx2     | **aarch64** (AArch64)   | NVIDIA TX2, wait for implementation     |
+| tx2     | **aarch64** (AArch64)   | NVIDIA TX2                              |
 
 ## Toolchains
 
@@ -49,10 +49,10 @@ host system. For instance, the following command establish the tap device
 `tap0` on Linux:
 
 ```bash
-sudo ip tuntap add tap10 mode tap
-sudo ip addr add 10.0.5.1/24 broadcast 10.0.5.255 dev tap10
-sudo ip link set dev tap10 up
-sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap10/proxy_arp'
+sudo ip tuntap add tap0 mode tap
+sudo ip addr add 10.0.5.1/24 broadcast 10.0.5.255 dev tap0
+sudo ip link set dev tap0 up
+sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
 ```
 
 Add the feature `tcp` in the `Cargo.toml`. Rust-ShyperOS use the network stack [smoltcp](https://github.com/smoltcp-rs/smoltcp) to offer TCP/UDP communication.
@@ -78,10 +78,10 @@ features = [
 ]
 ```
 
-Per default, Rust-ShyperOS's network interface uses `10.0.5.3` as IP address, `10.0.5.1`
+By default, Rust-ShyperOS's network interface uses `10.0.5.3` as IP address, `10.0.5.1`
 for the gateway and `255.255.255.0` as network mask.
 
-Currently, Rust-ShyperOS does only support network interfaces through [virtio](https://www.redhat.com/en/blog/introduction-virtio-networking-and-vhost-net).
+Currently, Rust-ShyperOS does only support network interfaces through [virtio-net](https://www.redhat.com/en/blog/introduction-virtio-networking-and-vhost-net).
 To use it, you have to start Rust-ShyperOS in Qemu with following parameters:
 
 ```Makefile
@@ -98,6 +98,33 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
  * use gcc to compile socket_client.c in examples/net_test dir
    * `gcc examples/net_test/socket_client.c -o examples/net_test/client`
  * spawn `netdemo_server ` thread in examples/net_demo/main.c
- * run `sudo tcpdump -i tap10 -vvv -nn -e -p net 10.0.5 and not proto \\udp` to trace useful network packets
+ * run `sudo tcpdump -i tap0 -vvv -nn -e -p net 10.0.5 and not proto \\udp` to trace useful network packets
  * run `make net_emu`
  * run `/examples/net_test/client `
+
+ ## Fatfs Support
+
+ Rust-ShyperOS's Fatfs support based on virtio-blk. To enable fatfs, we need to prefare a disk.img for it. The following command make a disk image from zero, or you can just run `make disk` to prepare a disk img.
+```Makefile
+dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
+mkfs.fat -F 32 disk.img
+```
+
+Add the feature `fs` in the Cargo.toml. Rust-ShyperOS use the [fatfs](https://github.com/rafalh/rust-fatfs) to offer fatfs support.
+
+```toml
+[dependencies.fatfs]
+version = "0.4"
+git = "https://github.com/rafalh/rust-fatfs"
+default-features = false
+features = ["lfn", "alloc", "unicode", "log_level_trace"]
+```
+Currently, Rust-ShyperOS does only support blk operation through [virtio-blk](https://www.qemu.org/2021/01/19/virtio-blk-scsi-configuration/).
+To use it, you have to start Rust-ShyperOS in Qemu with following parameters:
+
+```Makefile
+QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
+					 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
+					 -global virtio-mmio.force-legacy=false
+```
+ You may see Makefile for details.

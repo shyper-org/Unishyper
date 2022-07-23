@@ -151,7 +151,7 @@ pub struct AsyncSocket(Handle);
 impl AsyncSocket {
     pub fn new() -> Self {
         let handle = NIC.lock().as_nic_mut().unwrap().create_handle().unwrap();
-        println!("create handle {:?}",handle);
+        // println!("create handle {:?}",handle);
         Self(handle)
     }
 
@@ -201,26 +201,14 @@ impl AsyncSocket {
         future::poll_fn(|cx| {
             self.with(|s| {
                 if s.is_active() {
-                    trace!(
-                        "AsyncSocket accept TcpSocket is active, state {:?}",
-                        s.state()
-                    );
                     Poll::Ready(Ok(()))
                 } else {
-                    trace!(
-                        "AsyncSocket accept TcpSocket is not active state {:?}",
-                        s.state()
-                    );
                     match s.state() {
                         TcpState::Closed
                         | TcpState::Closing
                         | TcpState::FinWait1
                         | TcpState::FinWait2 => Poll::Ready(Err(Error::Illegal)),
                         _ => {
-                            trace!(
-                                "AsyncSocket accept state {:?}, register_recv_waker, Poll Pending",
-                                s.state()
-                            );
                             s.register_recv_waker(cx.waker());
                             Poll::Pending
                         }
@@ -230,7 +218,6 @@ impl AsyncSocket {
         })
         .await?;
 
-        trace!("AsyncSocket accept await ?");
         let mut guard = NIC.lock();
         let nic = guard.as_nic_mut().map_err(|_| Error::Illegal)?;
         let mut socket = nic.sockets.get::<TcpSocket>(self.0);
@@ -505,7 +492,7 @@ pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
 
 #[no_mangle]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
-    info!("tcp_listener_accept");
+    debug!("tcp_listener_accept");
     let socket = AsyncSocket::new();
     let (addr, port) = block_on(socket.accept(port), None)?.map_err(|_| ())?;
 

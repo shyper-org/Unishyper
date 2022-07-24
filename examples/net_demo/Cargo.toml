@@ -7,8 +7,16 @@ authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rust_shyper_os = {path = "../../"}
 no-std-net = "0.6.0"
+
+[dependencies.rust_shyper_os]
+path = "../../"
+default-features = false
+features = [
+    "alloc",
+    "qemu",
+    "tcp",
+]
 
 [features]
 default = ["alloc"]

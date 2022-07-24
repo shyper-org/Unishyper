@@ -175,7 +175,7 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
     let mut map = THREAD_MAP.lock();
     map.insert(id, t.clone());
 
-    info!(
+    debug!(
         "thread_alloc success id [{}] sp [{:x} to {:x}]",
         id, stack_start, sp
     );
@@ -192,7 +192,7 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 }
 
 pub fn thread_destroy(t: Thread) {
-    info!("Destroy t{}", t.tid());
+    debug!("Destroy t{}", t.tid());
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
         if t.tid() == current_thread.tid() {
             crate::lib::cpu::cpu().set_running_thread(None);

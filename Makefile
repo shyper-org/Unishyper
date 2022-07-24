@@ -40,7 +40,7 @@ QEMU_CMD := qemu-system-aarch64 -M virt -cpu cortex-a53 -device loader,file=${KE
 QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
 					 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
 					 -global virtio-mmio.force-legacy=false
-QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap10,script=no,downscript=no \
+QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no \
 						-device virtio-net-device,mac=48:b0:2d:0e:6e:9e,netdev=tap0 \
 						-global virtio-mmio.force-legacy=false
 QEMU_COMMON_OPTIONS := -serial stdio -display none -smp 4 -m 2048
@@ -63,7 +63,6 @@ net_emu: net_demo
 		-device loader,file=${NET_KERNEL},addr=0x80000000,force-raw=on \
 		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS} \
-		${QEMU_DISK_OPTIONS} \
 		-kernel ${NET_KERNEL}.bin -s
 
 user_debug: user
@@ -86,10 +85,10 @@ disk:
 	mkfs.fat -F 32 disk.img
 
 tap_setup:
-	sudo ip tuntap add tap10 mode tap
-	sudo ip addr add 10.0.5.1/24 broadcast 10.0.5.255 dev tap10
-	sudo ip link set dev tap10 up
-	sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap10/proxy_arp'
+	sudo ip tuntap add tap0 mode tap
+	sudo ip addr add 10.0.0.1/24 broadcast 10.0.0.255 dev tap0
+	sudo ip link set dev tap0 up
+	sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
 
 dependencies:
 	rustup component add rust-src

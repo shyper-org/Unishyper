@@ -13,8 +13,8 @@ pub const GICD_BASE: usize = 0x8000000;
 // The ipa of gicc provided by the hypervisor as a passthrough device is 0x8010000.
 pub const GICC_BASE: usize = 0x8010000;
 
-pub const VIRTIO_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0xa001000;
-pub const VIRTIO_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0xa002000;
+pub const VIRTIO_NET_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0xa001000;
+pub const VIRTIO_NET_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0xa002000;
 pub const VIRTIO_NET_IRQ_NUMBER: u32 = 0x11;
 
 pub fn init() {

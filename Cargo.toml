@@ -1,8 +1,8 @@
 [package]
+authors = ["hukeyang <hky1999@buaa.edu.cn>"]
+edition = "2021"
 name = "rust_shyper_os"
 version = "0.1.0"
-edition = "2021"
-authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 
 [lib]
 crate-type = ["lib"]
@@ -10,75 +10,64 @@ name = "rust_shyper_os"
 path = "src/main.rs"
 
 [dependencies]
-cfg-if = "1.0.0"
-log = {version = "0.4.14", features = ["max_level_debug", "release_max_level_debug"]}
-static_assertions = "1.1.0"
-
 buddy_system_allocator = "0.8.0"
+cfg-if = "1.0.0"
+cortex-a = {git = "https://github.com/tonnylyz/cortex-a"}
+gimli = {version = "0.19.0", default-features = false, features = ["read", "alloc"]}
+log = {version = "0.4.14", features = ["max_level_debug", "release_max_level_debug"]}
 spin = "0.9.2"
+static_assertions = "1.1.0"
+tock-registers = {version = "0.7.0", default-features = false, features = ["register_types"]}
 
-cortex-a = { git = "https://github.com/tonnylyz/cortex-a" }
-
-no-std-net = "0.6.0"
-ioslice = { version = "0.6.0-alpha.2", optional = true, default-features = false}
-async-task = { version = "4.2", optional = true, default-features = false}
-futures-lite = { version = "1.11", optional = true, default-features = false, features = ["alloc"] }
-crossbeam-queue = { version = "0.3.5", optional = true, default-features = false, features = ["alloc"] }
-
-[dependencies.lazy_static]
-version = "1.4"
-optional = true
-features = ["spin_no_std"]
-
-[dependencies.fatfs]
-version = "0.4"
-git = "https://github.com/rafalh/rust-fatfs"
-default-features = false
-features = ["lfn", "alloc", "unicode", "log_level_trace"]
-
-[dependencies.tock-registers]
-version = "0.7.0"
-default-features = false
-features = ["register_types"]
-
-[dependencies.gimli]
-version = "0.19.0"
-default-features = false
-features = ["read", "alloc"]
+## Optional dependencies.
+async-task = {version = "4.2", optional = true, default-features = false}
+crossbeam-queue = {version = "0.3.5", optional = true, default-features = false, features = ["alloc"]}
+futures-lite = {version = "1.11", optional = true, default-features = false, features = ["alloc"]}
+ioslice = {version = "0.6.0-alpha.2", optional = true, default-features = false}
+lazy_static = {version = "1.4", optional = true, features = ["spin_no_std"]}
+no-std-net = {version = "0.6.0", optional = true}
 
 [dependencies.smoltcp]
-version = "0.7"
-optional = true
 default-features = false
 features = [
-    "alloc",
-    "async",
-    "ethernet",
-    "proto-ipv4",
-    "proto-ipv6",
-    "socket-tcp",
-    # "socket-udp",
-    # "std",
-    # Enable for increased output
-    # "log",
-    # "verbose",
+  "alloc",
+  "async",
+  "ethernet",
+  "proto-ipv4",
+  "proto-ipv6",
+  "socket-tcp", # "socket-udp",  # "std",
+  # Enable for increased output
+  # "log",
+  # "verbose",
 ]
+optional = true
+version = "0.7"
+
+[dependencies.fatfs]
+default-features = false
+features = ["lfn", "alloc", "unicode", "log_level_trace"]
+git = "https://github.com/rafalh/rust-fatfs"
+optional = true
+version = "0.4"
 
 [features]
-# default = ["alloc","tcp","qemu"]
-default = ["alloc","tcp","shyper"]
+default = ["alloc", "qemu", "tcp", "fs"]
+# default = ["alloc","tcp","shyper"]
+alloc = []
+dhcpv4 = ["smoltcp/proto-dhcpv4"]
+fs = [
+  "fatfs",
+]
 qemu = []
 shyper = []
-alloc = []
-debug = []
-dhcpv4 = ["smoltcp/proto-dhcpv4"]
 tcp = [
-    "async-task",
-    "futures-lite",
-    "lazy_static",
-    "smoltcp",
-    "crossbeam-queue",
-    "ioslice"
+  "async-task",
+  "futures-lite",
+  "lazy_static",
+  "smoltcp",
+  "crossbeam-queue",
+  "ioslice",
+  "no-std-net",
 ]
 
 [profile.release]

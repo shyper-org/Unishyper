@@ -2,12 +2,15 @@ use alloc::vec::Vec;
 
 use crate::drivers::net::virtio_net::VirtioNetDriver;
 use crate::drivers::net::NetworkInterface;
+use crate::lib::synch::spinlock::SpinlockIrqSave;
+use crate::util::irqsave;
+
+#[cfg(feature = "tcp")]
 use crate::drivers::virtio::transport::mmio::{
     init_device, DevId, MmioRegisterLayout, VirtioDriver,
 };
-use crate::lib::synch::spinlock::SpinlockIrqSave;
-use crate::util::irqsave;
-use crate::board::{VIRTIO_MMIO_START, VIRTIO_MMIO_END, VIRTIO_NET_IRQ_NUMBER};
+#[cfg(feature = "tcp")]
+use crate::board::{VIRTIO_NET_MMIO_START, VIRTIO_NET_MMIO_END, VIRTIO_NET_IRQ_NUMBER};
 
 pub const MAGIC_VALUE: u32 = 0x74726976;
 
@@ -27,11 +30,12 @@ impl MmioDriver {
     }
 }
 
+#[cfg(feature = "tcp")]
 /// Tries to find the network device within the specified address range.
 /// Returns a reference to it within the Ok() if successful or an Err() on failure.
 pub fn detect_network() -> Result<&'static mut MmioRegisterLayout, &'static str> {
     // Look for the device-ID in all possible 64-byte aligned addresses within this range.
-    for current_address in (VIRTIO_MMIO_START..VIRTIO_MMIO_END).step_by(512) {
+    for current_address in (VIRTIO_NET_MMIO_START..VIRTIO_NET_MMIO_END).step_by(512) {
         // trace!(
         //     "try to detect MMIO device at physical address {:#X}",
         //     current_address
@@ -106,7 +110,9 @@ pub fn init_drivers() {
         } else {
             debug!("Unable to find mmio device");
         }
+        #[cfg(feature = "fs")]
         use crate::drivers::blk;
+        #[cfg(feature = "fs")]
         blk::virtio_blk_init();
     });
 }

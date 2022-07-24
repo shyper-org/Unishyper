@@ -46,11 +46,11 @@ make user_debug
 ## Network Support
 To enable an ethernet device, we have to setup a tap device on the
 host system. For instance, the following command establish the tap device
-`tap0` on Linux:
+`tap0` on Linux,  or you can just run `make tap_setup` to set up tap device for network support.
 
 ```bash
 sudo ip tuntap add tap0 mode tap
-sudo ip addr add 10.0.5.1/24 broadcast 10.0.5.255 dev tap0
+sudo ip addr add 10.0.0.1/24 broadcast 10.0.0.255 dev tap0
 sudo ip link set dev tap0 up
 sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
 ```
@@ -78,7 +78,7 @@ features = [
 ]
 ```
 
-By default, Rust-ShyperOS's network interface uses `10.0.5.3` as IP address, `10.0.5.1`
+By default, Rust-ShyperOS's network interface uses `10.0.0.2` as IP address, `10.0.0.1`
 for the gateway and `255.255.255.0` as network mask.
 
 Currently, Rust-ShyperOS does only support network interfaces through [virtio-net](https://www.redhat.com/en/blog/introduction-virtio-networking-and-vhost-net).
@@ -98,7 +98,7 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
  * use gcc to compile socket_client.c in examples/net_test dir
    * `gcc examples/net_test/socket_client.c -o examples/net_test/client`
  * spawn `netdemo_server ` thread in examples/net_demo/main.c
- * run `sudo tcpdump -i tap0 -vvv -nn -e -p net 10.0.5 and not proto \\udp` to trace useful network packets
+ * run `sudo tcpdump -i tap0 -vvv -nn -e -p net 10.0.0 and not proto \\udp` to trace useful network packets
  * run `make net_emu`
  * run `/examples/net_test/client `
 

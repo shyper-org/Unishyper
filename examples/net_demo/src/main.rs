@@ -102,8 +102,8 @@ fn main() {
 
     println!("********network_init finished ******");
 
-    // let tid = thread_spawn(netdemo_client, 123);
-    let tid = thread_spawn(netdemo_server, 123);
+    let tid = thread_spawn(netdemo_client, 123);
+    // let tid = thread_spawn(netdemo_server, 123);
     println!("Spawn user network thread with id {}", tid);
     
     exit();

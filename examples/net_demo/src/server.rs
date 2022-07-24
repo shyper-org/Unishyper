@@ -1,34 +1,61 @@
+#![no_std]
+#![no_main]
+#![feature(format_args_nl)]
+#![feature(alloc_error_handler)]
 #![allow(unused_imports)]
 
-#[cfg(target_os = "hermit")]
-use hermit_sys as _;
+use alloc::vec;
+use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
+use rust_shyper_os::arch::*;
+use rust_shyper_os::exported::*;
+use rust_shyper_os::*;
 
-use rust_tcp_io_perf::config;
-use rust_tcp_io_perf::connection;
-use rust_tcp_io_perf::print_utils;
-use std::io::Read;
-use std::time::Instant;
+#[macro_use]
+extern crate alloc;
 
+extern "C" fn netdemo_server(arg: usize) {
+    let core_id = crate::arch::Arch::core_id();
+    println!(
+            "\n**************************\n netdemo_server, core {} arg {} curent EL{}\n**************************\n",
+            core_id,
+            arg,
+            crate::arch::Arch::curent_privilege()
+        );
+    let listener = TcpListener::bind(SocketAddr::new(
+        IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)),
+        4444,
+    ))
+    .unwrap();
+
+    println!("********network  bind ******");
+
+    let (stream, socket_addr) = listener.accept().unwrap();
+
+    println!(
+        "Connection established with {:?}! socket addr {:?}",
+        stream.peer_addr().unwrap(),
+        socket_addr
+    );
+
+    let mut buf = vec![0; 1024];
+    stream.read(&mut buf).expect("server stream read error");
+    use alloc::string::String;
+    
+    let s = String::from_utf8(buf).expect("Found invalid UTF-8");
+    println!("TCP Connection read, get \"{}\" from client", s);
+    loop{}
+}
+
+#[no_mangle]
 fn main() {
-	let args = config::parse_config();
-	let n_bytes = args.n_bytes;
-	let tot_bytes = args.n_rounds * args.n_bytes;
+    println!("********enter net demo server main******");
 
-	let mut buf = vec![0; n_bytes];
+    network_init();
 
-	let mut stream = connection::server_listen_and_get_first_connection(&args.port);
-	connection::setup(&args, &mut stream);
+    println!("********network_init finished ******");
 
-	let start = Instant::now();
-	for _i in 0..args.n_rounds {
-		stream.read_exact(&mut buf).unwrap();
-	}
-	let end = Instant::now();
-	let duration = end.duration_since(start);
-
-	println!("Sent in total {} KBytes", tot_bytes / 1024);
-	println!(
-		"Available approximated bandwidth: {} Mbit/s",
-		(tot_bytes as f64 * 8.0f64) / (1024.0f64 * 1024.0f64 * duration.as_secs_f64())
-	);
+    let tid = thread_spawn(netdemo_server, 123);
+    println!("Spawn user network server thread with id {}", tid);
+    
+    exit();
 }

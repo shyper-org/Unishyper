@@ -21,6 +21,8 @@ pub fn init_per_core() {
     DAIF.write(DAIF::I::Masked);
     crate::drivers::INTERRUPT_CONTROLLER.init();
     crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
+    #[cfg(feature = "tcp")]
+    crate::drivers::INTERRUPT_CONTROLLER.enable(32 + VIRTIO_NET_IRQ_NUMBER as usize);
     crate::drivers::timer::init();
     // DAIF.write(DAIF::I::Unmasked);
 

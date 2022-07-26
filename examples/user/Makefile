@@ -33,9 +33,11 @@ emu: build disk
 		-kernel ${KERNEL}.bin -s
 
 disk:
+ifeq ($(wildcard disk.img),)
 	rm -rf disk
 	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
 	mkfs.fat -F 32 disk.img
+endif
 
 clean:
 	-cargo clean

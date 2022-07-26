@@ -26,6 +26,7 @@ futures-lite = {version = "1.11", optional = true, default-features = false, fea
 ioslice = {version = "0.6.0-alpha.2", optional = true, default-features = false}
 lazy_static = {version = "1.4", optional = true, features = ["spin_no_std"]}
 no-std-net = {version = "0.6.0", optional = true}
+lru = {version = "0.7.8", optional = true}
 
 [dependencies.smoltcp]
 default-features = false
@@ -57,6 +58,7 @@ alloc = []
 dhcpv4 = ["smoltcp/proto-dhcpv4"]
 fs = [
   "fatfs",
+  "lru",
 ]
 qemu = []
 shyper = []

@@ -18,8 +18,7 @@ use core::{
 use super::interface::network_delay;
 use crate::drivers::net::set_polling_mode;
 use crate::lib::thread::{
-    current_thread_id, thread_block_current_with_timeout, thread_wake_by_tid,
-    thread_yield, Tid,
+    current_thread_id, thread_block_current_with_timeout, thread_wake_by_tid, thread_yield, Tid,
 };
 use crate::lib::synch::spinlock::SpinlockIrqSave;
 use crate::lib::timer::current_ms;
@@ -32,7 +31,6 @@ fn run_executor() {
     // println!("run executor, queue len {}", QUEUE.len());
     let queue = QUEUE.lock();
     let mut wake_buf: Vec<Waker> = Vec::with_capacity(queue.len());
-    // irqsave(|| {
     while let Some(runnable) = queue.pop() {
         // println!("seg queue pop");
         // runnable.run();
@@ -43,7 +41,6 @@ fn run_executor() {
     for waker in wake_buf {
         waker.wake();
     }
-    // });
 }
 
 /// Spawns a future on the executor.
@@ -116,38 +113,6 @@ fn current_thread_notify() -> Arc<ThreadNotify> {
     } else {
         return map.get(cur_tid).unwrap().clone();
     }
-}
-
-pub fn poll_on<F, T>(future: F, timeout: Option<Duration>) -> Result<T, ()>
-where
-    F: Future<Output = T>,
-{
-    // CURRENT_THREAD_NOTIFY.with(|thread_notify| {
-    let thread_notify = current_thread_notify();
-
-    set_polling_mode(true);
-
-    let start = Instant::from_millis(current_ms() as i64);
-    let waker = &thread_notify.clone().into();
-    let mut cx = Context::from_waker(&waker);
-    pin!(future);
-
-    loop {
-        if let Poll::Ready(t) = future.as_mut().poll(&mut cx) {
-            set_polling_mode(false);
-            return Ok(t);
-        }
-
-        if let Some(duration) = timeout {
-            if Instant::from_millis(current_ms() as i64) >= start + duration {
-                set_polling_mode(false);
-                return Err(());
-            }
-        }
-
-        run_executor()
-    }
-    // })
 }
 
 /// Blocks the current thread on `f`, running the executor when idling.

@@ -9,7 +9,9 @@
 #include <netinet/in.h>
 
 #define SERVPORT 4444
- 
+#define N_BYTES 1048576
+#define N_ROUNDS 100
+
 int main(int argc,char *argv[]) {
     int sockfd,sendbytes;
     struct sockaddr_in serv_addr;//需要连接的服务器地址信息
@@ -37,10 +39,17 @@ int main(int argc,char *argv[]) {
 
     printf("connect successful! \n");
 
+    char buf[N_BYTES] = {0};
+
+    // memcpy(buf, "Hello, Shyper OS!", 18);
     //3.发送消息给服务器端
-    if((sendbytes = send(sockfd,"Hello, Shyper OS!",18,0)) < 0) {
-        perror("send");
-        exit(1);
+    int i;
+    for(i = 0; i < N_ROUNDS; i++) {
+        // printf("client send round %d\n", i);
+        if((sendbytes = send(sockfd, buf, N_BYTES, 0)) < 0) {
+            perror("send");
+            exit(1);
+        }
     }
 
     printf("send successful! %d \n",sendbytes);

@@ -11,7 +11,7 @@ use crate::lib::error::*;
 use crate::lib::scheduler::scheduler;
 use crate::lib::traits::*;
 use crate::mm::{Addr, Region};
-use crate::util::round_up;
+use crate::util::{round_up, irqsave};
 
 pub type Tid = usize;
 
@@ -230,13 +230,15 @@ pub fn thread_wake_to_front(t: &Thread) {
 
 pub fn thread_block_current() {
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
-        debug!("Thread[{}]  thread_block_current", current_thread.tid());
-        let t = &current_thread;
-        let reason = Status::Blocked;
-        assert_ne!(reason, Status::Runnable);
-        let mut status = t.0.inner_mut.status.lock();
-        *status = reason;
-        drop(status);
+        irqsave(|| {
+            debug!("Thread[{}]  thread_block_current", current_thread.tid());
+            let t = &current_thread;
+            let reason = Status::Blocked;
+            assert_ne!(reason, Status::Runnable);
+            let mut status = t.0.inner_mut.status.lock();
+            *status = reason;
+            drop(status);
+        });
     } else {
         warn!("No Running Thread!");
     }
@@ -244,18 +246,20 @@ pub fn thread_block_current() {
 
 pub fn thread_block_current_with_timeout(timeout: usize) {
     if let Some(current_thread) = crate::lib::cpu::cpu().running_thread() {
-        debug!(
-            "Thread[{}] thread_block_current_with_timeout {}",
-            current_thread.tid(),
-            timeout
-        );
-        let t = &current_thread;
-        let reason = Status::Blocked;
-        assert_ne!(reason, Status::Runnable);
-        let mut status = t.0.inner_mut.status.lock();
-        *status = reason;
-        drop(status);
-        scheduler().blocked(t.clone(), Some(timeout));
+        irqsave(|| {
+            debug!(
+                "Thread[{}] thread_block_current_with_timeout {}",
+                current_thread.tid(),
+                timeout
+            );
+            let t = &current_thread;
+            let reason = Status::Blocked;
+            assert_ne!(reason, Status::Runnable);
+            let mut status = t.0.inner_mut.status.lock();
+            *status = reason;
+            drop(status);
+            scheduler().blocked(t.clone(), Some(timeout));
+        });
     } else {
         warn!("No Running Thread!");
     }
@@ -264,6 +268,7 @@ pub fn thread_block_current_with_timeout(timeout: usize) {
 pub fn handle_blocked_threads() {
     use crate::lib::timer::current_ms;
     while let Some(t) = scheduler().get_wakeup_thread_by_time(current_ms()) {
+        debug!("handle_blocked_threads: thread [{}] is wake up", t.tid());
         thread_wake(&t);
     }
 }
@@ -272,10 +277,7 @@ pub fn handle_blocked_threads() {
 #[no_mangle]
 pub fn thread_yield() {
     // let icntr = crate::lib::timer::current_cycle();
-    trace!(
-        "thread_yield is called on Thread [{}]",
-        current_thread_id()
-    );
+    trace!("thread_yield is called on Thread [{}]", current_thread_id());
     crate::arch::switch_to();
     // let icntr2 = crate::lib::timer::current_cycle();
     // info!("as create cycle {}", icntr2 - icntr);

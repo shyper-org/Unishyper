@@ -193,7 +193,7 @@ impl<'a> Device<'a> for ShyperNet {
     }
 
     fn transmit(&'a mut self) -> Option<Self::TxToken> {
-        debug!("create TxToken to transfer data");
+        // debug!("create TxToken to transfer data");
         Some(TxToken::new())
     }
 }

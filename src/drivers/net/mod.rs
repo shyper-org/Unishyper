@@ -29,19 +29,24 @@ pub trait NetworkInterface {
 
 use crate::drivers::virtio::mmio::get_network_driver;
 use crate::lib::synch::{semaphore::Semaphore, spinlock::SpinlockIrqSave};
+use crate::util::irqsave;
 
 static NET_SEM: Semaphore = Semaphore::new(0);
 
 pub extern "C" fn netwait() {
-    trace!("netwait");
-    NET_SEM.acquire();
-    trace!("netwait acquire, return");
+    irqsave(|| {
+        debug!("netwait");
+        NET_SEM.acquire();
+        debug!("netwait acquire, return");
+    });
 }
 
 #[no_mangle]
 pub fn netwakeup() {
-    trace!("netwakeup");
-    NET_SEM.release();
+    irqsave(|| {
+        trace!("netwakeup");
+        NET_SEM.release();
+    });
 }
 
 pub fn network_irqhandler() {
@@ -63,26 +68,27 @@ pub fn network_irqhandler() {
 /// set driver in polling mode and threads will not be blocked
 pub extern "C" fn set_polling_mode(value: bool) {
     static THREADS_IN_POLLING_MODE: SpinlockIrqSave<usize> = SpinlockIrqSave::new(0);
+    irqsave(|| {
+        let mut guard = THREADS_IN_POLLING_MODE.lock();
 
-    let mut guard = THREADS_IN_POLLING_MODE.lock();
+        if value {
+            *guard += 1;
 
-    if value {
-        *guard += 1;
+            if *guard == 1 {
+                if let Some(driver) = get_network_driver() {
+                    driver.lock().set_polling_mode(value)
+                }
+            }
+        } else {
+            *guard -= 1;
 
-        if *guard == 1 {
-            if let Some(driver) = get_network_driver() {
-                driver.lock().set_polling_mode(value)
+            if *guard == 0 {
+                if let Some(driver) = get_network_driver() {
+                    driver.lock().set_polling_mode(value)
+                }
             }
         }
-    } else {
-        *guard -= 1;
-
-        if *guard == 0 {
-            if let Some(driver) = get_network_driver() {
-                driver.lock().set_polling_mode(value)
-            }
-        }
-    }
+    });
 }
 
 pub fn get_mac_address() -> Result<[u8; 6], ()> {

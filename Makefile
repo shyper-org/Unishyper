@@ -15,7 +15,7 @@ CARGO_FLAGS := ${CARGO_FLAGS} --release
 USER_DIR := examples/user
 NET_DEMO_DIR := examples/net_demo
 
-.PHONY: all build clean user net_server net_client disk tap_setup
+.PHONY: all build clean user net_server net_client disk tap_setup net_server_debug net_client_debug
 
 build: 
 	cargo build --lib --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
@@ -44,6 +44,12 @@ net_server:
 
 net_client:
 	make -C ${NET_DEMO_DIR} client_emu
+
+net_server_debug:
+	make -C ${NET_DEMO_DIR} server_debug
+
+net_client_debug:
+	make -C ${NET_DEMO_DIR} client_debug
 
 disk:
 	rm -rf disk

@@ -36,6 +36,25 @@ impl Drop for Socket {
     }
 }
 
+pub(crate) fn default_read_exact(this: &mut TcpStream, mut buf: &mut [u8]) -> IoResult<()> {
+    while !buf.is_empty() {
+        match this.read(buf) {
+            Ok(0) => break,
+            Ok(n) => {
+                let tmp = buf;
+                buf = &mut tmp[n..];
+                // println!("read {}",n);
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    if !buf.is_empty() {
+        Err("failed to fill whole buffer")
+    } else {
+        Ok(())
+    }
+}
+
 // Arc is used to count the number of used sockets.
 // Only if all sockets are released, the drop
 // method will close the socket.
@@ -98,6 +117,10 @@ impl TcpStream {
 
     pub fn read(&self, buffer: &mut [u8]) -> IoResult<usize> {
         self.read_vectored(&mut [IoSliceMut::new(buffer)])
+    }
+
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> IoResult<()> {
+        default_read_exact(self, buf)
     }
 
     pub fn read_vectored(&self, ioslice: &mut [IoSliceMut<'_>]) -> IoResult<usize> {

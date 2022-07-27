@@ -27,9 +27,13 @@ extern "C" fn netdemo_server(arg: usize) {
     ))
     .unwrap();
 
+    let n_bytes = 1048576;
+    let n_rounds = 100;
+    let tot_bytes = n_rounds * n_bytes;
+
     println!("********network  bind ******");
 
-    let (stream, socket_addr) = listener.accept().unwrap();
+    let (mut stream, socket_addr) = listener.accept().unwrap();
 
     println!(
         "Connection established with {:?}! socket addr {:?}",
@@ -37,13 +41,39 @@ extern "C" fn netdemo_server(arg: usize) {
         socket_addr
     );
 
-    let mut buf = vec![0; 1024];
-    stream.read(&mut buf).expect("server stream read error");
-    use alloc::string::String;
-    
-    let s = String::from_utf8(buf).expect("Found invalid UTF-8");
-    println!("TCP Connection read, get \"{}\" from client", s);
-    loop{}
+    let mut buf = vec![0; n_bytes];
+
+    let start = current_ms() as f64;
+    for _i in 0..n_rounds {
+        // println!("round {}", _i);
+        stream.read_exact(&mut buf).unwrap();
+        // match stream.read(&mut buf) {
+        //     Ok(n) => {
+        //         println!("round {} read {} bytes", _i, n);
+        //     }
+        //     Err(e) => {
+        //         println!("server read error {}", e);
+        //     }
+        // }
+    }
+    let end = current_ms() as f64;
+    let total_seconds = (end - start) / 1000.0f64;
+
+    println!(
+        "Sent in total {} KBytes, total seconds {}, start {}, end {}",
+        tot_bytes / 1024,
+        total_seconds,
+        start,
+        end
+    );
+    println!(
+        "Available approximated bandwidth: {} Mbit/s",
+        (tot_bytes as f64 * 8.0f64) / (1024.0f64 * 1024.0f64 * total_seconds)
+    );
+    // use alloc::string::String;
+    // let s = String::from_utf8(buf).expect("Found invalid UTF-8");
+    // println!("TCP Connection read, get \"{}\" from client", s);
+    loop {}
 }
 
 #[no_mangle]
@@ -56,6 +86,6 @@ fn main() {
 
     let tid = thread_spawn(netdemo_server, 123);
     println!("Spawn user network server thread with id {}", tid);
-    
+
     exit();
 }

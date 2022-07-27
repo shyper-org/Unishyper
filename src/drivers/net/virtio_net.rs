@@ -564,7 +564,7 @@ impl NetworkInterface for VirtioNetDriver {
                         )
                     };
                     let raw_transfer = Box::into_raw(Box::new(transfer));
-                    debug!("receive_rx_buffer() get transfer len == 1, raw_transfer {:x}", raw_transfer as usize);
+                    // debug!("receive_rx_buffer() get transfer len == 1, raw_transfer {:x}", raw_transfer as usize);
 
                     Ok((ref_data, raw_transfer as usize))
                 } else {

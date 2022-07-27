@@ -21,6 +21,10 @@ extern "C" fn netdemo_client(arg: usize) {
             arg,
             crate::arch::Arch::curent_privilege()
         );
+    
+
+    let n_bytes = 1048576;
+    let n_rounds = 100;
     if let Ok(stream) = TcpStream::connect(SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
         // IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
@@ -29,7 +33,7 @@ extern "C" fn netdemo_client(arg: usize) {
         println!("Connection established! Ready to send...");
 
         // Create a buffer of 0s, size n_bytes, to be sent over multiple times
-        let mut buf = vec![0; 1024];
+        let mut buf = vec![0; n_bytes];
         buf[0] = 0x48;
         buf[1] = 0x45;
         buf[2] = 0x4C;
@@ -37,9 +41,9 @@ extern "C" fn netdemo_client(arg: usize) {
         buf[4] = 0x4F;
         buf[5] = 0x0;
 
-        for _i in 0..5 {
+        for _i in 0..n_rounds {
+            // println!("round {}", _i);
             let mut pos = 0;
-
             while pos < buf.len() {
                 let bytes_written = match stream.write(&buf[pos..]) {
                     Ok(len) => len,

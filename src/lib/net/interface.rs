@@ -25,7 +25,7 @@ use crate::lib::thread::thread_yield;
 use crate::lib::timer::current_ms;
 
 use super::device::ShyperNet;
-use super::executor::{block_on, poll_on, spawn};
+use super::executor::{block_on, spawn};
 use super::waker::WakerRegistration;
 
 pub enum NetworkState {
@@ -88,7 +88,7 @@ where
             .unwrap_or(true)
         {
             // just to make progress
-            debug!("NetworkInterface::poll_common::poll:send or receive packets!!!");
+            // debug!("NetworkInterface::poll_common::poll:send or receive packets!!!");
         }
         #[cfg(feature = "dhcpv4")]
         let config = self
@@ -165,6 +165,10 @@ impl AsyncSocket {
             f(&mut *s)
         };
         nic.wake();
+        // To flush send buffers.
+        // After using the socket, the network interface has to poll the nic,
+        // This is required to flush all send buffers.
+		let _ = nic.iface.poll(&mut nic.sockets,Instant::from_millis(current_ms() as i64));
         res
     }
 
@@ -354,6 +358,7 @@ extern "C" fn nic_thread(_: usize) {
         if let NetworkState::Initialized(nic) = NIC.lock().deref_mut() {
             // debug!("NetworkState Initialized success, poll_common");
             nic.poll_common(Instant::from_millis(current_ms() as i64));
+            nic.wake();
         }
     }
 }
@@ -392,13 +397,13 @@ pub fn tcp_stream_connect(ip: &[u8], port: u16, timeout: Option<u64>) -> Result<
 #[no_mangle]
 pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ()> {
     let socket = AsyncSocket::from(handle);
-    poll_on(socket.read(buffer), None)?.map_err(|_| ())
+    block_on(socket.read(buffer), None)?.map_err(|_| ())
 }
 
 #[no_mangle]
 pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ()> {
     let socket = AsyncSocket::from(handle);
-    poll_on(socket.write(buffer), None)?.map_err(|_| ())
+    block_on(socket.write(buffer), None)?.map_err(|_| ())
 }
 
 #[no_mangle]

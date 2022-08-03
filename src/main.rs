@@ -13,6 +13,7 @@
 
 #[macro_use]
 extern crate log;
+#[macro_use]
 extern crate alloc;
 extern crate static_assertions;
 
@@ -42,6 +43,11 @@ fn loader_main(core_id: usize) {
         info!("heap init ok!!");
         mm::page_pool::init();
         info!("page pool init ok");
+    }
+
+    board::init_per_core();
+
+    if core_id == 0 {
         board::init();
         info!("board init ok");
 
@@ -60,8 +66,6 @@ fn loader_main(core_id: usize) {
             "====== entering first thread ======>>>\n"
         ));
     }
-
-    board::init_per_core();
 
     #[cfg(any(feature = "fs", feature = "oldfs"))]
     crate::lib::fs::fatfs::test_fatfs();

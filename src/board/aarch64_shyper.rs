@@ -13,9 +13,18 @@ pub const GICD_BASE: usize = 0x8000000;
 // The ipa of gicc provided by the hypervisor as a passthrough device is 0x8010000.
 pub const GICC_BASE: usize = 0x8010000;
 
-pub const VIRTIO_NET_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0xa001000;
-pub const VIRTIO_NET_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0xa002000;
-pub const VIRTIO_NET_IRQ_NUMBER: u32 = 0x11;
+pub fn devices() -> Vec<Device> {
+    vec![
+        // #[cfg(feature = "fs")]
+        // Device::Virtio(VirtioDevice::new(
+        //     "virtio_blk",
+        //     0x0a00_0000..0x0a00_0200,
+        //     0x10,
+        // )),
+        #[cfg(feature = "net")]
+        Device::Virtio(VirtioDevice::new("virtio_net", 0xa001000..0xa002000, 0x11)),
+    ]
+}
 
 pub fn init() {
     crate::drivers::init_devices();
@@ -34,7 +43,7 @@ pub fn init_per_core() {
     let mut pmcr: u32;
     // Performance Monitors Count Enable Clear register.
     let pmcntenclr = u32::MAX as u64;
-    // 
+    //
     let pmcntenset = 1u64 << 31;
     let pmuserenr = 1u64 << 2 | 1u64;
     unsafe {

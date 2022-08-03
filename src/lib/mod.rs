@@ -9,6 +9,7 @@ pub mod thread;
 pub mod interrupt;
 pub mod synch;
 pub mod error;
+pub mod device;
 
 #[cfg(feature = "tcp")]
 pub mod net;

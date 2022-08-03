@@ -1,19 +1,31 @@
+use alloc::vec::Vec;
+
 use crate::drivers::gic::INT_TIMER;
 use crate::lib::interrupt::InterruptController;
 use crate::lib::traits::{ArchTrait, Address};
+use crate::lib::device::{Device, VirtioDevice};
 
 pub const BOARD_CORE_NUMBER: usize = 1;
 
 pub const GICD_BASE: usize = 0x08000000;
 pub const GICC_BASE: usize = 0x08010000;
 
-pub const VIRTIO_NET_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_3e00;
-pub const VIRTIO_NET_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_4000;
-pub const VIRTIO_NET_IRQ_NUMBER: u32 = 0x2f;
-
-pub const VIRTIO_BLK_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_0000;
-pub const VIRTIO_BLK_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_1000;
-pub const VIRTIO_BLK_IRQ_NUMBER: u32 = 0x10;
+pub fn devices() -> Vec<Device> {
+    vec![
+        #[cfg(feature = "fs")]
+        Device::Virtio(VirtioDevice::new(
+            "virtio_blk",
+            0x0a00_0000..0x0a00_0200,
+            0x10,
+        )),
+        #[cfg(feature = "net")]
+        Device::Virtio(VirtioDevice::new(
+            "virtio_net",
+            0x0a00_3e00..0x0a00_4000,
+            0x2f,
+        )),
+    ]
+}
 
 pub fn init() {
     crate::drivers::init_devices();
@@ -25,8 +37,6 @@ pub fn init_per_core() {
     DAIF.write(DAIF::I::Masked);
     crate::drivers::INTERRUPT_CONTROLLER.init();
     crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
-    #[cfg(feature = "tcp")]
-    crate::drivers::INTERRUPT_CONTROLLER.enable(32 + VIRTIO_NET_IRQ_NUMBER as usize);
     crate::drivers::timer::init();
     // DAIF.write(DAIF::I::Unmasked);
 

@@ -28,7 +28,7 @@ pub fn irq_install_handler(irq_number: u32, handler: fn(), name: &'static str) {
     irq_name_lock.insert(32 + irq_number, name.to_string());
     irq_handler_lock.insert(32 + irq_number, handler);
 
-    // crate::drivers::INTERRUPT_CONTROLLER.enable(32 + irq_number as usize);
+    crate::drivers::INTERRUPT_CONTROLLER.enable(32 + irq_number as usize);
 }
 
 pub fn interrupt(int: Interrupt) {

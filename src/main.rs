@@ -63,6 +63,7 @@ fn loader_main(core_id: usize) {
 
     board::init_per_core();
 
+    #[cfg(any(feature = "fs", feature = "oldfs"))]
     crate::lib::fs::fatfs::test_fatfs();
 
     println!("test fs finished!");

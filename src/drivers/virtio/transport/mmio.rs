@@ -24,7 +24,9 @@ use crate::drivers::net::virtio_net::VirtioNetDriver;
 #[cfg(feature = "tcp")]
 use crate::drivers::net::network_irqhandler;
 
+#[cfg(feature = "fs")]
 use crate::drivers::blk::virtio_blk::VirtioBlkDriver;
+#[cfg(feature = "fs")]
 use crate::drivers::blk::blk_irqhandler;
 // use crate::drivers::blk::;
 
@@ -323,6 +325,7 @@ impl IsrStatus {
 pub enum VirtioDriver {
     #[cfg(feature = "tcp")]
     Network(VirtioNetDriver),
+    #[cfg(feature = "fs")]
     Blk(VirtioBlkDriver),
 }
 
@@ -356,6 +359,7 @@ pub fn init_device(
                 }
             }
         }
+        #[cfg(feature = "fs")]
         DevId::VIRTIO_DEV_ID_BLK => {
             match VirtioBlkDriver::init(dev_id, registers, irq_no) {
                 Ok(virt_blk_drv) => {

@@ -15,7 +15,10 @@ pub trait BlkInterface {
     fn handle_interrupt(&mut self) -> bool;
 }
 
+#[cfg(feature = "fs")]
 use crate::drivers::virtio::mmio::get_block_driver;
+
+#[cfg(any(feature = "fs", feature = "oldfs"))]
 pub fn blk_irqhandler() {
     #[cfg(feature = "fs")]
     match get_block_driver() {
@@ -33,6 +36,7 @@ pub fn virtio_blk_init() {
     virtio_blk_ori::virtio_blk_init();
 }
 
+#[cfg(any(feature = "fs", feature = "oldfs"))]
 pub fn read(sector: usize, count: usize, buf: usize) {
     #[cfg(feature = "oldfs")]
     virtio_blk_ori::read(sector, count, buf);
@@ -43,6 +47,7 @@ pub fn read(sector: usize, count: usize, buf: usize) {
     }
 }
 
+#[cfg(any(feature = "fs", feature = "oldfs"))]
 pub fn write(sector: usize, count: usize, buf: usize) {
     #[cfg(feature = "oldfs")]
     virtio_blk_ori::write(sector, count, buf);

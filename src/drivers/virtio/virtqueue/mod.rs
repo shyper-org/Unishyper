@@ -107,8 +107,10 @@ struct Descriptor {
 /// might not provide the complete feature set of each queue. Drivers who
 /// do need these features should refrain from providing support for both
 /// Virtqueue types and use the structs directly instead.
+/// Todo: May support Packed Vq in the future.
 pub enum Virtq {
     Split(SplitVq),
+    // Packed(PackedVq),
 }
 
 // Private Interface of the Virtq
@@ -250,6 +252,30 @@ impl Virtq {
     ) -> Result<BufferToken, VirtqError> {
         match self {
             Virtq::Split(vq) => vq.prep_buffer(rc_self, send, recv),
+        }
+    }
+
+     /// Provides the calley from existing buffers as specified via the `inputs` and `outputs` function parameters, in form of
+    /// a [BufferToken](BufferToken).
+    /// Fails upon multiple circumstances.
+    ///
+    /// **Parameters**
+    /// * inputs: `&[&[u8]]`
+    ///     * Send buffers provided to the device
+    /// * outputs: `&[&mut [u8]]`
+    ///     * Buffers, which are writable for the device provided to the device.
+    ///
+    /// **Reasons for Failure:**
+    /// * See prep_buffer
+    /// As a result indirect descriptors result in a single descriptor consumption in the actual queue.
+    pub fn prep_buffer_from_existing_memory(
+        &self,
+        rc_self: Rc<Virtq>,
+        inputs: &[&[u8]],
+        outputs: &[&mut [u8]],
+    ) -> Result<BufferToken, VirtqError> {
+        match self {
+            Virtq::Split(vq) => vq.prep_buffer_from_existing_memory(rc_self, inputs, outputs),
         }
     }
 

@@ -63,6 +63,10 @@ fn loader_main(core_id: usize) {
 
     board::init_per_core();
 
+    crate::lib::fs::fatfs::test_fatfs();
+
+    println!("test fs finished!");
+
     lib::cpu::cpu().schedule();
 
     extern "C" {

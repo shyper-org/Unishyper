@@ -11,6 +11,10 @@ pub const VIRTIO_NET_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_3e00;
 pub const VIRTIO_NET_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_4000;
 pub const VIRTIO_NET_IRQ_NUMBER: u32 = 0x2f;
 
+pub const VIRTIO_BLK_MMIO_START: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_0000;
+pub const VIRTIO_BLK_MMIO_END: usize = 0xFFFF_FF80_0000_0000 | 0x0a00_1000;
+pub const VIRTIO_BLK_IRQ_NUMBER: u32 = 0x10;
+
 pub fn init() {
     crate::drivers::init_devices();
 }

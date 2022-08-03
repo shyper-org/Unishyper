@@ -14,12 +14,19 @@ use tock_registers::interfaces::*;
 use tock_registers::registers::*;
 
 use crate::drivers::error::DriverError;
-use crate::drivers::net::virtio_net::VirtioNetDriver;
 use crate::drivers::virtio::device;
 use crate::drivers::virtio::error::VirtioError;
 
 use crate::lib::interrupt::irq_install_handler;
+
+#[cfg(feature = "tcp")]
+use crate::drivers::net::virtio_net::VirtioNetDriver;
+#[cfg(feature = "tcp")]
 use crate::drivers::net::network_irqhandler;
+
+use crate::drivers::blk::virtio_blk::VirtioBlkDriver;
+use crate::drivers::blk::blk_irqhandler;
+// use crate::drivers::blk::;
 
 /// Virtio device ID's
 /// See Virtio specification v1.1. - 5
@@ -314,7 +321,9 @@ impl IsrStatus {
 }
 
 pub enum VirtioDriver {
+    #[cfg(feature = "tcp")]
     Network(VirtioNetDriver),
+    Blk(VirtioBlkDriver),
 }
 
 pub fn init_device(
@@ -332,6 +341,7 @@ pub fn init_device(
 
     // Verify the device-ID to find the network card
     match registers.get_device_id() {
+        #[cfg(feature = "tcp")]
         DevId::VIRTIO_DEV_ID_NET => {
             match VirtioNetDriver::init(dev_id, registers, irq_no) {
                 Ok(virt_net_drv) => {
@@ -342,6 +352,20 @@ pub fn init_device(
                 }
                 Err(virtio_error) => {
                     error!("Virtio network driver could not be initialized with device");
+                    Err(DriverError::InitVirtioDevFail(virtio_error))
+                }
+            }
+        }
+        DevId::VIRTIO_DEV_ID_BLK => {
+            match VirtioBlkDriver::init(dev_id, registers, irq_no) {
+                Ok(virt_blk_drv) => {
+                    info!("Virtio blk driver initialized.");
+                    // Install interrupt handler
+                    irq_install_handler(irq_no, blk_irqhandler, "virtio_blk");
+                    Ok(VirtioDriver::Blk(virt_blk_drv))
+                }
+                Err(virtio_error) => {
+                    error!("Virtio blk driver could not be initialized with device");
                     Err(DriverError::InitVirtioDevFail(virtio_error))
                 }
             }

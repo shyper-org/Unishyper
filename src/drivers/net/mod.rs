@@ -1,5 +1,6 @@
 pub mod virtio_mmio;
 pub mod virtio_net;
+pub mod constants;
 
 /// A trait for accessing the network interface
 pub trait NetworkInterface {

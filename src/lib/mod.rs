@@ -13,5 +13,5 @@ pub mod error;
 #[cfg(feature = "tcp")]
 pub mod net;
 
-#[cfg(feature = "fs")]
+#[cfg(any(feature = "fs", feature = "oldfs"))]
 pub mod fs;

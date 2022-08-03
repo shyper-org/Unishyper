@@ -7,6 +7,7 @@ pub mod timer;
 pub mod uart;
 
 pub mod blk;
+#[cfg(feature = "tcp")]
 pub mod net;
 pub mod virtio;
 

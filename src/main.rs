@@ -31,6 +31,7 @@ pub mod panic;
 pub mod util;
 
 pub use crate::lib::traits::ArchTrait;
+use crate::util::irqsave;
 
 #[no_mangle]
 fn loader_main(core_id: usize) {
@@ -46,31 +47,32 @@ fn loader_main(core_id: usize) {
     }
 
     board::init_per_core();
+    info!("per core init ok on core [{}]", core_id);
 
     if core_id == 0 {
-        board::init();
-        info!("board init ok");
+        irqsave(|| {
+            board::init();
+            info!("board init ok");
 
-        board::launch_other_cores();
-        info!("launched other cores");
-        extern "C" {
-            fn main(arg: usize) -> !;
-        }
+            board::launch_other_cores();
+            info!("launched other cores");
+            extern "C" {
+                fn main(arg: usize) -> !;
+            }
 
-        let t = crate::lib::thread::thread_alloc(main as usize, 123 as usize);
-        lib::thread::thread_wake(&t);
+            let t = crate::lib::thread::thread_alloc(main as usize, 123 as usize);
+            lib::thread::thread_wake(&t);
 
-        println!(concat!(
-            "\nHello world!\n\n",
-            "Welcome to shyper lightweight os...\n\n",
-            "====== entering first thread ======>>>\n"
-        ));
+            println!(concat!(
+                "\nHello world!\n\n",
+                "Welcome to shyper lightweight os...\n\n",
+                "====== entering first thread ======>>>\n"
+            ));
+        });
     }
 
     #[cfg(any(feature = "fs", feature = "oldfs"))]
     crate::lib::fs::fatfs::test_fatfs();
-
-    println!("test fs finished!");
 
     lib::cpu::cpu().schedule();
 

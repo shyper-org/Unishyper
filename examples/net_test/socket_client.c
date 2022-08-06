@@ -10,7 +10,7 @@
 
 #define SERVPORT 4444
 #define N_BYTES 1048576
-#define N_ROUNDS 100
+#define N_ROUNDS 10
 
 int main(int argc,char *argv[]) {
     int sockfd,sendbytes;

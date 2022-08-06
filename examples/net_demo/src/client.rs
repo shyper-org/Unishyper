@@ -24,10 +24,10 @@ extern "C" fn netdemo_client(arg: usize) {
     
 
     let n_bytes = 1048576;
-    let n_rounds = 100;
+    let n_rounds = 10;
     if let Ok(stream) = TcpStream::connect(SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
-        // IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
+        // IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
+        IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
         4444,
     )) {
         println!("Connection established! Ready to send...");
@@ -42,7 +42,7 @@ extern "C" fn netdemo_client(arg: usize) {
         buf[5] = 0x0;
 
         for _i in 0..n_rounds {
-            // println!("round {}", _i);
+            println!("round {}", _i);
             let mut pos = 0;
             while pos < buf.len() {
                 let bytes_written = match stream.write(&buf[pos..]) {

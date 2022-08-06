@@ -14,7 +14,8 @@ path = "../../"
 default-features = false
 features = [
     "alloc",
-    "qemu",
+    # "qemu",
+    "shyper",
     "tcp",
 ]
 

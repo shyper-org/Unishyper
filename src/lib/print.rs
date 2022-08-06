@@ -1,11 +1,11 @@
 use core::fmt;
 use core::fmt::Write;
 
-use spin::Mutex;
+use crate::lib::synch::spinlock::SpinlockIrqSave;
 
 pub struct Writer;
 
-static WRITER: Mutex<Writer> = Mutex::new(Writer);
+static LOCK: SpinlockIrqSave<Writer> = SpinlockIrqSave::new(Writer);
 
 impl fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
@@ -17,13 +17,6 @@ impl fmt::Write for Writer {
 }
 
 pub fn print_arg(args: fmt::Arguments) {
-    let mut lock = WRITER.lock();
+    let mut lock = LOCK.lock();
     lock.write_fmt(args).unwrap();
-}
-
-#[allow(non_snake_case)]
-#[no_mangle]
-extern "C" fn _Unwind_Resume(arg: usize) -> ! {
-    info!("Unwind resume arg {}",arg);
-    loop {}
 }

@@ -1,6 +1,9 @@
+use alloc::vec::Vec;
+
 use crate::drivers::gic::INT_TIMER;
 use crate::lib::interrupt::InterruptController;
 use crate::lib::traits::{ArchTrait, Address};
+use crate::lib::device::{Device, VirtioDevice};
 
 pub const BOARD_CORE_NUMBER: usize = 1;
 
@@ -21,7 +24,7 @@ pub fn devices() -> Vec<Device> {
         //     0x0a00_0000..0x0a00_0200,
         //     0x10,
         // )),
-        #[cfg(feature = "net")]
+        #[cfg(feature = "tcp")]
         Device::Virtio(VirtioDevice::new("virtio_net", 0xa001000..0xa002000, 0x11)),
     ]
 }
@@ -35,7 +38,6 @@ pub fn init_per_core() {
     use tock_registers::interfaces::Writeable;
     DAIF.write(DAIF::I::Masked);
     crate::drivers::INTERRUPT_CONTROLLER.init();
-    crate::drivers::init_devices();
     crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
     crate::drivers::timer::init();
     DAIF.write(DAIF::I::Unmasked);

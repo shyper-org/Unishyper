@@ -18,7 +18,7 @@ pub fn devices() -> Vec<Device> {
             0x0a00_0000..0x0a00_0200,
             0x10,
         )),
-        #[cfg(feature = "net")]
+        #[cfg(feature = "tcp")]
         Device::Virtio(VirtioDevice::new(
             "virtio_net",
             0x0a00_3e00..0x0a00_4000,

@@ -1,5 +1,6 @@
 use core::ops::Range;
 
+#[derive(Debug)]
 pub enum Device {
     Virtio(VirtioDevice),
     Unknown,

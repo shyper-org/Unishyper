@@ -108,6 +108,7 @@ fn parse_virtio_devices() {
                         }
                         Err(_) => panic!("init device Error"),
                     };
+                    info!("Virtio device [\"{}\'] init ok!", device.name);
                     register_driver(driver);
                 }
             }

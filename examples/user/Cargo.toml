@@ -12,6 +12,25 @@ default-features = false
 features = [
     "alloc",
     "qemu",
+    "smp",
     # "oldfs",
-    "fs",
+    # "fs",
 ]
+
+[features]
+default = ["qemu"]
+qemu = [
+    "alloc",
+    "rust_shyper_os/alloc",
+    "rust_shyper_os/smp",
+    "rust_shyper_os/fs",
+    "rust_shyper_os/qemu"
+    ]
+shyper = [
+    "alloc",
+    "rust_shyper_os/alloc",
+    "rust_shyper_os/smp",
+    "rust_shyper_os/fs",
+    "rust_shyper_os/shyper"
+    ]
+alloc = []

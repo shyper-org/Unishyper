@@ -255,7 +255,7 @@ impl Virtq {
         }
     }
 
-     /// Provides the calley from existing buffers as specified via the `inputs` and `outputs` function parameters, in form of
+    /// Provides the calley from existing buffers as specified via the `inputs` and `outputs` function parameters, in form of
     /// a [BufferToken](BufferToken).
     /// Fails upon multiple circumstances.
     ///
@@ -1875,7 +1875,6 @@ impl MemPool {
     ///   * Second MemPool.pull -> MemDesc with id = 100
     ///   * Third MemPool.pull -> MemDesc with id = 2,
     fn pull(&self, rc_self: Rc<MemPool>, bytes: Bytes) -> Result<MemDescr, VirtqError> {
-        // debug!("pull");
         let id = match self.pool.borrow_mut().pop() {
             Some(id) => id,
             None => return Err(VirtqError::NoDescrAvail),

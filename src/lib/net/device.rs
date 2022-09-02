@@ -185,7 +185,7 @@ impl<'a> Device<'a> for ShyperNet {
     }
 
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
-        // trace!("receive_rx_buffer()");
+        // trace!("ShyperNet receive receive_rx_buffer()");
         match receive_rx_buffer() {
             Ok((buffer, handle)) => Some((RxToken::new(buffer, handle), TxToken::new())),
             _ => None,

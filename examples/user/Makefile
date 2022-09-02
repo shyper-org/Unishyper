@@ -2,20 +2,27 @@ ARCH ?= aarch64
 USER_PROFILE ?= release
 MACHINE ?= shyper
 
+# Cargo flags.
 ifeq (${USER_PROFILE}, release)
 CARGO_FLAGS = --release
 else
 CARGO_FLAGS =
 endif
 
+# Target directory.
+TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
 KERNEL := target/${ARCH}${MACHINE}/${USER_PROFILE}/user
+
+# Arch-specific tools
+OBJCOPY := aarch64-elf-objcopy
+OBJDUMP := aarch64-elf-objdump
 
 .PHONY: build clean
 
 build:
 	cargo build --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc ${CARGO_FLAGS}
-	aarch64-elf-objcopy ${KERNEL} -O binary ${KERNEL}.bin
-	aarch64-elf-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
+	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
+	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
 
 QEMU_CMD := qemu-system-aarch64 -M virt -cpu cortex-a53 \
 			-device loader,file=${KERNEL},addr=0x80000000,force-raw=on
@@ -31,6 +38,11 @@ emu: build disk
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} \
 		${QEMU_DISK_OPTIONS} \
 		-kernel ${KERNEL}.bin -s
+
+debug: build disk
+	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} \
+		${QEMU_DISK_OPTIONS} \
+		-kernel ${KERNEL}.bin -s -S
 
 disk:
 ifeq ($(wildcard disk.img),)

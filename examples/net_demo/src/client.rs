@@ -26,8 +26,8 @@ extern "C" fn netdemo_client(arg: usize) {
     let n_bytes = 1048576;
     let n_rounds = 10;
     if let Ok(stream) = TcpStream::connect(SocketAddr::new(
-        // IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
-        IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
+        IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
+        // IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
         4444,
     )) {
         println!("Connection established! Ready to send...");

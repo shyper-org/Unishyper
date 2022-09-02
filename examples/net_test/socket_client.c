@@ -7,10 +7,11 @@
 #include <string.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define SERVPORT 4444
 #define N_BYTES 1048576
-#define N_ROUNDS 10
+#define N_ROUNDS 1000
 
 int main(int argc,char *argv[]) {
     int sockfd,sendbytes;
@@ -50,6 +51,7 @@ int main(int argc,char *argv[]) {
             perror("send");
             exit(1);
         }
+        // printf("client send round %d send bytes %d \n", i, N_BYTES);
     }
 
     printf("send successful! %d \n",sendbytes);

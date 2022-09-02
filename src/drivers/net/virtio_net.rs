@@ -550,10 +550,6 @@ impl NetworkInterface for VirtioNetDriver {
                     let ref_data: &'static mut [u8] =
                         unsafe { core::slice::from_raw_parts_mut(recv_ref, recv_payload.len()) };
                     let raw_transfer = Box::into_raw(Box::new(transfer));
-                    debug!(
-                        "receive_rx_buffer() get transfer len == 2, raw_transfer {:x}",
-                        raw_transfer as usize
-                    );
                     Ok((ref_data, raw_transfer as usize))
                 } else if recv_data.len() == 1 {
                     let packet = recv_data.pop().unwrap();
@@ -567,7 +563,6 @@ impl NetworkInterface for VirtioNetDriver {
                         )
                     };
                     let raw_transfer = Box::into_raw(Box::new(transfer));
-                    // debug!("receive_rx_buffer() get transfer len == 1, raw_transfer {:x}", raw_transfer as usize);
 
                     Ok((ref_data, raw_transfer as usize))
                 } else {

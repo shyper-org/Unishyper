@@ -42,12 +42,12 @@ pub unsafe extern "C" fn populate_page_table(pt: &mut PageDirectory) {
     for i in 0..ENTRY_PER_PAGE {
         pt.0[i] = invalid_entry();
     }
+    // 0x0000_0000..0x4000_0000
     for i in BOARD_DEVICE_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
-        // println!("BOARD_DEVICE_MEMORY_RANGE: 0x{:x}",i);00
         pt.0[i / ONE_GIGABYTE] = block_entry(i, true);
     }
+    // 0x4000_0000..0x8000_0000
     for i in BOARD_NORMAL_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
-        // println!("BOARD_NORMAL_MEMORY_RANGE: 0x{:x}",i);
         pt.0[i / ONE_GIGABYTE] = block_entry(i, false);
     }
     // special mapping for kernel elf image
@@ -58,7 +58,8 @@ pub unsafe extern "C" fn populate_page_table(pt: &mut PageDirectory) {
 pub unsafe extern "C" fn mmu_init(pt: &PageDirectory) {
     use cortex_a::registers::*;
     // Memory Attribute Indirection Register
-    // Provides the memory attribute encodings corresponding to the possible AttrIndx values in a Long-descriptor format translation table entry for stage 1 translations at EL1.
+    // Provides the memory attribute encodings corresponding to the possible AttrIndx values
+    // in a Long-descriptor format translation table entry for stage 1 translations at EL1.
     MAIR_EL1.write(
         MAIR_EL1::Attr0_Normal_Outer::WriteBack_NonTransient_ReadWriteAlloc
             + MAIR_EL1::Attr0_Normal_Inner::WriteBack_NonTransient_ReadWriteAlloc
@@ -97,6 +98,8 @@ pub unsafe extern "C" fn mmu_init(pt: &PageDirectory) {
 
     use cortex_a::asm::barrier::*;
     isb(SY);
+    // System Control Register (EL1)
+    // Provides top level control of the system, including its memory system, at EL1 and EL0.
     SCTLR_EL1.modify(SCTLR_EL1::M::Enable + SCTLR_EL1::C::Cacheable + SCTLR_EL1::I::Cacheable);
     isb(SY);
 }

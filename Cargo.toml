@@ -14,8 +14,8 @@ buddy_system_allocator = "0.8.0"
 cfg-if = "1.0.0"
 cortex-a = {git = "https://github.com/tonnylyz/cortex-a"}
 gimli = {version = "0.19.0", default-features = false, features = ["read", "alloc"]}
-log = {version = "0.4.14", features = ["max_level_debug", "release_max_level_debug"]}
-# log = {version = "0.4.14", features = ["max_level_info", "release_max_level_info"]}
+# log = {version = "0.4.14", features = ["max_level_debug", "release_max_level_debug"]}
+log = {version = "0.4.14", features = ["max_level_info", "release_max_level_info"]}
 spin = "0.9.2"
 static_assertions = "1.1.0"
 tock-registers = {version = "0.7.0", default-features = false, features = ["register_types"]}
@@ -23,6 +23,7 @@ tock-registers = {version = "0.7.0", default-features = false, features = ["regi
 ## Optional dependencies.
 async-task = {version = "4.2", optional = true, default-features = false}
 crossbeam-queue = {version = "0.3.5", optional = true, default-features = false, features = ["alloc"]}
+crossbeam-utils = {version = "0.8.11", optional = true, default-features = false, features = ["nightly"]}
 futures-lite = {version = "1.11", optional = true, default-features = false, features = ["alloc"]}
 ioslice = {version = "0.6.0-alpha.2", optional = true, default-features = false}
 lazy_static = {version = "1.4", optional = true, features = ["spin_no_std"]}
@@ -53,7 +54,7 @@ optional = true
 version = "0.4"
 
 [features]
-default = ["alloc", "qemu", "tcp", "oldfs", "fs"]
+default = ["alloc", "qemu", "tcp", "oldfs", "fs", "smp"]
 # default = ["alloc","tcp","shyper"]
 alloc = []
 dhcpv4 = ["smoltcp/proto-dhcpv4"]
@@ -75,6 +76,9 @@ tcp = [
   "crossbeam-queue",
   "ioslice",
   "no-std-net",
+]
+smp = [
+  "crossbeam-utils"
 ]
 
 [profile.release]

@@ -1,5 +1,5 @@
 ARCH ?= aarch64
-MACHINE ?= shyper
+MACHINE ?= qemu
 PROFILE ?= release
 
 # NOTE: this is to deal with `(signal: 11, SIGSEGV: invalid memory reference)`
@@ -15,10 +15,10 @@ CARGO_FLAGS := ${CARGO_FLAGS} --release
 USER_DIR := examples/user
 NET_DEMO_DIR := examples/net_demo
 
-.PHONY: all build clean user net_server net_client disk tap_setup net_server_debug net_client_debug
+.PHONY: all build clean user net_server net_client disk tap_setup net_server_debug net_client_debug net_test
 
 build: 
-	cargo build --lib --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
+	cargo build --lib --target ./cfg/${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
 
 clean:
 	-cargo clean
@@ -45,17 +45,25 @@ net_server:
 net_client:
 	make -C ${NET_DEMO_DIR} client_emu
 
+user_debug:
+	make -C ${USER_DIR} debug
+
 net_server_debug:
 	make -C ${NET_DEMO_DIR} server_debug
 
 net_client_debug:
 	make -C ${NET_DEMO_DIR} client_debug
 
+net_test:
+	gcc examples/net_test/socket_client.c -o examples/net_test/client
+	gcc examples/net_test/socket_server.c -o examples/net_test/server
+
 disk:
 	rm -rf disk
 	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
 	mkfs.fat -F 32 disk.img
 
+# Setup tap0 device before run network in qemu.
 tap_setup:
 	sudo ip tuntap add tap0 mode tap
 	sudo ip addr add 10.0.0.1/24 broadcast 10.0.0.255 dev tap0

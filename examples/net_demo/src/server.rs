@@ -28,7 +28,7 @@ extern "C" fn netdemo_server(arg: usize) {
     .unwrap();
 
     let n_bytes = 1048576;
-    let n_rounds = 10;
+    let n_rounds = 1000;
     let tot_bytes = n_rounds * n_bytes;
 
     println!("********network  bind ******");

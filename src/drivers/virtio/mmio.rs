@@ -51,6 +51,7 @@ impl MmioDriver {
     }
 }
 
+#[cfg(any(feature = "tcp", feature = "fs"))]
 fn init_virtio_device(
     range: Range<usize>,
 ) -> Result<&'static mut MmioRegisterLayout, &'static str> {
@@ -91,6 +92,7 @@ pub fn get_block_driver() -> Option<&'static SpinlockIrqSave<dyn BlkInterface>> 
     unsafe { MMIO_DRIVERS.iter().find_map(|drv| drv.get_blk_driver()) }
 }
 
+#[cfg(any(feature = "tcp", feature = "fs"))]
 fn parse_virtio_devices() {
     let devices = crate::board::devices();
     for device in devices {

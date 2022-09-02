@@ -1,16 +1,20 @@
 // use spin::barrier::Barrier;
-
-use crate::board::BOARD_CORE_NUMBER;
+#[cfg(feature = "smp")]
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+#[cfg(feature = "smp")]
 static COUNT: AtomicUsize = AtomicUsize::new(0);
 
 pub fn barrier() {
-    let count = COUNT.fetch_add(1, Ordering::AcqRel);
-    let next_count = round_up(count + 1, BOARD_CORE_NUMBER);
-    loop {
-        if COUNT.load(Ordering::Acquire) >= next_count {
-            break;
+    #[cfg(feature = "smp")]
+    {
+        use crate::board::BOARD_CORE_NUMBER;
+        let count = COUNT.fetch_add(1, Ordering::AcqRel);
+        let next_count = round_up(count + 1, BOARD_CORE_NUMBER);
+        loop {
+            if COUNT.load(Ordering::Acquire) >= next_count {
+                break;
+            }
         }
     }
 }

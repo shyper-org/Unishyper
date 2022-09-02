@@ -19,6 +19,7 @@ pub fn paged_range() -> Range<usize> {
         fn KERNEL_END();
     }
     let kernel_end = round_up((KERNEL_END as usize).kva2pa(), PAGE_SIZE);
+    info!("KERNEL_END: {:x}", kernel_end);
     let normal_range = crate::arch::BOARD_NORMAL_MEMORY_RANGE;
     kernel_end..(normal_range.end - CONFIG_NON_PAGED_MEMORY_SIZE)
 }

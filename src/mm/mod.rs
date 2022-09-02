@@ -112,11 +112,14 @@ pub fn deallocate(address: Addr) {
     match current_thread() {
         Ok(t) => {
             t.free_address_space(address);
-        },
+            debug!(
+                "Thread [{}] deallocate region addr start 0x{:x}",
+                t.tid(),
+                address.as_usize()
+            );
+        }
         Err(_) => {
             debug!("no current thread!");
         }
     };
-
-    debug!("deallocate region addr start 0x{:x}", address.as_usize());
 }

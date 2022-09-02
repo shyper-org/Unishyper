@@ -4,6 +4,7 @@ use core::ops::Range;
 use spin::{Mutex, Once};
 
 use crate::arch::*;
+use crate::lib::traits::*;
 
 use super::Region;
 
@@ -71,6 +72,13 @@ fn page_pool() -> &'static Mutex<PagePool> {
 
 pub fn init() {
     let range = super::config::paged_range();
+    println!(
+        "Paged range: pa [{:x} - {:x}] kva [{:x} - {:x}]",
+        range.start,
+        range.end,
+        range.start.pa2kva(),
+        range.end.pa2kva()
+    );
     PAGE_POOL.call_once(|| {
         Mutex::new(PagePool {
             free: VecDeque::new(),

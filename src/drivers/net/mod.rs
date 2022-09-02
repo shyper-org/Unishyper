@@ -1,6 +1,6 @@
+pub mod constants;
 pub mod virtio_mmio;
 pub mod virtio_net;
-pub mod constants;
 
 /// A trait for accessing the network interface
 pub trait NetworkInterface {
@@ -68,6 +68,7 @@ pub fn network_irqhandler() {
 
 /// set driver in polling mode and threads will not be blocked
 pub extern "C" fn set_polling_mode(value: bool) {
+    let icntr = crate::lib::timer::current_cycle();
     static THREADS_IN_POLLING_MODE: SpinlockIrqSave<usize> = SpinlockIrqSave::new(0);
     irqsave(|| {
         let mut guard = THREADS_IN_POLLING_MODE.lock();
@@ -90,6 +91,8 @@ pub extern "C" fn set_polling_mode(value: bool) {
             }
         }
     });
+    let icntr2 = crate::lib::timer::current_cycle();
+    debug!("net set_polling_mode {} cycle {}", value, icntr2 - icntr);
 }
 
 pub fn get_mac_address() -> Result<[u8; 6], ()> {

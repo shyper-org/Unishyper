@@ -1,8 +1,8 @@
 [package]
+authors = ["hukeyang <hky1999@buaa.edu.cn>"]
+edition = "2021"
 name = "net_demo"
 version = "0.1.0"
-edition = "2021"
-authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,17 +10,23 @@ authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 no-std-net = "0.6.0"
 
 [dependencies.rust_shyper_os]
-path = "../../"
 default-features = false
-features = [
-    "alloc",
-    # "qemu",
-    "shyper",
-    "tcp",
-]
+path = "../../"
 
 [features]
-default = ["alloc"]
+default = ["qemu"]
+qemu = [
+    "alloc",
+    "rust_shyper_os/alloc",
+    "rust_shyper_os/tcp", 
+    "rust_shyper_os/qemu"
+    ]
+shyper = [
+    "alloc", 
+    "rust_shyper_os/alloc", 
+    "rust_shyper_os/tcp", 
+    "rust_shyper_os/shyper"
+    ]
 alloc = []
 
 [[bin]]

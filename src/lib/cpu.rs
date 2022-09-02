@@ -85,6 +85,10 @@ impl Core {
     }
 
     fn run(&mut self, t: Thread) {
+        use cortex_a::registers::*;
+        use tock_registers::interfaces::Writeable;
+        TPIDRRO_EL0.set(t.tid() as u64);
+
         if let Some(prev) = self.running_thread() {
             // debug!("switch thread from [{}] to [{}]", prev.tid(), t.tid());
             // Note: normal switch

@@ -46,6 +46,9 @@ fn loader_main(core_id: usize) {
         info!("page pool init ok");
     }
 
+    #[cfg(feature = "smp")]
+    board::launch_other_cores();
+    
     board::init_per_core();
     info!("per core init ok on core [{}]", core_id);
 
@@ -54,8 +57,6 @@ fn loader_main(core_id: usize) {
             board::init();
             info!("board init ok");
 
-            board::launch_other_cores();
-            info!("launched other cores");
             extern "C" {
                 fn main(arg: usize) -> !;
             }

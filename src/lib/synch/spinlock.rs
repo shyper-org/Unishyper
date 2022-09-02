@@ -3,6 +3,13 @@ use core::cell::UnsafeCell;
 use core::marker::Sync;
 use core::ops::{Deref, DerefMut, Drop};
 
+#[cfg(feature = "smp")]
+use core::fmt;
+#[cfg(feature = "smp")]
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+#[cfg(feature = "smp")]
+use crossbeam_utils::{Backoff, CachePadded};
+
 /// This type provides a lock based on busy waiting to realize mutual exclusion of tasks.
 ///
 /// # Description
@@ -36,6 +43,14 @@ use core::ops::{Deref, DerefMut, Drop};
 /// assert_eq!(answer, 2);
 /// ```
 
+#[cfg(feature = "smp")]
+pub struct Spinlock<T: ?Sized> {
+	queue: CachePadded<AtomicUsize>,
+	dequeue: CachePadded<AtomicUsize>,
+	data: UnsafeCell<T>,
+}
+
+#[cfg(not(feature = "smp"))]
 pub struct Spinlock<T: ?Sized> {
 	data: UnsafeCell<T>,
 }
@@ -44,6 +59,8 @@ pub struct Spinlock<T: ?Sized> {
 ///
 /// When the guard falls out of scope it will release the lock.
 pub struct SpinlockGuard<'a, T: ?Sized> {
+	#[cfg(feature = "smp")]
+	dequeue: &'a CachePadded<AtomicUsize>,
 	data: &'a mut T,
 }
 
@@ -54,6 +71,10 @@ unsafe impl<T: ?Sized + Send> Send for Spinlock<T> {}
 impl<T> Spinlock<T> {
 	pub const fn new(user_data: T) -> Spinlock<T> {
 		Spinlock {
+			#[cfg(feature = "smp")]
+			queue: CachePadded::new(AtomicUsize::new(0)),
+			#[cfg(feature = "smp")]
+			dequeue: CachePadded::new(AtomicUsize::new(1)),
 			data: UnsafeCell::new(user_data),
 		}
 	}
@@ -69,13 +90,33 @@ impl<T> Spinlock<T> {
 }
 
 impl<T: ?Sized> Spinlock<T> {
+	#[cfg(feature = "smp")]
+	fn obtain_lock(&self) {
+		let backoff = Backoff::new();
+		let ticket = self.queue.fetch_add(1, Ordering::SeqCst) + 1;
+		while self.dequeue.load(Ordering::SeqCst) != ticket {
+			backoff.spin();
+		}
+	}
+
+	#[cfg(not(feature = "smp"))]
 	fn obtain_lock(&self) {}
 
 	pub fn lock(&self) -> SpinlockGuard<'_, T> {
 		self.obtain_lock();
 		SpinlockGuard {
+			#[cfg(feature = "smp")]
+			dequeue: &self.dequeue,
 			data: unsafe { &mut *self.data.get() },
 		}
+	}
+}
+
+#[cfg(feature = "smp")]
+impl<T: ?Sized + fmt::Debug> fmt::Debug for Spinlock<T> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "queue: {} ", self.queue.load(Ordering::SeqCst))?;
+		write!(f, "dequeue: {}", self.dequeue.load(Ordering::SeqCst))
 	}
 }
 
@@ -98,6 +139,13 @@ impl<'a, T: ?Sized> DerefMut for SpinlockGuard<'a, T> {
 	}
 }
 
+#[cfg(feature = "smp")]
+impl<'a, T: ?Sized> Drop for SpinlockGuard<'a, T> {
+	/// The dropping of the SpinlockGuard will release the lock it was created from.
+	fn drop(&mut self) {
+		self.dequeue.fetch_add(1, Ordering::SeqCst);
+	}
+}
 
 /// This type provides a lock based on busy waiting to realize mutual exclusion of tasks.
 ///
@@ -133,6 +181,13 @@ impl<'a, T: ?Sized> DerefMut for SpinlockGuard<'a, T> {
 /// assert_eq!(answer, 2);
 /// ```
 pub struct SpinlockIrqSave<T: ?Sized> {
+	#[cfg(feature = "smp")]
+	queue: CachePadded<AtomicUsize>,
+	#[cfg(feature = "smp")]
+	dequeue: CachePadded<AtomicUsize>,
+	#[cfg(feature = "smp")]
+	irq: AtomicBool,
+	#[cfg(not(feature = "smp"))]
     irq: UnsafeCell<bool>,
 	data: UnsafeCell<T>,
 }
@@ -141,6 +196,11 @@ pub struct SpinlockIrqSave<T: ?Sized> {
 ///
 /// When the guard falls out of scope it will release the lock.
 pub struct SpinlockIrqSaveGuard<'a, T: ?Sized> {
+	#[cfg(feature = "smp")]
+	dequeue: &'a CachePadded<AtomicUsize>,
+	#[cfg(feature = "smp")]
+	irq: &'a AtomicBool,
+	#[cfg(not(feature = "smp"))]
 	irq: &'a mut bool,
 	data: &'a mut T,
 }
@@ -152,6 +212,13 @@ unsafe impl<T: ?Sized + Send> Send for SpinlockIrqSave<T> {}
 impl<T> SpinlockIrqSave<T> {
 	pub const fn new(user_data: T) -> SpinlockIrqSave<T> {
 		SpinlockIrqSave {
+			#[cfg(feature = "smp")]
+			queue: CachePadded::new(AtomicUsize::new(0)),
+			#[cfg(feature = "smp")]
+			dequeue: CachePadded::new(AtomicUsize::new(1)),
+			#[cfg(feature = "smp")]
+			irq: AtomicBool::new(false),
+			#[cfg(not(feature = "smp"))]
 			irq: UnsafeCell::new(false),
 			data: UnsafeCell::new(user_data),
 		}
@@ -168,6 +235,20 @@ impl<T> SpinlockIrqSave<T> {
 }
 
 impl<T: ?Sized> SpinlockIrqSave<T> {
+	#[cfg(feature = "smp")]
+	fn obtain_lock(&self) {
+		let irq = irq::nested_disable();
+		let backoff = Backoff::new();
+		let ticket = self.queue.fetch_add(1, Ordering::SeqCst) + 1;
+
+		while self.dequeue.load(Ordering::SeqCst) != ticket {
+			backoff.spin();
+		}
+
+		self.irq.store(irq, Ordering::SeqCst);
+	}
+
+	#[cfg(not(feature = "smp"))]
 	fn obtain_lock(&self) {
 		unsafe {
 			*self.irq.get() = irq::nested_disable();
@@ -177,12 +258,25 @@ impl<T: ?Sized> SpinlockIrqSave<T> {
 	pub fn lock(&self) -> SpinlockIrqSaveGuard<'_, T> {
 		self.obtain_lock();
 		SpinlockIrqSaveGuard {
+			#[cfg(feature = "smp")]
+			dequeue: &self.dequeue,
+			#[cfg(feature = "smp")]
+			irq: &self.irq,
+			#[cfg(not(feature = "smp"))]
 			irq: unsafe { &mut *self.irq.get() },
 			data: unsafe { &mut *self.data.get() },
 		}
 	}
 }
 
+#[cfg(feature = "smp")]
+impl<T: ?Sized + fmt::Debug> fmt::Debug for SpinlockIrqSave<T> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "irq: {:?} ", self.irq)?;
+		write!(f, "queue: {} ", self.queue.load(Ordering::SeqCst))?;
+		write!(f, "dequeue: {}", self.dequeue.load(Ordering::SeqCst))
+	}
+}
 
 impl<T: ?Sized + Default> Default for SpinlockIrqSave<T> {
 	fn default() -> SpinlockIrqSave<T> {
@@ -205,6 +299,14 @@ impl<'a, T: ?Sized> DerefMut for SpinlockIrqSaveGuard<'a, T> {
 
 impl<'a, T: ?Sized> Drop for SpinlockIrqSaveGuard<'a, T> {
 	/// The dropping of the SpinlockGuard will release the lock it was created from.
+	#[cfg(feature = "smp")]
+	fn drop(&mut self) {
+		let irq = self.irq.swap(false, Ordering::SeqCst);
+		self.dequeue.fetch_add(1, Ordering::SeqCst);
+		irq::nested_enable(irq);
+	}
+
+	#[cfg(not(feature = "smp"))]
 	fn drop(&mut self) {
 		// println!("Drop SpinlockIrqSave\n");
 		irq::nested_enable(*self.irq);

@@ -55,7 +55,7 @@ pub mod error {
 					VirtioBlkError::NoComCfg(id)=> write!(f, "Virtio block driver failed, for device {:x}, due to a missing or malformed common config!", id),
 					VirtioBlkError::NoIsrCfg(id)=> write!(f, "Virtio block driver failed, for device {:x}, due to a missing or malformed ISR status config!", id),
 					VirtioBlkError::NoNotifCfg(id)=> write!(f, "Virtio block driver failed, for device {:x}, due to a missing or malformed notification config!", id),
-					VirtioBlkError::ProcessOngoing=> write!(f, "Virtio block driver failed due to unknown reasons!"),
+					VirtioBlkError::ProcessOngoing=> write!(f, "Driver performed an unsuitable operation upon an ongoging transfer."),
 					VirtioBlkError::Unknown=> write!(f, "Virtio block driver failed due to unknown reasons!"),
 				}
             }

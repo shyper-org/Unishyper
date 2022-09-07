@@ -171,7 +171,7 @@ pub struct VirtioBlkDriver {
 
 impl BlkInterface for VirtioBlkDriver {
     fn read_block(&mut self, sector: usize, count: usize, buf: usize) {
-        debug!(
+        trace!(
             "read_block() sector {} count {} buf 0x{:x}",
             sector, count, buf
         );
@@ -206,7 +206,7 @@ impl BlkInterface for VirtioBlkDriver {
         self.request_vq.poll();
         match resp.status {
             RespStatus::Ok => {
-                debug!("read_block() resp status ok");
+                trace!("read_block() resp status ok");
             }
             _ => {
                 warn!("read_block() resp status {:?}", resp.status);
@@ -215,7 +215,7 @@ impl BlkInterface for VirtioBlkDriver {
     }
 
     fn write_block(&mut self, sector: usize, count: usize, buf: usize) {
-        debug!(
+        trace!(
             "write_block() sector {} count {} buf 0x{:x}",
             sector, count, buf
         );
@@ -250,7 +250,7 @@ impl BlkInterface for VirtioBlkDriver {
         self.request_vq.poll();
         match resp.status {
             RespStatus::Ok => {
-                debug!("write_block() resp status ok");
+                trace!("write_block() resp status ok");
             }
             _ => {
                 warn!("write_block() resp status {:?}", resp.status);
@@ -276,6 +276,7 @@ impl BlkInterface for VirtioBlkDriver {
     }
 }
 
+#[allow(unused)]
 impl VirtioBlkDriver {
     pub fn get_dev_id(&self) -> u16 {
         self.dev_cfg.dev_id
@@ -364,6 +365,7 @@ impl VirtioBlkDriver {
 
 /// Error module of virtios block driver. Containing the (VirtioBlkError)[VirtioBlkError]
 /// enum.
+#[allow(unused)]
 pub mod error {
     /// Network drivers error enum.
     #[derive(Debug, Copy, Clone)]

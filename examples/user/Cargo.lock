@@ -120,6 +120,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ioslice"
+version = "0.6.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a24d672e3d113a545b51b9d859ae18093fa254adcb45acaf7fe631e0740782d"
+
+[[package]]
 name = "libc"
 version = "0.2.132"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -175,6 +181,7 @@ dependencies = [
  "crossbeam-utils",
  "fatfs",
  "gimli",
+ "ioslice",
  "log",
  "lru",
  "spin 0.9.3",

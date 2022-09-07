@@ -6,20 +6,18 @@
 
 use alloc::vec;
 use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
-use rust_shyper_os::arch::*;
-use rust_shyper_os::exported::*;
+
 use rust_shyper_os::*;
 
 #[macro_use]
 extern crate alloc;
 
 extern "C" fn netdemo_server(arg: usize) {
-    let core_id = crate::arch::Arch::core_id();
+    let core_id = core_id();
     println!(
-            "\n**************************\n netdemo_server, core {} arg {} curent EL{}\n**************************\n",
+            "\n**************************\n netdemo_server, core {} arg {}\n**************************\n",
             core_id,
-            arg,
-            crate::arch::Arch::curent_privilege()
+            arg
         );
     let listener = TcpListener::bind(SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)),

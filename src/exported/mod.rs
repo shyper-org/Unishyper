@@ -5,8 +5,19 @@ pub use crate::lib::thread::*;
 pub use crate::lib::timer::*;
 
 mod thread;
+pub mod io;
+
+pub fn core_id() -> usize {
+    use crate::lib::traits::ArchTrait;
+    crate::arch::Arch::core_id()
+}
 
 #[cfg(feature = "tcp")]
 pub mod net;
 #[cfg(feature = "tcp")]
 pub use net::*;
+
+#[cfg(feature = "fs")]
+pub mod fs;
+#[cfg(feature = "fs")]
+pub mod fd;

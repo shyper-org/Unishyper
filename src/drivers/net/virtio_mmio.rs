@@ -143,6 +143,7 @@ impl VirtioNetDriver {
 		})
 	}
 
+	#[allow(unused)]
 	pub fn print_information(&mut self) {
 		self.com_cfg.print_information();
 		if self.dev_status() == u16::from(Status::VIRTIO_NET_S_LINK_UP) {

@@ -624,6 +624,7 @@ impl NetworkInterface for VirtioNetDriver {
     }
 }
 
+#[allow(unused)]
 // Backend-independent interface for Virtio network driver
 impl VirtioNetDriver {
     pub fn get_dev_id(&self) -> u16 {

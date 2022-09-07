@@ -10,6 +10,7 @@
 #![feature(asm_const)]
 #![feature(drain_filter)]
 #![feature(map_first_last)]
+#![feature(const_fn_trait_bound)]
 
 #[macro_use]
 extern crate log;
@@ -20,17 +21,19 @@ extern crate static_assertions;
 #[macro_use]
 mod macros;
 
-pub mod arch;
-pub mod board;
-pub mod drivers;
-pub mod exported;
-pub mod lib;
+mod arch;
+mod board;
+mod drivers;
+mod exported;
 mod logger;
-pub mod mm;
-pub mod panic;
-pub mod util;
+mod mm;
+mod panic;
+mod util;
+pub mod lib;
 
 pub use crate::lib::traits::ArchTrait;
+pub use exported::*;
+
 use crate::util::irqsave;
 
 #[no_mangle]
@@ -71,9 +74,6 @@ fn loader_main(core_id: usize) {
             ));
         });
     }
-
-    #[cfg(any(feature = "fs", feature = "oldfs"))]
-    crate::lib::fs::fatfs::test_fatfs();
 
     lib::cpu::cpu().schedule();
 

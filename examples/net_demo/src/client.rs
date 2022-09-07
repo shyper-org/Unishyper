@@ -6,25 +6,22 @@
 
 use alloc::vec;
 use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
-use rust_shyper_os::arch::*;
-use rust_shyper_os::exported::*;
+
 use rust_shyper_os::*;
 
 #[macro_use]
 extern crate alloc;
 
 extern "C" fn netdemo_client(arg: usize) {
-    let core_id = crate::arch::Arch::core_id();
+    let core_id = core_id();
     println!(
-            "\n**************************\n netdemo_client, core {} arg {} curent EL{}\n**************************\n",
+            "\n**************************\n netdemo_client, core {} arg {}\n**************************\n",
             core_id,
-            arg,
-            crate::arch::Arch::curent_privilege()
+            arg
         );
-    
 
     let n_bytes = 1048576;
-    let n_rounds = 10;
+    let n_rounds = 1000;
     if let Ok(stream) = TcpStream::connect(SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
         // IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
@@ -60,7 +57,7 @@ extern "C" fn netdemo_client(arg: usize) {
         println!("connect failed");
     }
     // println!("exit");
-    loop{}
+    loop {}
 }
 
 #[no_mangle]
@@ -73,6 +70,6 @@ fn main() {
 
     let tid = thread_spawn(netdemo_client, 123);
     println!("Spawn user network client thread with id {}", tid);
-    
+
     exit();
 }

@@ -20,6 +20,7 @@ pub mod error {
 
     #[derive(Debug)]
     pub enum DriverError {
+        #[allow(dead_code)]
         CommonDevErr(u16),
 
         #[cfg(any(feature = "tcp", feature = "fs"))]

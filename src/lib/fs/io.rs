@@ -3,20 +3,12 @@ use core::slice;
 use crate::drivers::blk;
 
 use super::interface::{BlkIO, AtaError};
+use super::diskcursor::BSIZE;
 
 use lru::LruCache;
 
 // reference: https://github.com/rafalh/rust-fatfs/issues/55
 // https://github.com/x37v/stm32h7xx-hal/blob/xnor/fatfs/src/sdmmc.rs#L1392-L1697
-
-pub const BSIZE: usize = 512;
-
-#[derive(Debug)]
-pub enum DiskCursorIoError {
-    UnexpectedEof,
-    WriteZero,
-}
-
 #[derive(Debug, Clone)]
 #[repr(align(512))]
 #[repr(C)]
@@ -106,35 +98,5 @@ impl BlockCache {
                 None => panic!("LRU Cache get_mut error"),
             }
         }
-    }
-}
-
-pub struct DiskCursor {
-    pub sector: usize,
-    pub offset: usize,
-    // Block Cache
-    pub cache: BlockCache,
-}
-
-impl DiskCursor {
-    pub fn new(start_sector: usize) -> Self {
-        DiskCursor {
-            sector: start_sector,
-            offset: 0,
-            cache: BlockCache::new(),
-        }
-    }
-
-    pub fn get_position(&self) -> usize {
-        self.sector * BSIZE + self.offset
-    }
-
-    pub fn set_position(&mut self, position: usize) {
-        self.sector = position / BSIZE;
-        self.offset = position % BSIZE;
-    }
-
-    pub fn move_cursor(&mut self, amount: usize) {
-        self.set_position(self.get_position() + amount)
     }
 }

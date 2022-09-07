@@ -9,13 +9,6 @@ authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 [dependencies.rust_shyper_os]
 path = "../../"
 default-features = false
-features = [
-    "alloc",
-    "qemu",
-    "smp",
-    # "oldfs",
-    # "fs",
-]
 
 [features]
 default = ["qemu"]

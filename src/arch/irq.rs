@@ -20,6 +20,7 @@ pub fn enable() {
 /// instructions is guaranteed to be atomic.
 /// This is important, because another CPU could call wakeup_core right when we decide to wait for the next interrupt.
 #[inline]
+#[allow(unused)]
 pub fn enable_and_wait() {
 	unsafe {
 		asm!(

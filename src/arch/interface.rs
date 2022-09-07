@@ -12,6 +12,7 @@ use crate::lib::traits::*;
 pub const PAGE_SHIFT: usize = 12;
 pub const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
 
+#[allow(unused)]
 pub const KERNEL_STACK_SIZE: usize = 32_768; // // PAGE_SIZE * 8
 
 pub const STACK_SIZE: usize = 1_048_576; // PAGE_SIZE * 256

@@ -1,17 +1,23 @@
 ARCH ?= aarch64
-USER_PROFILE ?= release
-MACHINE ?= shyper
+PROFILE ?= release
+MACHINE ?= qemu
 
 # Cargo flags.
-ifeq (${USER_PROFILE}, release)
-CARGO_FLAGS = --release
+ifeq (${PROFILE}, release)
+CARGO_FLAGS = --release  --no-default-features
 else
-CARGO_FLAGS =
+CARGO_FLAGS =  --no-default-features
+endif
+
+ifeq (${MACHINE}, shyper)
+CARGO_FLAGS := ${CARGO_FLAGS} --features "shyper"
+else
+CARGO_FLAGS := ${CARGO_FLAGS} --features "qemu"
 endif
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL := target/${ARCH}${MACHINE}/${USER_PROFILE}/user
+KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/user
 
 # Arch-specific tools
 OBJCOPY := aarch64-elf-objcopy
@@ -20,7 +26,7 @@ OBJDUMP := aarch64-elf-objdump
 .PHONY: build clean
 
 build:
-	cargo build --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc ${CARGO_FLAGS}
+	cargo build --target ${TARGET_CFG} -Z build-std=core,alloc ${CARGO_FLAGS}
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
 

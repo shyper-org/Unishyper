@@ -4,164 +4,60 @@
 #![feature(alloc_error_handler)]
 #![allow(unused_imports)]
 
-use rust_shyper_os::arch::*;
-use rust_shyper_os::exported::*;
 use rust_shyper_os::*;
+use rust_shyper_os::fs;
+use rust_shyper_os::io;
+use rust_shyper_os::fs::{File,Path};
 
-// #[no_mangle]
-// fn test_thread(_arg: usize) {
-//     let core_id = crate::arch::Arch::core_id();
-//     println!(
-//         "test_thread, core {} _arg {} curent EL{}",
-//         core_id,
-//         _arg,
-//         crate::arch::Arch::curent_privilege()
-//     );
-//     exit();
-// }
+use alloc::string::String;
 
-// extern "C" fn test_c_thread(arg: usize) {
-//     let core_id = crate::arch::Arch::core_id();
-//     println!(
-//         "test_c_thread, core {} arg {} curent EL{}",
-//         core_id,
-//         arg,
-//         crate::arch::Arch::curent_privilege()
-//     );
-// }
+#[macro_use]
+extern crate alloc;
 
-// extern "C" fn test_mm_thread(arg: usize) {
-//     let core_id = crate::arch::Arch::core_id();
-//     println!(
-//         "test_mm_thread, core {} arg {} curent EL{}\n",
-//         core_id,
-//         arg,
-//         crate::arch::Arch::curent_privilege()
-//     );
-//     let addr = allocate(PAGE_SIZE * 2);
-
-//     let test = addr.as_mut_ptr::<i32>();
-
-//     unsafe {
-//         (*test) = 1;
-//         println!("test is {}", *test);
-//     }
-
-//     println!(
-//         "test_mm_thread, region start {:x} size {:x}",
-//         addr.0,
-//         PAGE_SIZE * 2
-//     );
-
-//     for i in 10..20 {
-//         unsafe {
-//             (*test) = i;
-//             println!("test is {}", *test);
-//         }
-//     }
-// }
-
-// use rust_shyper_os::lib::thread::thread_yield;
-// extern "C" fn test_yield_thread_1(arg: usize) {
-//     let core_id = crate::arch::Arch::core_id();
-//     loop {
-//         println!(
-//             "\n==========================\ntest_yield_thread_1, core {} arg {} curent EL{}\n==========================\n",
-//             core_id,
-//             arg,
-//             crate::arch::Arch::curent_privilege()
-//         );
-//         thread_yield();
-//     }
-// }
-
-// extern "C" fn test_yield_thread_2(arg: usize) {
-//     let core_id = crate::arch::Arch::core_id();
-//     loop {
-//         println!(
-//             "\n**************************\ntest_yield_thread_2, core {} arg {} curent EL{}\n**************************\n",
-//             core_id,
-//             arg,
-//             crate::arch::Arch::curent_privilege()
-//         );
-//         thread_yield();
-//     }
-// }
-
-
-
-use rust_shyper_os::exported::semaphore::Semaphore;
-
-static TEST_SEM: Semaphore = Semaphore::new(0);
-
-#[allow(dead_code)]
-extern "C" fn test_semaphore_acquire(arg: usize) {
-    let core_id = crate::arch::Arch::core_id();
-    println!(
-        "\n**************************\n test_semaphore_acquire, core {} arg {} curent EL{}\n**************************\n",
-        core_id,
-        arg,
-        crate::arch::Arch::curent_privilege()
-    );
-    let mut i = 0;
-    loop {
-        println!("\n[Acquire Thread] acquire round {}\n", i);
-        TEST_SEM.acquire();
-        println!("\n[Acquire Thread] acquired success on round {}\n", i);
-        i += 1;
-    }
+/// Simple implementation for `% cat path`
+fn cat(path: &Path) -> io::Result<String> {
+	let f = File::open(path)?;
+	let mut str = vec![0 as u8; 10];
+	match f.read(&mut str) {
+		Ok(_) => {
+            let s = String::from_utf8(str).expect("failed to convert vec u8 to string");
+            Ok(s)
+        },
+		Err(e) => Err(e),
+	}
 }
 
-#[allow(dead_code)]
-extern "C" fn test_semaphore_release_a(arg: usize) {
-    let core_id = crate::arch::Arch::core_id();
-    println!(
-        "\n**************************\n test_semaphore_release, core {} arg {} curent EL{}\n**************************\n",
-        core_id,
-        arg,
-        crate::arch::Arch::curent_privilege()
-    );
-    for i in 0..arg {
-        println!("\n[Release Thread A] release round {}\n", i);
-        TEST_SEM.release();
-        thread_block_current_with_timeout(2000);
-        thread_yield();
-    }
+/// Simple implementation for `% echo s > path`
+fn echo(s: &str, path: &Path) -> io::Result<()> {
+	let mut f = File::create(path)?;
+	f.write_all(s.as_bytes())
 }
 
-#[allow(dead_code)]
-extern "C" fn test_semaphore_release_b(arg: usize) {
-    let core_id = crate::arch::Arch::core_id();
-    println!(
-        "\n**************************\n test_semaphore_release, core {} arg {} curent EL{}\n**************************\n",
-        core_id,
-        arg,
-        crate::arch::Arch::curent_privilege()
-    );
-    for i in 0..arg {
-        println!("\n[Release Thread B] release round {}\n", i);
-        TEST_SEM.release();
-        thread_block_current_with_timeout(1000);
-        thread_yield();
-    }
+/// Simple implementation for `% touch path`
+fn touch(path: &Path) -> io::Result<()> {
+	match File::create(path) {
+		Ok(_) => Ok(()),
+		Err(e) => Err(e),
+	}
 }
+
 
 #[no_mangle]
 fn main() {
-    println!("\n\n\tenter user main, welcome again!!!\n\n");
-    // thread_spawn(test_mm_thread, 321);
-    // thread_spawn(network_init, 0);
+    fs::init();
 
-    // thread_spawn(test_net_sem, 1);
-    // thread_spawn(test_semaphore_acquire, 123);
-    // // thread_yield();
-    // thread_spawn(test_semaphore_release_a, 3);
-    // thread_spawn(test_semaphore_release_b, 5);
-    // thread_yield();
-    // for i in 0..10 {
-    //     thread_spawn(test_c_thread, i + 100);
-    // }
-    // use rust_shyper_os::lib::thread::thread_yield;
-    // thread_yield();
+    echo("hello", &Path::new("/fatfs/echo.txt")).unwrap_or_else(|why| {
+		println!("! {:?}", why);
+	});
+
+    touch(&Path::new("/fatfs/touch.txt")).unwrap_or_else(|why| {
+		println!("! {:?}", why);
+	});
+
+    match cat(&Path::new("/fatfs/echo.txt")) {
+		Err(why) => println!("! {:?}", why),
+		Ok(s) => println!("> {}", s),
+	}
+    
     exit();
 }

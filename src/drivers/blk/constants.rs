@@ -1,11 +1,15 @@
 /* And this is the final byte of the write scatter-gather list */
+#[allow(unused)]
 pub const VIRTIO_BLK_S_OK: u8 = 0;
+#[allow(unused)]
 pub const VIRTIO_BLK_S_IOERR: u8 = 1;
+#[allow(unused)]
 pub const VIRTIO_BLK_S_UNSUPP: u8 = 2;
 
 /// Status of a VirtIOBlk request.
 #[repr(u8)]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[allow(unused)]
 pub enum RespStatus {
     /// Ok.
     Ok = 0,

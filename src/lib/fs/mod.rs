@@ -1,8 +1,6 @@
-mod diskcursor;
-pub mod fatfs;
 pub mod fs;
 pub mod interface;
-mod io;
+mod fat;
 
 use alloc::boxed::Box;
 
@@ -12,10 +10,10 @@ pub fn init() {
     let root_path = "fatfs";
     fs::FILESYSTEM
         .lock()
-        .mount(root_path, Box::new(fatfs::Fatfs::singleton()))
+        .mount(root_path, Box::new(fat::Fatfs::singleton()))
         .expect("Mount failed!!!");
 
-    fatfs::Fatfs::list_files(root_path);
+    fat::Fatfs::list_files(root_path);
     info!("fs init success.");
 }
 

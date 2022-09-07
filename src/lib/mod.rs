@@ -14,5 +14,5 @@ pub mod device;
 #[cfg(feature = "tcp")]
 pub mod net;
 
-#[cfg(any(feature = "fs", feature = "oldfs"))]
+#[cfg(feature = "fs")]
 pub mod fs;

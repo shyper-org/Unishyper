@@ -130,7 +130,5 @@ pub fn init_drivers() {
     irqsave(|| {
         #[cfg(any(feature = "tcp", feature = "fs"))]
         parse_virtio_devices();
-        #[cfg(feature = "oldfs")]
-        crate::drivers::blk::virtio_blk_init();
     });
 }

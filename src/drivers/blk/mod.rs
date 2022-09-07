@@ -2,9 +2,6 @@ pub mod constants;
 pub mod mmio;
 pub mod virtio_blk;
 
-#[cfg(feature = "oldfs")]
-mod virtio_blk_ori;
-
 /// A trait for accessing the network interface
 pub trait BlkInterface {
     /// Read blocks.
@@ -18,9 +15,8 @@ pub trait BlkInterface {
 #[cfg(feature = "fs")]
 use crate::drivers::virtio::mmio::get_block_driver;
 
-#[cfg(any(feature = "fs", feature = "oldfs"))]
+#[cfg(feature = "fs")]
 pub fn blk_irqhandler() {
-    #[cfg(feature = "fs")]
     match get_block_driver() {
         Some(driver) => {
             if !driver.lock().handle_interrupt() {
@@ -31,27 +27,16 @@ pub fn blk_irqhandler() {
     }
 }
 
-#[cfg(feature = "oldfs")]
-pub fn virtio_blk_init() {
-    virtio_blk_ori::virtio_blk_init();
-}
-
-#[cfg(any(feature = "fs", feature = "oldfs"))]
+#[cfg(feature = "fs")]
 pub fn read(sector: usize, count: usize, buf: usize) {
-    #[cfg(feature = "oldfs")]
-    virtio_blk_ori::read(sector, count, buf);
-    #[cfg(feature = "fs")]
     match get_block_driver() {
         Some(driver) => driver.lock().read_block(sector, count, buf),
         _ => error!("failed to get block driver"),
     }
 }
 
-#[cfg(any(feature = "fs", feature = "oldfs"))]
+#[cfg(feature = "fs")]
 pub fn write(sector: usize, count: usize, buf: usize) {
-    #[cfg(feature = "oldfs")]
-    virtio_blk_ori::write(sector, count, buf);
-    #[cfg(feature = "fs")]
     match get_block_driver() {
         Some(driver) => driver.lock().write_block(sector, count, buf),
         _ => error!("failed to get block driver"),

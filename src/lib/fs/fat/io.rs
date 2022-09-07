@@ -2,8 +2,8 @@ use core::slice;
 
 use crate::drivers::blk;
 
-use super::interface::{BlkIO, AtaError};
-use super::diskcursor::BSIZE;
+use crate::lib::fs::interface::{BlkIO, AtaError};
+use crate::lib::fs::fat::diskcursor::BSIZE;
 
 use lru::LruCache;
 

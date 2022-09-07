@@ -1,7 +1,7 @@
 use spin::Mutex;
 use fatfs::{IoBase, IoError, Read, Write, Seek, SeekFrom};
 
-use crate::lib::fs::io::BlockCache;
+use crate::lib::fs::fat::io::BlockCache;
 use crate::lib::fs::interface::BlkIO;
 
 pub const BSIZE: usize = 512;

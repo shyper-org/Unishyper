@@ -46,15 +46,18 @@ fn touch(path: &Path) -> io::Result<()> {
 fn main() {
     fs::init();
 
+	println!("`echo hello > /fatfs/echo.txt`");
     echo("hello", &Path::new("/fatfs/echo.txt")).unwrap_or_else(|why| {
 		println!("! {:?}", why);
 	});
 
+	println!("`touch /fatfs/touch.txt`");
     touch(&Path::new("/fatfs/touch.txt")).unwrap_or_else(|why| {
 		println!("! {:?}", why);
 	});
 
-    match cat(&Path::new("/fatfs/echo.txt")) {
+    println!("`cat /fatfs/echo.txt`");
+	match cat(&Path::new("/fatfs/echo.txt")) {
 		Err(why) => println!("! {:?}", why),
 		Ok(s) => println!("> {}", s),
 	}

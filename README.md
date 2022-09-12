@@ -8,12 +8,21 @@ Rust-ShyperOS  now supports following platforms.
 
 | MACHINE | ARCH                    | Description                             |
 |---------|-------------------------|-----------------------------------------|
-| virt    | **aarch64** (AArch64)   | QEMU virt machine (qemu-system-aarch64) |
+| virt    | **aarch64** (AArch64)   | QEMU (qemu-system-aarch64) |
+| shyper     | **aarch64** (AArch64)   |  Type-1 Hypervisor   |
 | tx2     | **aarch64** (AArch64)   | NVIDIA TX2                              |
 
+
+## Features
+
+1. Singal address space, singal priveledge level.
+2. SMP support, multi-thread support.
+3. Semaphores and synchronization mechanisms support.
+4. Network stack and file system support.
+5. Virtio drivers (virtio-net, virtio-blk).
 ## Toolchains
 
-1. Nightly Rust (`nightly-2021-06-15-x86_64-unknown-linux-gnu` tested)
+1. Nightly Rust (`nightly-2022-05-04` tested)
 2. `rust-src` component (use `make dependencies` to install)
 3. QEMU emulator version 5.0.0, `qemu-system-aarch64`.
 4. Linaro GCC 7.5-2019.12
@@ -26,17 +35,21 @@ use this lines to build and emulate:
 
 ```
 # for examples/net_demo
-make net_emu
+make net_server | net_client
 # for examples/user
-make user_emu
+make user
+# for examples/fs
+make fs
 ```
 use this lines to build and debug:
 
 ```
 # for examples/net_demo
-make net_debug
+make net_server_debug | net_client_debug
 # for examples/user
 make user_debug
+# for examples/fs
+make fs_debug
 ```
 
 ## Booting

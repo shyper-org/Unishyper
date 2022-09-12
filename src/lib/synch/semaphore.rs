@@ -1,4 +1,6 @@
-use crate::lib::thread::{current_thread, thread_block_current, thread_wake_to_front, Thread, thread_yield};
+use crate::lib::thread::{
+    current_thread, thread_block_current, thread_wake_to_front, Thread, thread_yield,
+};
 use alloc::collections::VecDeque;
 
 use super::spinlock::SpinlockIrqSave;
@@ -34,7 +36,6 @@ impl Semaphore {
     /// This method will block until the internal count of the semaphore is at
     /// least 1.
     pub fn acquire(&self) {
-
         // Loop until we have acquired the semaphore.
         loop {
             trace!("acquire loop");
@@ -54,10 +55,18 @@ impl Semaphore {
                         drop(inner);
                         thread_yield();
                         trace!("return to this thread");
+                        // info!(
+                        //     "return to Thread [{}] current time {}",
+                        //     crate::lib::thread::current_thread_id(),
+                        //     crate::lib::timer::current_cycle()
+                        // );
                     } else {
                         // Successfully acquired the semaphore.
                         inner.value -= 1;
-                        trace!("semaphore acquire success, current value {}, return", inner.value);
+                        trace!(
+                            "semaphore acquire success, current value {}, return",
+                            inner.value
+                        );
                         return;
                     }
                 }
@@ -75,11 +84,16 @@ impl Semaphore {
     /// will notify any pending waiters in `acquire` or `access` if necessary.
     pub fn release(&self) {
         let mut inner = self.inner.lock();
-        // debug!(
-        //     "semaphore release on thread [{}], value from {} to ({})",
-        //     crate::lib::thread::current_thread().unwrap().tid(),
-        //     inner.value,
-        //     inner.value + 1
+        debug!(
+            "semaphore release on thread [{}], value from {} to ({})",
+            crate::lib::thread::current_thread_id(),
+            inner.value,
+            inner.value + 1
+        );
+        // info!(
+        //     "release on Thread [{}] current time {}",
+        //     crate::lib::thread::current_thread_id(),
+        //     crate::lib::timer::current_cycle()
         // );
         inner.value += 1;
         if let Some(queue) = &mut inner.queue {

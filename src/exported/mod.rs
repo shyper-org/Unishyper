@@ -1,11 +1,10 @@
 pub use thread::*;
 pub use crate::mm::*;
-pub use crate::lib::synch::*;
+pub use crate::lib::synch::{spinlock, semaphore};
 pub use crate::lib::thread::*;
 pub use crate::lib::timer::*;
 
 mod thread;
-pub mod io;
 
 pub fn core_id() -> usize {
     use crate::lib::traits::ArchTrait;
@@ -21,3 +20,5 @@ pub use net::*;
 pub mod fs;
 #[cfg(feature = "fs")]
 pub mod fd;
+#[cfg(feature = "fs")]
+pub mod io;

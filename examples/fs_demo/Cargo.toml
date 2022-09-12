@@ -1,5 +1,5 @@
 [package]
-name = "user"
+name = "fs_demo"
 version = "0.1.0"
 edition = "2021"
 authors = ["hukeyang <hky1999@buaa.edu.cn>"]
@@ -13,15 +13,17 @@ default-features = false
 [features]
 default = ["qemu"]
 qemu = [
-    # "alloc",
+    "alloc",
     "rust_shyper_os/alloc",
     "rust_shyper_os/smp",
+    "rust_shyper_os/fs",
     "rust_shyper_os/qemu"
     ]
 shyper = [
     "alloc",
     "rust_shyper_os/alloc",
     "rust_shyper_os/smp",
+    "rust_shyper_os/fs",
     "rust_shyper_os/shyper"
     ]
 alloc = []

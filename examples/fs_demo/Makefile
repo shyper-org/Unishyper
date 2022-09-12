@@ -17,7 +17,7 @@ endif
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/user
+KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/fs_demo
 
 # Arch-specific tools
 OBJCOPY := aarch64-elf-objcopy
@@ -26,7 +26,7 @@ OBJDUMP := aarch64-elf-objdump
 .PHONY: build clean
 
 build:
-	cargo build --target ${TARGET_CFG} -Z build-std=core,alloc ${CARGO_FLAGS} 
+	cargo build --target ${TARGET_CFG} -Z build-std=core,alloc ${CARGO_FLAGS}
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
 

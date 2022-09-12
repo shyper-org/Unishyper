@@ -12,8 +12,12 @@ export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
 CARGO_FLAGS := ${CARGO_FLAGS} #--features ${MACHINE}
 CARGO_FLAGS := ${CARGO_FLAGS} --release
 
+EXAMPLES_DIR := $(shell find examples -maxdepth 1 -mindepth 1 -type d)
+
 USER_DIR := examples/user
+FS_DEMO_DIR := examples/fs_demo
 NET_DEMO_DIR := examples/net_demo
+NET_TEST_DIR := examples/net_test
 
 .PHONY: all build clean user net_server net_client disk tap_setup net_server_debug net_client_debug net_test
 
@@ -22,8 +26,8 @@ build:
 
 clean:
 	-cargo clean
-	make -C examples/user clean
-	make -C ${NET_DEMO_DIR} clean
+	@for dir in ${EXAMPLES_DIR}; do make -C ./$$dir clean ||exit; done
+	@echo clean project done!
 
 # aarch64-elf-objcopy ${KERNEL} -O binary ${KERNEL}.bin
 # aarch64-elf-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
@@ -39,6 +43,9 @@ clean:
 user:
 	make -C ${USER_DIR} emu
 
+fs:
+	make -C ${FS_DEMO_DIR} emu
+
 net_server:
 	make -C ${NET_DEMO_DIR} server_emu
 
@@ -48,6 +55,9 @@ net_client:
 user_debug:
 	make -C ${USER_DIR} debug
 
+fs_debug:
+	make -C ${FS_DEMO_DIR} debug
+
 net_server_debug:
 	make -C ${NET_DEMO_DIR} server_debug
 
@@ -55,8 +65,7 @@ net_client_debug:
 	make -C ${NET_DEMO_DIR} client_debug
 
 net_test:
-	gcc examples/net_test/socket_client.c -o examples/net_test/client
-	gcc examples/net_test/socket_server.c -o examples/net_test/server
+	make -C ${NET_TEST_DIR} build
 
 disk:
 	rm -rf disk

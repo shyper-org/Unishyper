@@ -16,6 +16,7 @@ pub const BOARD_CORE_NUMBER: usize = 2;
 pub const GICD_BASE: usize = 0x08000000;
 pub const GICC_BASE: usize = 0x08010000;
 
+#[allow(unused)]
 pub fn devices() -> Vec<Device> {
     vec![
         #[cfg(feature = "fs")]

@@ -9,7 +9,6 @@ pub trait NetworkInterface {
     /// Returns the current MTU of the device.
     fn get_mtu(&self) -> u16;
     /// Get buffer to create a TX packet
-    ///
     /// This returns ownership of the TX buffer.
     fn get_tx_buffer(&mut self, len: usize) -> Result<(*mut u8, usize), ()>;
     /// Frees the TX buffer (takes ownership)
@@ -36,9 +35,9 @@ static NET_SEM: Semaphore = Semaphore::new(0);
 
 pub extern "C" fn netwait() {
     irqsave(|| {
-        debug!("netwait");
+        trace!("netwait");
         NET_SEM.acquire();
-        debug!("netwait acquire, return");
+        trace!("netwait acquire, return");
     });
 }
 

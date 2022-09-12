@@ -1,5 +1,6 @@
 #![no_std]
-#![no_main]
+// Drop the #![no_main] attribute as it has no effect on library crates.
+// #![no_main]
 #![feature(alloc_error_handler)]
 #![feature(panic_info_message)]
 #![feature(format_args_nl)]
@@ -10,7 +11,6 @@
 #![feature(asm_const)]
 #![feature(drain_filter)]
 #![feature(map_first_last)]
-#![feature(const_fn_trait_bound)]
 
 #[macro_use]
 extern crate log;
@@ -68,7 +68,6 @@ fn loader_main(core_id: usize) {
             lib::thread::thread_wake(&t);
 
             println!(concat!(
-                "\nHello world!\n\n",
                 "Welcome to shyper lightweight os...\n\n",
                 "====== entering first thread ======>>>\n"
             ));

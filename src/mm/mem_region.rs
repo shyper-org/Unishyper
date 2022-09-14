@@ -43,7 +43,7 @@ impl Region {
 impl Drop for Region {
     fn drop(&mut self) {
         debug!(
-            "drop mem region {:016x} to {:016x}",
+            "drop mem region 0x{:016x} to 0x{:016x}",
             self.pa,
             self.pa + self.size - 1
         );

@@ -8,6 +8,6 @@ pub fn run_tests() {
     use rust_shyper_os::*;
     println!("run_tests");
     // mm::mm_test();
-    // thread::thread_test();
-    sem::semaphore_test();
+    thread::thread_test();
+    // sem::semaphore_test();
 }

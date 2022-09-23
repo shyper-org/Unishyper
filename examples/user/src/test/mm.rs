@@ -9,12 +9,12 @@ extern "C" fn test_mm_thread(arg: usize) {
 
     unsafe {
         (*test) = 1;
-        println!("test is {}", *test);
+        println!("test is {} at {:p}", *test, test);
     }
 
     println!(
-        "test_mm_thread, region start {:x} size {:x}",
-        addr.0,
+        "test_mm_thread, region start {} size 0x{:x}",
+        addr,
         1 << 12 * arg
     );
 

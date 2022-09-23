@@ -1,13 +1,14 @@
-pub use thread::*;
-pub use crate::mm::*;
-pub use crate::lib::synch::{spinlock, semaphore};
-pub use crate::lib::thread::*;
-pub use crate::lib::timer::*;
+pub use crate::libs::synch::{spinlock, semaphore};
+pub use crate::libs::thread::*;
+pub use crate::libs::timer::*;
 
-mod thread;
+pub mod thread;
+mod mm;
+pub use mm::*;
+pub use thread::*;
 
 pub fn core_id() -> usize {
-    use crate::lib::traits::ArchTrait;
+    use crate::libs::traits::ArchTrait;
     crate::arch::Arch::core_id()
 }
 

@@ -12,7 +12,7 @@
 #define SERVPORT 4444
 #define BACKLOG 10
 #define N_BYTES 1048576
-#define N_ROUNDS 1000
+#define N_ROUNDS 100
 
 int main() {
     struct sockaddr_in server_sockaddr;//声明服务器socket存储结构

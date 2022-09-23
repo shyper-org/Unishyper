@@ -23,8 +23,6 @@ use crate::drivers::virtio::VIRTIO_MAX_QUEUE_SIZE;
 use crate::drivers::net::constants::{FeatureSet, Features, NetHdrGSO, Status, MAX_NUM_VQ};
 use self::error::VirtioNetError;
 
-use super::netwakeup;
-
 pub const ETH_HDR: usize = 14usize;
 
 /// A wrapper struct for the raw configuration structure.
@@ -608,8 +606,6 @@ impl NetworkInterface for VirtioNetDriver {
         trace!("handle interrupt 32 + {}", self.irq);
 
         let result = if self.isr_stat.is_interrupt() {
-            // handle incoming packets
-            netwakeup();
             true
         } else if self.isr_stat.is_cfg_change() {
             info!("Configuration changes are not possible! Aborting");

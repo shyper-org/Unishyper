@@ -1,6 +1,6 @@
 use core::panic::PanicInfo;
 
-use crate::lib::thread::current_thread;
+use crate::libs::thread::current_thread;
 
 #[allow(non_snake_case)]
 #[no_mangle]

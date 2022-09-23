@@ -3,12 +3,13 @@ pub use self::interface::*;
 pub use switch::switch_to;
 // pub use exception::pop_cpu_context;
 
-mod switch;
 mod context_frame;
 mod exception;
 mod interface;
+pub mod irq;
 mod mm;
 mod mmu;
+pub mod page_table;
 mod registers;
 pub mod start;
-pub mod irq;
+mod switch;

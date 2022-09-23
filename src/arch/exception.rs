@@ -2,8 +2,8 @@ use core::mem::size_of;
 use cortex_a::registers::{ESR_EL1, VBAR_EL1};
 use tock_registers::interfaces::{Readable, Writeable};
 
-use crate::lib::traits::ArchTrait;
-use crate::lib::traits::ContextFrameTrait;
+use crate::libs::traits::ArchTrait;
+use crate::libs::traits::ContextFrameTrait;
 
 use crate::arch::ContextFrame;
 
@@ -19,18 +19,18 @@ unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
     // trace!("current_el_sp0_irq \n{}", ctx.read());
-    use crate::lib::interrupt::*;
-    let core = crate::lib::cpu::cpu();
+    use crate::libs::interrupt::*;
+    let core = crate::libs::cpu::cpu();
     core.set_context(ctx);
     use crate::drivers::{gic::INT_TIMER, INTERRUPT_CONTROLLER};
     let irq = INTERRUPT_CONTROLLER.fetch();
     match irq {
         Some(INT_TIMER) => {
-            crate::lib::timer::interrupt();
+            crate::libs::timer::interrupt();
         }
         Some(i) => {
             if i >= 32 {
-                crate::lib::interrupt::interrupt(i);
+                crate::libs::interrupt::interrupt(i);
             } else {
                 panic!("GIC unhandled SGI PPI")
             }
@@ -53,7 +53,7 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
     ctx_mut.set_stack_pointer(ctx as usize + size_of::<ContextFrame>());
     // let page_fault = ESR_EL1.matches_all(ESR_EL1::EC::InstrAbortCurrentEL)
     //     | ESR_EL1.matches_all(ESR_EL1::EC::DataAbortCurrentEL);
-    //   crate::lib::exception::handle_kernel(ctx.as_ref().unwrap(), page_fault);
+    //   crate::libs::exception::handle_kernel(ctx.as_ref().unwrap(), page_fault);
     panic!("current_el_spx_synchronous EC {:#X} \n{}", ec, ctx.read());
     // loop {}
 }
@@ -81,7 +81,7 @@ unsafe extern "C" fn lower_aarch64_synchronous(ctx: *mut ContextFrame) {
 
 #[no_mangle]
 unsafe extern "C" fn lower_aarch64_irq(ctx: *mut ContextFrame) {
-    let core = crate::lib::cpu::cpu();
+    let core = crate::libs::cpu::cpu();
     let core_id = crate::arch::Arch::core_id();
 
     core.set_context(ctx);
@@ -96,7 +96,7 @@ unsafe extern "C" fn lower_aarch64_irq(ctx: *mut ContextFrame) {
 
 #[no_mangle]
 unsafe extern "C" fn lower_aarch64_serror(ctx: *mut ContextFrame) {
-    let core = crate::lib::cpu::cpu();
+    let core = crate::libs::cpu::cpu();
 
     let core_id = crate::arch::Arch::core_id();
     core.set_context(ctx);

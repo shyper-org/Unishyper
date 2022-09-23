@@ -9,5 +9,5 @@ build:
 	gcc socket_server.c -o server
 
 clean:
-	rm client
-	rm server
+	@if [ -e client ]; then rm client; fi
+	@if [ -e server ]; then rm server; fi

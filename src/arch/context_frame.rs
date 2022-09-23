@@ -3,7 +3,7 @@ use core::fmt::Formatter;
 use super::registers::Aarch64;
 use super::registers::Registers;
 
-use crate::lib::traits::ContextFrameTrait;
+use crate::libs::traits::ContextFrameTrait;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]

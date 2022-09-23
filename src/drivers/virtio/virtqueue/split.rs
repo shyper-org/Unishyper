@@ -9,7 +9,7 @@ use super::{
     TransferState, TransferToken, Virtq, VqIndex, VqSize,
 };
 
-use crate::mm::Addr;
+use crate::mm::address::VAddr;
 use crate::arch::PAGE_SIZE;
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -78,7 +78,7 @@ struct DescrRing {
 }
 
 impl DescrRing {
-	/// Add buffers to the virtqueue.
+    /// Add buffers to the virtqueue.
     fn push(&mut self, tkn: TransferToken) -> (Pinned<TransferToken>, u16, u16) {
         let pin = Pinned::pin(tkn);
 
@@ -134,14 +134,14 @@ impl DescrRing {
                 assert!(len == 1);
                 if is_write {
                     Descriptor::new(
-                        Addr::from(desc.ptr as usize).to_pa() as u64,
+                        VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                         desc.len as u32,
                         DescrFlags::VIRTQ_DESC_F_INDIRECT | DescrFlags::VIRTQ_DESC_F_WRITE,
                         0,
                     )
                 } else {
                     Descriptor::new(
-                        Addr::from(desc.ptr as usize).to_pa() as u64,
+                        VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                         desc.len as u32,
                         DescrFlags::VIRTQ_DESC_F_INDIRECT.into(),
                         0,
@@ -155,14 +155,14 @@ impl DescrRing {
 
                 if is_write {
                     Descriptor::new(
-                        Addr::from(desc.ptr as usize).to_pa() as u64,
+                        VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                         desc.len as u32,
                         DescrFlags::VIRTQ_DESC_F_WRITE | DescrFlags::VIRTQ_DESC_F_NEXT,
                         next_index,
                     )
                 } else {
                     Descriptor::new(
-                        Addr::from(desc.ptr as usize).to_pa() as u64,
+                        VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                         desc.len as u32,
                         DescrFlags::VIRTQ_DESC_F_NEXT.into(),
                         next_index,
@@ -170,14 +170,14 @@ impl DescrRing {
                 }
             } else if is_write {
                 Descriptor::new(
-                    Addr::from(desc.ptr as usize).to_pa() as u64,
+                    VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                     desc.len as u32,
                     DescrFlags::VIRTQ_DESC_F_WRITE.into(),
                     0,
                 )
             } else {
                 Descriptor::new(
-                    Addr::from(desc.ptr as usize).to_pa() as u64,
+                    VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                     desc.len as u32,
                     0,
                     0,
@@ -365,16 +365,17 @@ impl SplitVq {
             size as usize * core::mem::size_of::<Descriptor>(),
             PAGE_SIZE
         );
-        let table_raw = (crate::mm::allocate(_mem_len).0 as *const Descriptor) as *mut Descriptor;
+        let table_raw = (crate::mm::kallocate(_mem_len).unwrap().value() as *const Descriptor)
+            as *mut Descriptor;
 
         let descr_table = DescrTable {
             raw: unsafe { core::slice::from_raw_parts_mut(table_raw, size as usize) },
         };
 
         let _mem_len = align_up!(6 + (size as usize * 2), PAGE_SIZE);
-        let avail_raw = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
+        let avail_raw = (crate::mm::kallocate(_mem_len).unwrap().value() as *const u8) as *mut u8;
         let _mem_len = align_up!(6 + (size as usize * 8), PAGE_SIZE);
-        let used_raw = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
+        let used_raw = (crate::mm::kallocate(_mem_len).unwrap().value() as *const u8) as *mut u8;
 
         let avail_ring = unsafe {
             AvailRing {
@@ -413,10 +414,10 @@ impl SplitVq {
         }
 
         // Provide memory areas of the queues data structures to the device
-        vq_handler.set_ring_addr(Addr::from(table_raw as usize).to_pa());
+        vq_handler.set_ring_addr(VAddr::from(table_raw as usize).to_physical_address().value());
         // As usize is safe here, as the *mut EventSuppr raw pointer is a thin pointer of size usize
-        vq_handler.set_drv_ctrl_addr(Addr::from(avail_raw as usize).to_pa());
-        vq_handler.set_dev_ctrl_addr(Addr::from(used_raw as usize).to_pa());
+        vq_handler.set_drv_ctrl_addr(VAddr::from(avail_raw as usize).to_physical_address().value());
+        vq_handler.set_dev_ctrl_addr(VAddr::from(used_raw as usize).to_physical_address().value());
 
         let descr_ring = DescrRing {
             read_idx: 0,
@@ -977,14 +978,14 @@ impl SplitVq {
                 for desc in recv_desc_lst {
                     desc_slice[crtl_desc_iter] = if desc_lst_len > 1 {
                         Descriptor::new(
-                            Addr::from(desc.ptr as usize).to_pa() as u64,
+                            VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                             desc.len as u32,
                             DescrFlags::VIRTQ_DESC_F_WRITE | DescrFlags::VIRTQ_DESC_F_NEXT,
                             (crtl_desc_iter + 1) as u16,
                         )
                     } else {
                         Descriptor::new(
-                            Addr::from(desc.ptr as usize).to_pa() as u64,
+                            VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                             desc.len as u32,
                             DescrFlags::VIRTQ_DESC_F_WRITE.into(),
                             0,
@@ -1001,14 +1002,14 @@ impl SplitVq {
                 for desc in send_desc_lst {
                     desc_slice[crtl_desc_iter] = if desc_lst_len > 1 {
                         Descriptor::new(
-                            Addr::from(desc.ptr as usize).to_pa() as u64,
+                            VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                             desc.len as u32,
                             DescrFlags::VIRTQ_DESC_F_NEXT.into(),
                             (crtl_desc_iter + 1) as u16,
                         )
                     } else {
                         Descriptor::new(
-                            Addr::from(desc.ptr as usize).to_pa() as u64,
+                            VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                             desc.len as u32,
                             0,
                             0,
@@ -1025,14 +1026,14 @@ impl SplitVq {
                 for desc in send_desc_lst {
                     desc_slice[crtl_desc_iter] = if desc_lst_len > 1 {
                         Descriptor::new(
-                            Addr::from(desc.ptr as usize).to_pa() as u64,
+                            VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                             desc.len as u32,
                             DescrFlags::VIRTQ_DESC_F_NEXT.into(),
                             (crtl_desc_iter + 1) as u16,
                         )
                     } else {
                         Descriptor::new(
-                            Addr::from(desc.ptr as usize).to_pa() as u64,
+                            VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                             desc.len as u32,
                             0,
                             0,
@@ -1046,14 +1047,14 @@ impl SplitVq {
                 for desc in recv_desc_lst {
                     desc_slice[crtl_desc_iter] = if desc_lst_len > 1 {
                         Descriptor::new(
-                            Addr::from(desc.ptr as usize).to_pa() as u64,
+                            VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                             desc.len as u32,
                             DescrFlags::VIRTQ_DESC_F_WRITE | DescrFlags::VIRTQ_DESC_F_NEXT,
                             (crtl_desc_iter + 1) as u16,
                         )
                     } else {
                         Descriptor::new(
-                            Addr::from(desc.ptr as usize).to_pa() as u64,
+                            VAddr::from(desc.ptr as usize).to_physical_address().value() as u64,
                             desc.len as u32,
                             DescrFlags::VIRTQ_DESC_F_WRITE.into(),
                             0,

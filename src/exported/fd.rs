@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::exported::io::{self,cvt};
-use crate::lib::fs;
+use crate::libs::fs;
 
 #[derive(Debug)]
 pub struct FileDesc {

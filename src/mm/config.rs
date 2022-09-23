@@ -1,38 +1,30 @@
 use core::ops::Range;
 
 use crate::arch::PAGE_SIZE;
-use crate::lib::traits::*;
+use crate::libs::traits::*;
 use crate::util::round_up;
 
-use super::Addr;
+use crate::mm::address::VAddr;
 
-// non paged memory in kernel (kernel heap memory)
-#[cfg(not(feature = "k210"))]
-pub const CONFIG_NON_PAGED_MEMORY_SIZE: usize = 0xf00_0000;
-
-#[cfg(feature = "k210")]
-pub const CONFIG_NON_PAGED_MEMORY_SIZE: usize = 0x10_0000;
-
-pub fn paged_range() -> Range<usize> {
+pub fn kernel_end_address() -> VAddr {
     extern "C" {
         // Note: link-time label, see linker.ld
         fn KERNEL_END();
     }
-    let kernel_end = round_up((KERNEL_END as usize).kva2pa(), PAGE_SIZE);
-    info!("KERNEL_END: {:x}", kernel_end);
-    let normal_range = crate::arch::BOARD_NORMAL_MEMORY_RANGE;
-    kernel_end..(normal_range.end - CONFIG_NON_PAGED_MEMORY_SIZE)
+    VAddr::new_canonical(round_up((KERNEL_END as usize).kva2pa(), PAGE_SIZE))
+}
+
+#[allow(unused)]
+pub fn kernel_range() -> Range<usize> {
+    let normal_range = crate::arch::BOARD_KERNEL_MEMORY_RANGE;
+    normal_range.start..kernel_end_address().value()
 }
 
 pub fn heap_range() -> Range<usize> {
-    let normal_range = crate::arch::BOARD_NORMAL_MEMORY_RANGE;
-    (normal_range.end - CONFIG_NON_PAGED_MEMORY_SIZE)..normal_range.end
+    let normal_range = crate::arch::BOARD_KERNEL_MEMORY_RANGE;
+    kernel_end_address().value()..normal_range.end
 }
 
-pub fn kernel_end_address() -> Addr {
-    extern "C" {
-        // Note: link-time label, see linker.ld
-        fn KERNEL_END();
-    }
-    round_up((KERNEL_END as usize).kva2pa(), PAGE_SIZE).into()
+pub fn paged_range() -> Range<usize> {
+    crate::arch::BOARD_NORMAL_MEMORY_RANGE
 }

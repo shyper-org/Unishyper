@@ -28,29 +28,10 @@ pub trait NetworkInterface {
 }
 
 use crate::drivers::virtio::mmio::get_network_driver;
-use crate::lib::synch::{semaphore::Semaphore, spinlock::SpinlockIrqSave};
-use crate::util::irqsave;
-
-static NET_SEM: Semaphore = Semaphore::new(0);
-
-pub extern "C" fn netwait() {
-    irqsave(|| {
-        trace!("netwait");
-        NET_SEM.acquire();
-        trace!("netwait acquire, return");
-    });
-}
-
-#[no_mangle]
-pub fn netwakeup() {
-    irqsave(|| {
-        trace!("netwakeup");
-        NET_SEM.release();
-    });
-}
+use crate::libs::synch::spinlock::SpinlockIrqSave;
 
 pub fn network_irqhandler() {
-    debug!("Receive network interrupt");
+    trace!("Receive network interrupt");
 
     let check_scheduler = match get_network_driver() {
         Some(driver) => driver.lock().handle_interrupt(),
@@ -61,37 +42,34 @@ pub fn network_irqhandler() {
     };
 
     if check_scheduler {
-        crate::lib::thread::thread_schedule();
+        crate::libs::thread::thread_schedule();
     }
 }
 
 /// set driver in polling mode and threads will not be blocked
-pub extern "C" fn set_polling_mode(value: bool) {
-    let icntr = crate::lib::timer::current_cycle();
+pub fn set_polling_mode(value: bool) {
     static THREADS_IN_POLLING_MODE: SpinlockIrqSave<usize> = SpinlockIrqSave::new(0);
-    irqsave(|| {
-        let mut guard = THREADS_IN_POLLING_MODE.lock();
+    // irqsave(|| {
+    let mut guard = THREADS_IN_POLLING_MODE.lock();
 
-        if value {
-            *guard += 1;
+    if value {
+        *guard += 1;
 
-            if *guard == 1 {
-                if let Some(driver) = get_network_driver() {
-                    driver.lock().set_polling_mode(value)
-                }
-            }
-        } else {
-            *guard -= 1;
-
-            if *guard == 0 {
-                if let Some(driver) = get_network_driver() {
-                    driver.lock().set_polling_mode(value)
-                }
+        if *guard == 1 {
+            if let Some(driver) = get_network_driver() {
+                driver.lock().set_polling_mode(value)
             }
         }
-    });
-    let icntr2 = crate::lib::timer::current_cycle();
-    debug!("net set_polling_mode {} cycle {}", value, icntr2 - icntr);
+    } else {
+        *guard -= 1;
+
+        if *guard == 0 {
+            if let Some(driver) = get_network_driver() {
+                driver.lock().set_polling_mode(value)
+            }
+        }
+    }
+    // });
 }
 
 pub fn get_mac_address() -> Result<[u8; 6], ()> {

@@ -4,7 +4,7 @@ use log::{LevelFilter, SetLoggerError};
 
 // use crate::util::irqsave;
 
-use crate::lib::synch::spinlock::SpinlockIrqSave;
+use crate::libs::synch::spinlock::SpinlockIrqSave;
 
 struct SimpleLogger;
 
@@ -21,7 +21,7 @@ impl log::Log for SimpleLogger {
         // irqsave(|| {
         let lock = LOCK.lock();
         if self.enabled(record.metadata()) {
-            let ms = crate::lib::timer::current_ms();
+            let ms = crate::libs::timer::current_ms();
             let s = ms / 1000;
             let ms = ms % 1000;
             print!("[{:04}.{:03}]", s, ms);
@@ -34,6 +34,12 @@ impl log::Log for SimpleLogger {
                 Level::Trace => print!("[T]"),
             }
             if let Some(m) = record.module_path() {
+                #[cfg(feature = "smp")]
+                {
+                    use crate::ArchTrait;
+                    print!("core[{}][{}]", crate::arch::Arch::core_id(), m);
+                }
+                #[cfg(not(feature = "smp"))]
                 print!("[{}]", m);
             }
             print!(" {}", record.args());

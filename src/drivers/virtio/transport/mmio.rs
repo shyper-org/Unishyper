@@ -17,7 +17,7 @@ use crate::drivers::error::DriverError;
 use crate::drivers::virtio::device;
 use crate::drivers::virtio::error::VirtioError;
 
-use crate::lib::interrupt::irq_install_handler;
+use crate::libs::interrupt::irq_install_handler;
 
 #[cfg(feature = "tcp")]
 use crate::drivers::net::virtio_net::VirtioNetDriver;

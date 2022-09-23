@@ -5,8 +5,8 @@ use alloc::string::String;
 use fatfs::SeekFrom;
 use ioslice::{IoSlice, IoSliceMut};
 
-use crate::lib::fs;
-use crate::lib::fs::interface::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
+use crate::libs::fs;
+use crate::libs::fs::interface::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
 
 use crate::exported::io;
 use crate::exported::io::cvt;

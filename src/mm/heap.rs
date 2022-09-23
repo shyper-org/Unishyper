@@ -3,7 +3,7 @@ use core::alloc::Layout;
 // rCore buddy system allocator
 use buddy_system_allocator::LockedHeap;
 
-use crate::lib::traits::*;
+use crate::libs::traits::*;
 
 pub fn init() {
     let range = super::config::heap_range();
@@ -13,7 +13,7 @@ pub fn init() {
             .init(range.start.pa2kva(), range.end - range.start)
     }
     println!(
-        "Heap range: pa [{:x} - {:x}] kva [{:x} - {:x}]",
+        "Heap range: pa [{:x} - {:x}] va [{:x} - {:x}]",
         range.start,
         range.end,
         range.start.pa2kva(),

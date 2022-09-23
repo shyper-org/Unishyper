@@ -13,7 +13,7 @@
 pub mod split;
 
 use crate::arch::PAGE_SIZE;
-use crate::mm::Addr;
+use crate::mm::address::VAddr;
 // use crate::arch::mm::{paging, VirtAddr};
 
 use self::error::{BufferError, VirtqError};
@@ -1694,7 +1694,7 @@ impl Drop for MemDescr {
         match self.dealloc {
             Dealloc::Not => (),
             Dealloc::AsSlice => unsafe { drop(Vec::from_raw_parts(self.ptr, self._mem_len, 0)) },
-            Dealloc::AsPage => crate::mm::deallocate(Addr::from(self.ptr as usize)),
+            Dealloc::AsPage => crate::mm::deallocate(VAddr::from(self.ptr as usize)),
         }
     }
 }
@@ -1804,8 +1804,8 @@ impl MemPool {
         // Assert descriptor does not cross a page barrier
         let start_virt = (&slice[0] as *const u8) as usize;
         let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
-        let end_phy_calc = Addr::from(start_virt).to_pa() + (slice.len() - 1);
-        let end_phy = Addr::from(end_virt).to_pa();
+        let end_phy_calc = VAddr::from(start_virt).to_physical_address() + (slice.len() - 1);
+        let end_phy = VAddr::from(end_virt).to_physical_address();
 
         assert_eq!(end_phy, end_phy_calc);
 
@@ -1846,8 +1846,8 @@ impl MemPool {
         // Assert descriptor does not cross a page barrier
         let start_virt = (&slice[0] as *const u8) as usize;
         let end_virt = (&slice[slice.len() - 1] as *const u8) as usize;
-        let end_phy_calc = Addr::from(start_virt).to_pa() + (slice.len() - 1);
-        let end_phy = Addr::from(end_virt).to_pa();
+        let end_phy_calc = VAddr::from(start_virt).to_physical_address() + (slice.len() - 1);
+        let end_phy = VAddr::from(end_virt).to_physical_address();
 
         assert_eq!(end_phy, end_phy_calc);
 
@@ -1884,13 +1884,13 @@ impl MemPool {
 
         // Allocate heap memory via a vec, leak and cast
         let _mem_len = align_up!(len, PAGE_SIZE);
-        let ptr = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
+        let ptr = (crate::mm::kallocate(_mem_len).unwrap().value() as *const u8) as *mut u8;
 
         // Assert descriptor does not cross a page barrier
         let start_virt = ptr as usize;
         let end_virt = start_virt + (len - 1);
-        let end_phy_calc = Addr::from(start_virt).to_pa() + (len - 1);
-        let end_phy = Addr::from(end_virt).to_pa();
+        let end_phy_calc = VAddr::from(start_virt).to_physical_address() + (len - 1);
+        let end_phy = VAddr::from(end_virt).to_physical_address();
 
         assert_eq!(end_phy, end_phy_calc);
 
@@ -1920,13 +1920,13 @@ impl MemPool {
 
         // Allocate heap memory via a vec, leak and cast
         let _mem_len = align_up!(len, PAGE_SIZE);
-        let ptr = (crate::mm::allocate(_mem_len).0 as *const u8) as *mut u8;
+        let ptr = (crate::mm::kallocate(_mem_len).unwrap().value() as *const u8) as *mut u8;
 
         // Assert descriptor does not cross a page barrier
         let start_virt = ptr as usize;
         let end_virt = start_virt + (len - 1);
-        let end_phy_calc = Addr::from(start_virt).to_pa() + (len - 1);
-        let end_phy = Addr::from(end_virt).to_pa();
+        let end_phy_calc = VAddr::from(start_virt).to_physical_address() + (len - 1);
+        let end_phy = VAddr::from(end_virt).to_physical_address();
 
         assert_eq!(end_phy, end_phy_calc);
 
@@ -2071,6 +2071,7 @@ impl<T> DerefMut for Pinned<T> {
 
 impl<T> Drop for Pinned<T> {
     fn drop(&mut self) {
+        #[allow(unused_must_use)]
         if self._drop_inner {
             unsafe {
                 Box::from_raw(self.raw_ptr);

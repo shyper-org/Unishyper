@@ -1,4 +1,4 @@
-use crate::lib::thread::{current_thread, thread_alloc2, thread_wake, Tid};
+use crate::libs::thread::{current_thread, thread_alloc2, thread_wake, Tid};
 
 // Todo: may use fuction closure as parameters.
 pub fn thread_spawn(func: extern "C" fn(usize), arg: usize) -> Tid {
@@ -19,7 +19,7 @@ pub fn exit() {
     let result = current_thread();
     match result {
         Ok(t) => {
-            crate::lib::thread::thread_destroy(t);
+            crate::libs::thread::thread_destroy(t);
         }
         Err(_) => {
             panic!("failed to get current_thread");

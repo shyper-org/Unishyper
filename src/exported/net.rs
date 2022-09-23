@@ -8,7 +8,7 @@ use no_std_net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 
 pub type IoResult<T> = core::result::Result<T, &'static str>;
 
-use crate::lib::net::{
+use crate::libs::net::{
     self, tcplistener, tcpstream, Handle,
     IpAddress::{Ipv4, Ipv6},
 };

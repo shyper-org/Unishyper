@@ -1,6 +1,6 @@
 core::arch::global_asm!(include_str!("context.S"));
 
-use crate::{arch::ContextFrame, lib::stack::get_core_stack};
+use crate::{arch::ContextFrame, libs::stack::get_core_stack};
 
 #[inline(always)]
 pub fn switch_to() {
@@ -19,10 +19,10 @@ pub fn switch_to() {
 
 #[no_mangle]
 unsafe extern "C" fn set_cpu_context(ctx: *mut ContextFrame) {
-    // trace!("set_cpu_context\n {}", ctx.read());
-    let core = crate::lib::cpu::cpu();
+    // println!("set_cpu_context\n {}", ctx.read());
+    let core = crate::libs::cpu::cpu();
     core.set_context(ctx);
     // debug!("core set_context success");
-    crate::lib::thread::thread_schedule();
+    crate::libs::thread::thread_schedule();
     core.clear_context();
 }

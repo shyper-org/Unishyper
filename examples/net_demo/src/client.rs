@@ -21,7 +21,7 @@ extern "C" fn netdemo_client(arg: usize) {
         );
 
     let n_bytes = 1048576;
-    let n_rounds = 1000;
+    let n_rounds = 100;
     if let Ok(stream) = TcpStream::connect(SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(192, 168, 106, 140)),
         // IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),

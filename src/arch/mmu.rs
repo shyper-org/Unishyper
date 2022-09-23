@@ -2,33 +2,40 @@ use super::mm::vm_descriptor::*;
 use tock_registers::interfaces::{ReadWriteable, Writeable};
 
 use super::interface::BOARD_DEVICE_MEMORY_RANGE;
+use super::interface::BOARD_KERNEL_MEMORY_RANGE;
 use super::interface::BOARD_NORMAL_MEMORY_RANGE;
 use super::interface::PAGE_SHIFT;
 use super::interface::PAGE_SIZE;
 
 const ENTRY_PER_PAGE: usize = PAGE_SIZE / 8;
 
-type PageDirectoryEntry = u64;
+use crate::arch::page_table::Aarch64PageTableEntry as PageDirectoryEntry;
+use crate::libs::traits::ArchPageTableEntryTrait;
 
+/// Block entries map the virtual address space covered by the table entry
+/// (1GB in this case) to a physical address.
+/// Only be used to map the device memory region currently.
 #[inline(always)]
 fn block_entry(output_addr: usize, device: bool) -> PageDirectoryEntry {
-    (PAGE_DESCRIPTOR::PXN::False
-        + PAGE_DESCRIPTOR::OUTPUT_PPN.val((output_addr >> PAGE_SHIFT) as u64)
-        + PAGE_DESCRIPTOR::AF::True
-        + PAGE_DESCRIPTOR::AP::RW_EL1
-        + PAGE_DESCRIPTOR::TYPE::Block
-        + PAGE_DESCRIPTOR::VALID::True
-        + if device {
-            PAGE_DESCRIPTOR::AttrIndx::DEVICE + PAGE_DESCRIPTOR::SH::OuterShareable
-        } else {
-            PAGE_DESCRIPTOR::AttrIndx::NORMAL + PAGE_DESCRIPTOR::SH::InnerShareable
-        })
-    .value
+    PageDirectoryEntry::from_pte(
+        (PAGE_DESCRIPTOR::PXN::False
+            + PAGE_DESCRIPTOR::OUTPUT_PPN.val((output_addr >> PAGE_SHIFT) as u64)
+            + PAGE_DESCRIPTOR::AF::True
+            + PAGE_DESCRIPTOR::AP::RW_EL1
+            + PAGE_DESCRIPTOR::TYPE::Block
+            + PAGE_DESCRIPTOR::VALID::True
+            + if device {
+                PAGE_DESCRIPTOR::AttrIndx::DEVICE + PAGE_DESCRIPTOR::SH::OuterShareable
+            } else {
+                PAGE_DESCRIPTOR::AttrIndx::NORMAL + PAGE_DESCRIPTOR::SH::InnerShareable
+            })
+        .value as usize,
+    )
 }
 
 #[inline(always)]
-const fn invalid_entry() -> PageDirectoryEntry {
-    0
+fn invalid_entry() -> PageDirectoryEntry {
+    PageDirectoryEntry::from_pte(0)
 }
 
 #[repr(C)]
@@ -39,19 +46,28 @@ pub struct PageDirectory([PageDirectoryEntry; ENTRY_PER_PAGE]);
 pub unsafe extern "C" fn populate_page_table(pt: &mut PageDirectory) {
     const ONE_GIGABYTE: usize = 0x4000_0000;
 
+    // Invalid All.
     for i in 0..ENTRY_PER_PAGE {
         pt.0[i] = invalid_entry();
     }
-    // 0x0000_0000..0x4000_0000
+
+    // Populate device range by 1GB directly.
+    // Device range:    0x0000_0000..0x4000_0000
     for i in BOARD_DEVICE_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
         pt.0[i / ONE_GIGABYTE] = block_entry(i, true);
     }
-    // 0x4000_0000..0x8000_0000
+    // Normal range:    0x4000_0000..0x8000_0000
+    //
+    // Kernel range:    0x4000_8000..0x400d_7000
+    // Page range:      0x400d_7000..0x7100_0000
+    // Heap range:      0x7100_0000..0x8000_0000
+    for i in BOARD_KERNEL_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
+        pt.0[i / ONE_GIGABYTE] = block_entry(i, false);
+    }
+
     for i in BOARD_NORMAL_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
         pt.0[i / ONE_GIGABYTE] = block_entry(i, false);
     }
-    // special mapping for kernel elf image
-    pt.0[2] = block_entry(0x80000000, false);
 }
 
 #[no_mangle]

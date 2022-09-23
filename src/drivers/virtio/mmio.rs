@@ -1,11 +1,11 @@
-use crate::lib::device::Device;
-use crate::lib::traits::Address;
+use crate::libs::device::Device;
+use crate::libs::traits::Address;
 
 use alloc::vec::Vec;
 use core::ops::Range;
 
 #[cfg(any(feature = "tcp", feature = "fs"))]
-use crate::lib::synch::spinlock::SpinlockIrqSave;
+use crate::libs::synch::spinlock::SpinlockIrqSave;
 use crate::util::irqsave;
 
 #[cfg(any(feature = "tcp", feature = "fs"))]
@@ -56,6 +56,7 @@ fn init_virtio_device(
     range: Range<usize>,
 ) -> Result<&'static mut MmioRegisterLayout, &'static str> {
     // Verify the first register value to find out if this is really an MMIO magic-value.
+    debug!("init_virtio_device @ 0x{:x}", range.start.pa2kva());
     let mmio = unsafe { &mut *(range.start.pa2kva() as *mut MmioRegisterLayout) };
 
     if mmio.get_magic_value() != MAGIC_VALUE {

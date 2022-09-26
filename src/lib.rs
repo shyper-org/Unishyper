@@ -20,9 +20,9 @@
 extern crate log;
 #[macro_use]
 extern crate alloc;
-#[macro_use] 
+#[macro_use]
 extern crate derive_more;
-#[macro_use] 
+#[macro_use]
 extern crate static_assertions;
 
 #[macro_use]
@@ -36,6 +36,7 @@ mod logger;
 mod mm;
 mod panic;
 mod util;
+
 pub mod libs;
 
 pub use crate::libs::traits::ArchTrait;
@@ -44,7 +45,7 @@ pub use exported::*;
 use crate::util::irqsave;
 
 #[no_mangle]
-fn loader_main(core_id: usize) {
+pub extern "C" fn loader_main(core_id: usize) {
     arch::Arch::exception_init();
 
     println!("enter main, core {}", core_id);
@@ -57,7 +58,7 @@ fn loader_main(core_id: usize) {
 
     #[cfg(feature = "smp")]
     board::launch_other_cores();
-    
+
     board::init_per_core();
     info!("per core init ok on core [{}]", core_id);
 

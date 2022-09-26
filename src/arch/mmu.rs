@@ -33,6 +33,8 @@ fn block_entry(output_addr: usize, device: bool) -> PageDirectoryEntry {
     )
 }
 
+core::arch::global_asm!(include_str!("start.S"));
+
 #[inline(always)]
 fn invalid_entry() -> PageDirectoryEntry {
     PageDirectoryEntry::from_pte(0)

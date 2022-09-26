@@ -11,5 +11,4 @@ mod mm;
 mod mmu;
 pub mod page_table;
 mod registers;
-pub mod start;
 mod switch;

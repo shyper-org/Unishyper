@@ -48,7 +48,6 @@ use crate::util::irqsave;
 pub extern "C" fn loader_main(core_id: usize) {
     arch::Arch::exception_init();
 
-    println!("enter main, core {}", core_id);
     if core_id == 0 {
         mm::heap::init();
         let _ = logger::init();
@@ -73,11 +72,6 @@ pub extern "C" fn loader_main(core_id: usize) {
 
             let t = crate::libs::thread::thread_alloc(main as usize, 123 as usize);
             libs::thread::thread_wake(&t);
-
-            println!(concat!(
-                "Welcome to shyper lightweight os...\n\n",
-                "====== entering first thread ======>>>\n"
-            ));
         });
     }
 
@@ -86,6 +80,8 @@ pub extern "C" fn loader_main(core_id: usize) {
     extern "C" {
         fn pop_context_first(ctx: usize, core_id: usize) -> !;
     }
+
+    info!("entering first thread...");
     match libs::cpu::cpu().running_thread() {
         None => panic!("no running thread"),
         Some(t) => {

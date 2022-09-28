@@ -5,6 +5,7 @@ use bit_field::BitField;
 use zerocopy::FromBytes;
 
 use crate::arch::PAGE_SIZE;
+use crate::mm::interface::MapGranularity;
 
 #[derive(
     Clone,
@@ -58,6 +59,10 @@ impl VAddr {
 
     pub const fn page_offset(&self) -> usize {
         self.0 & (PAGE_SIZE - 1)
+    }
+
+    pub const fn page_offset_2mb(&self) -> usize {
+        self.0 & (MapGranularity::Page2MB as usize - 1)
     }
 
     // Todo: remove this method.

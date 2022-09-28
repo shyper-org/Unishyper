@@ -58,10 +58,14 @@ impl Core {
     fn idle_thread(&self) -> Thread {
         match self.idle_thread.get() {
             None => {
-                debug!("Alloc idle thread on core [{}]:",crate::arch::Arch::core_id());
                 let t = crate::libs::thread::thread_alloc(
                     idle_thread as usize,
                     crate::arch::Arch::core_id(),
+                );
+                debug!(
+                    "Alloc idle thread [{}] on core [{}]",
+                    t.tid(),
+                    crate::arch::Arch::core_id()
                 );
                 self.idle_thread.call_once(|| t).clone()
             }
@@ -71,7 +75,7 @@ impl Core {
 
     pub fn schedule(&mut self) {
         if let Some(t) = scheduler().pop() {
-             trace!("==== switch thread to [{}] ====\n", t.tid());
+            trace!("==== switch thread to [{}] ====\n", t.tid());
             self.run(t);
         } else {
             self.run(self.idle_thread());

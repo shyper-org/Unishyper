@@ -2,10 +2,10 @@ pub use crate::libs::synch::{spinlock, semaphore};
 pub use crate::libs::thread::*;
 pub use crate::libs::timer::*;
 
-pub mod thread;
 mod mm;
 pub use mm::*;
-pub use thread::*;
+
+pub use crate::libs::thread::thread_exit as exit;
 
 pub fn core_id() -> usize {
     use crate::libs::traits::ArchTrait;

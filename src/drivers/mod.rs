@@ -1,8 +1,6 @@
-pub use gic::{Interrupt, INTERRUPT_CONTROLLER};
-
+mod smc;
 pub mod gic;
 pub mod psci;
-mod smc;
 pub mod timer;
 pub mod uart;
 
@@ -12,6 +10,8 @@ pub mod blk;
 pub mod net;
 #[cfg(any(feature = "tcp", feature = "fs"))]
 pub mod virtio;
+
+pub use gic::{Interrupt, INTERRUPT_CONTROLLER};
 
 pub mod error {
     #[cfg(any(feature = "tcp", feature = "fs"))]

@@ -23,8 +23,8 @@ pub const MAX_PAGE_NUMBER: usize = MAX_VIRTUAL_ADDRESS / PAGE_SIZE;
 #[allow(unused)]
 pub const KERNEL_STACK_SIZE: usize = 32_768; // // PAGE_SIZE * 8
 
-pub const STACK_SIZE: usize = 1_048_576; // PAGE_SIZE * 256
-// pub const STACK_SIZE: usize = 2_097_152; // PAGE_SIZE * 512
+// pub const STACK_SIZE: usize = 1_048_576; // PAGE_SIZE * 256
+pub const STACK_SIZE: usize = 2_097_152; // PAGE_SIZE * 512
 
 const PA2KVA: usize = 0xFFFF_FF80_0000_0000;
 const KVA2PA: usize = 0x0000_007F_FFFF_FFFF;

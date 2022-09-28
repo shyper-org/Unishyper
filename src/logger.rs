@@ -18,7 +18,6 @@ impl log::Log for SimpleLogger {
     }
 
     fn log(&self, record: &Record) {
-        // irqsave(|| {
         let lock = LOCK.lock();
         if self.enabled(record.metadata()) {
             let ms = crate::libs::timer::current_ms();
@@ -46,7 +45,6 @@ impl log::Log for SimpleLogger {
             println!();
         }
         drop(lock);
-        // });
     }
 
     fn flush(&self) {}
@@ -55,5 +53,26 @@ impl log::Log for SimpleLogger {
 static LOGGER: SimpleLogger = SimpleLogger;
 
 pub fn init() -> Result<(), SetLoggerError> {
+    print_welcome_info();
     log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Trace))
+}
+
+fn print_welcome_info() {
+    println!(concat!(
+        "-----------------------------------------------------------\n\n",
+    ));
+    println!(concat!(
+        "     __  ______  (_)____/ /_  __  ______  ___  _____\n",
+        "    / / / / __ \\/ / ___/ __ \\/ / / / __ \\/ _ \\/ ___/\n",
+        "   / /_/ / / / / (__  ) / / / /_/ / /_/ /  __/ /\n",
+        "   \\__,_/_/ /_/_/____/_/ /_/\\__, / .___/\\___/_/\n",
+        "                           /____/_/\n"
+    ));
+    println!(concat!(
+        "-----------------------------------------------------------\n",
+    ));
+    println!(concat!(
+        "Welcome to unishyper ...\n\n",
+    ));
+
 }

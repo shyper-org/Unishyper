@@ -155,7 +155,7 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize) -> Thread {
 
     // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
-    
+
     let stack_region = crate::mm::stack::alloc_stack(stack_size / PAGE_SIZE)
         .expect("fail to allocate user thread stack");
     let stack_start = stack_region.start_address();
@@ -303,4 +303,35 @@ pub fn current_thread() -> Result<Thread, Error> {
         None => Err(ERROR_INTERNAL),
         Some(t) => Ok(t),
     }
+}
+
+pub fn thread_exit() {
+    let result = current_thread();
+    match result {
+        Ok(t) => {
+            crate::libs::thread::thread_destroy(t);
+        }
+        Err(_) => {
+            panic!("failed to get current_thread");
+        }
+    }
+    loop {}
+}
+
+pub fn thread_spawn(func: extern "C" fn(usize), arg: usize) -> Tid {
+    let mut tid  = 0 as Tid;
+    irqsave(|| {
+        debug!("thread_spawn func: {:x} arg: {}", func as usize, arg);
+
+        extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> usize {
+            func(arg);
+            thread_exit();
+            0
+        }
+
+        let child_thread = thread_alloc2(thread_start as usize, func as usize, arg);
+        thread_wake(&child_thread);
+        tid = child_thread.tid();
+    });
+    tid
 }

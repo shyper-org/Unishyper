@@ -15,7 +15,7 @@ default = ["qemu"]
 qemu = [
     # "alloc",
     "rust_shyper_os/alloc",
-    # "rust_shyper_os/smp",
+    "rust_shyper_os/smp",
     "rust_shyper_os/qemu"
     ]
 shyper = [

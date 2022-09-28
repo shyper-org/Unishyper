@@ -12,6 +12,7 @@ pub struct EntryAttribute {
     u_executable: bool,
     copy_on_write: bool,
     shared: bool,
+    block: bool,
 }
 
 impl PageTableEntryAttrTrait for EntryAttribute {
@@ -43,6 +44,23 @@ impl PageTableEntryAttrTrait for EntryAttribute {
         self.device
     }
 
+    fn block(&self) -> bool {
+        self.block
+    }
+
+    fn set_block(&self) -> Self{
+        EntryAttribute {
+            writable: self.writable,
+            user: self.user,
+            device: self.device,
+            k_executable: self.k_executable,
+            u_executable: self.u_executable,
+            copy_on_write: self.copy_on_write,
+            shared: self.shared,
+            block: true
+        }
+    }
+
     fn copy_on_write(&self) -> bool {
         self.copy_on_write
     }
@@ -55,6 +73,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
         u_executable: bool,
         copy_on_write: bool,
         shared: bool,
+        block: bool,
     ) -> Self {
         EntryAttribute {
             writable,
@@ -64,6 +83,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable,
             copy_on_write,
             shared,
+            block
         }
     }
 
@@ -76,6 +96,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
+            block: false,
         }
     }
 
@@ -88,6 +109,20 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
+            block: false,
+        }
+    }
+
+    fn user_2mb() -> Self {
+        EntryAttribute {
+            writable: true,
+            user: true,
+            device: false,
+            k_executable: false,
+            u_executable: true,
+            copy_on_write: false,
+            shared: false,
+            block: true,
         }
     }
 
@@ -100,6 +135,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
+            block: false,
         }
     }
 
@@ -112,6 +148,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
+            block: false,
         }
     }
 
@@ -124,6 +161,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
+            block: false,
         }
     }
 
@@ -136,6 +174,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
+            block: false,
         }
     }
 
@@ -148,6 +187,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: self.u_executable,
             copy_on_write: self.copy_on_write,
             shared: self.shared,
+            block: false,
         }
     }
 }

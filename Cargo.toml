@@ -58,9 +58,6 @@ optional = true
 version = "0.4"
 
 [features]
-default = ["alloc", "qemu", "tcp", "fs", "smp"]
-# default = ["alloc","tcp","shyper"]
-alloc = []
 fs = [
   "fatfs",
   "lru",
@@ -80,6 +77,9 @@ tcp = [
 smp = [
   "crossbeam-utils"
 ]
+alloc = []
+default = ["alloc", "qemu", "tcp", "fs", "smp"]
+
 
 [profile.release]
 debug = true

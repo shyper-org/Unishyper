@@ -12,8 +12,8 @@ core::arch::global_asm!(include_str!("exception.S"));
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
-    panic!("current_el_sp0_synchronous EC {:#X} \n{}", ec, ctx.read());
-    // loop {}
+    println!("current_el_sp0_synchronous EC {:#X} \n{}", ec, ctx.read());
+    loop {}
 }
 
 #[no_mangle]

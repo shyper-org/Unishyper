@@ -10,7 +10,7 @@ RUSTFLAGS := -C llvm-args=-global-isel=false
 export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
 
 CARGO_FLAGS := ${CARGO_FLAGS} #--features ${MACHINE}
-CARGO_FLAGS := ${CARGO_FLAGS} # --release
+CARGO_FLAGS := ${CARGO_FLAGS} --release
 
 EXAMPLES_DIR := $(shell find examples -maxdepth 1 -mindepth 1 -type d)
 

@@ -1,11 +1,16 @@
 use core::ops::{Deref, DerefMut};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::arch::PAGE_SIZE;
+use crate::arch::{PAGE_SIZE, STACK_SIZE};
 use crate::mm::page_allocator;
+use crate::mm::frame_allocator;
+use crate::mm::frame_allocator::AllocatedFrames;
 use crate::mm::page_allocator::AllocatedPages;
-use crate::mm::paging::{MappedRegion, map_allocated_pages, EntryAttribute};
+use crate::mm::paging::{MappedRegion, map_allocated_pages_to, EntryAttribute};
 use crate::mm::address::VAddr;
-use crate::mm::interface::PageTableEntryAttrTrait;
+use crate::mm::interface::{PageTableEntryAttrTrait, MapGranularity};
+
+static COUNT: AtomicUsize = AtomicUsize::new(1);
 
 /// A range of mapped memory designated for use as a task's stack.
 ///
@@ -31,53 +36,60 @@ impl DerefMut for Stack {
     }
 }
 
-#[allow(unused)]
-impl Stack {
-    /// Returns the address just beyond the top of this stack,
-    /// which is necessary for some hardware registers to use.
-    ///
-    /// This address is not dereferenceable, the one right below it is.
-    /// To get the highest usable address in this Stack, call `top_usable()`
-    pub fn top_unusable(&self) -> VAddr {
-        self.region.end().start_address() + PAGE_SIZE
-    }
-
-    /// Returns the highest usable address of this Stack,
-    /// which is `top_unusable() - sizeof(VirtualAddress)`
-    pub fn top_usable(&self) -> VAddr {
-        self.top_unusable() - core::mem::size_of::<VAddr>()
-    }
-
-    /// Returns the bottom of this stack, its lowest usable address.
-    pub fn bottom(&self) -> VAddr {
-        self.region.start_address()
-    }
-}
-
 /// Allocates a new stack and maps it to the active page table.
 ///
 /// This also reserves an unmapped guard page beneath the bottom of the stack
 /// in order to catch stack overflows.
+/// 
+/// |-----------------------------------|
+/// |-                                 -|
+/// |-           stack range           -|
+/// |-             mapped              -|
+/// |-                                 -|
+/// |-----------------------------------|
+/// |----------- guard page ------------|
+/// |-----------------------------------|
 ///
 /// Returns the newly-allocated stack and a VMA to represent its mapping.
 pub fn alloc_stack(size_in_pages: usize) -> Option<Stack> {
-    // Allocate enough pages for an additional guard page.
-    let pages = page_allocator::allocate_pages(size_in_pages + 1)?;
-    inner_alloc_stack(pages)
+
+    // Get suggested VAddr for stack.
+    let pages: AllocatedPages;
+    loop {
+        // Search for appropriate stack region.
+        let count = COUNT.fetch_add(2, Ordering::AcqRel);
+        let stack_addr = VAddr::new_canonical(count * STACK_SIZE);
+        trace!("alloc stack loop: count {} saddr {}", count, stack_addr);
+         // Allocate enough pages for an additional guard page.
+        if let Some(aps) =  page_allocator::allocate_pages_at(stack_addr - PAGE_SIZE, size_in_pages + 1) {
+            pages = aps;
+            trace!("alloc stack loop: get count {} saddr {}", count, stack_addr);
+            break;
+        }
+    };
+    // Get physical address for stack, no need to alloc space for guarded page.
+    let frames = frame_allocator::allocate_frames_alignment(
+        size_in_pages,
+        MapGranularity::Page2MB as usize,
+    )?;
+    trace!("alloc_stack pages {:?}", &pages);
+    trace!("alloc_stack frames {:?}", &frames);
+    inner_alloc_stack(pages, frames)
 }
 
 /// The inner implementation of stack allocation.
 ///
 /// `pages` is the combined `AllocatedPages` object that holds
-/// the guard page followed by the actual stack pages to be mapped.
-fn inner_alloc_stack(pages: AllocatedPages) -> Option<Stack> {
+///  the guard page followed by the actual stack pages to be mapped.
+fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames) -> Option<Stack> {
     let start_of_stack_pages = *pages.start() + 1;
     let (guard_page, stack_pages) = pages.split(start_of_stack_pages).ok()?;
 
-    let attr = EntryAttribute::user_default();
+    trace!("guard_page {:?} stack_pages {:?}", &guard_page, &stack_pages);
 
+    let attr = EntryAttribute::user_default();
     // Map stack pages to physical frames, leave the guard page unmapped.
-    let stack_region = match map_allocated_pages(stack_pages, attr) {
+    let stack_region = match map_allocated_pages_to(stack_pages, frames, attr) {
         Ok(stack_region) => stack_region,
         Err(e) => {
             error!(

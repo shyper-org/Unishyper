@@ -15,6 +15,7 @@ static GLOBAL_MM_MAP: Mutex<BTreeMap<VAddr, AllocatedFrames>> = Mutex::new(BTree
 
 /// Special function for kernel page alloc.
 /// Just need to alloc frames, because kernel can access it through page table store in TTBR1_EL1.
+#[allow(unused)]
 pub fn kallocate(size: usize) -> Option<VAddr> {
     assert!(size > 0);
     assert_eq!(

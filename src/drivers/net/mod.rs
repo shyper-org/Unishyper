@@ -49,7 +49,6 @@ pub fn network_irqhandler() {
 /// set driver in polling mode and threads will not be blocked
 pub fn set_polling_mode(value: bool) {
     static THREADS_IN_POLLING_MODE: SpinlockIrqSave<usize> = SpinlockIrqSave::new(0);
-    // irqsave(|| {
     let mut guard = THREADS_IN_POLLING_MODE.lock();
 
     if value {
@@ -69,7 +68,6 @@ pub fn set_polling_mode(value: bool) {
             }
         }
     }
-    // });
 }
 
 pub fn get_mac_address() -> Result<[u8; 6], ()> {

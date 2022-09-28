@@ -3,12 +3,13 @@ use spin::{Once, Mutex};
 
 use crate::arch::*;
 use crate::arch::mm::vm_descriptor::*;
-use crate::libs::error::ERROR_INVARG;
+use crate::libs::error::{ERROR_INVARG, ERROR_OOM};
 use crate::libs::traits::*;
 use crate::mm::frame_allocator;
 use crate::mm::frame_allocator::AllocatedFrames;
-use crate::mm::interface::{PageTableEntryAttrTrait, PageTableTrait, Error};
+use crate::mm::interface::{PageTableEntryAttrTrait, PageTableTrait, Error, MapGranularity};
 use crate::mm::paging::{Entry, EntryAttribute};
+use crate::spinlock::SpinlockIrqSave;
 
 pub const PAGE_TABLE_L1_SHIFT: usize = 30;
 pub const PAGE_TABLE_L2_SHIFT: usize = 21;
@@ -41,6 +42,10 @@ impl ArchPageTableEntryTrait for Aarch64PageTableEntry {
 
     fn valid(&self) -> bool {
         self.0 & 0b11 != 0
+    }
+
+    fn blocked(&self) -> bool {
+        self.0 & 0b01 != 0
     }
 
     fn entry(&self, index: usize) -> Aarch64PageTableEntry {
@@ -91,6 +96,7 @@ impl core::convert::From<Aarch64PageTableEntry> for Entry {
                 !reg.is_set(PAGE_DESCRIPTOR::UXN),
                 reg.is_set(PAGE_DESCRIPTOR::COW),
                 reg.is_set(PAGE_DESCRIPTOR::LIB),
+                !reg.is_set(PAGE_DESCRIPTOR::TYPE),
             ),
             (reg.read(PAGE_DESCRIPTOR::OUTPUT_PPN) as usize) << PAGE_SHIFT,
         )
@@ -129,8 +135,11 @@ impl core::convert::From<Entry> for Aarch64PageTableEntry {
             } else {
                 // if !pte.attr.writable() && !pte.attr.u_readable() {
                 PAGE_DESCRIPTOR::AP::RO_EL1
-            } + PAGE_DESCRIPTOR::TYPE::Table
-                + PAGE_DESCRIPTOR::VALID::True
+            } + if pte.attribute().block() {
+                PAGE_DESCRIPTOR::TYPE::Block
+            } else {
+                PAGE_DESCRIPTOR::TYPE::Table
+            } + PAGE_DESCRIPTOR::VALID::True
                 + PAGE_DESCRIPTOR::OUTPUT_PPN.val((pte.ppn()) as u64)
                 + PAGE_DESCRIPTOR::AF::True)
                 .value as usize,
@@ -144,9 +153,9 @@ pub struct Aarch64PageTable {
     pages: Mutex<Vec<AllocatedFrames>>,
 }
 
-static PAGE_TABLE: Once<Mutex<Aarch64PageTable>> = Once::new();
+static PAGE_TABLE: Once<SpinlockIrqSave<Aarch64PageTable>> = Once::new();
 
-pub fn page_table() -> &'static Mutex<Aarch64PageTable> {
+pub fn page_table() -> &'static SpinlockIrqSave<Aarch64PageTable> {
     PAGE_TABLE.get().unwrap()
 }
 
@@ -154,7 +163,7 @@ pub fn init() {
     let pgdir_frame = frame_allocator::allocate_frames(1).unwrap();
     pgdir_frame.start().zero();
     let pgdir_addr = pgdir_frame.start().start_address();
-    PAGE_TABLE.call_once(|| Mutex::new(PageTable::new(pgdir_frame)));
+    PAGE_TABLE.call_once(|| SpinlockIrqSave::new(PageTable::new(pgdir_frame)));
 
     info!("page table init, pgdir frame at {}", pgdir_addr);
 
@@ -179,16 +188,22 @@ impl PageTableTrait for Aarch64PageTable {
     }
 
     fn map(&self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
-        // trace!(
-        //     "page table map va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
-        //     va,
-        //     pa,
-        //     self.base_pa()
-        // );
+        trace!(
+            "page table map va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
+            va,
+            pa,
+            self.base_pa()
+        );
         let directory = Aarch64PageTableEntry::from_pa(self.base_pa());
         let mut l1e = directory.entry(va.l1x());
         if !l1e.valid() {
-            let af = frame_allocator::allocate_frames(1).unwrap();
+            let af = match frame_allocator::allocate_frames(1) {
+                Some(af) => af,
+                None => {
+                    warn!("map: failed to allocate one frame for l1e");
+                    return Err(ERROR_OOM);
+                }
+            };
             let frame = af.start().clone();
             frame.zero();
             l1e = Aarch64PageTableEntry::make_table(frame.start_address().value());
@@ -198,7 +213,13 @@ impl PageTableTrait for Aarch64PageTable {
         }
         let mut l2e = l1e.entry(va.l2x());
         if !l2e.valid() {
-            let af = frame_allocator::allocate_frames(1).unwrap();
+            let af = match frame_allocator::allocate_frames(1) {
+                Some(af) => af,
+                None => {
+                    warn!("map: failed to allocate one frame for l2e");
+                    return Err(ERROR_OOM);
+                }
+            };
             let frame = af.start().clone();
             frame.zero();
             l2e = Aarch64PageTableEntry::make_table(frame.start_address().value());
@@ -210,13 +231,60 @@ impl PageTableTrait for Aarch64PageTable {
         Ok(())
     }
 
+    fn map_2mb(&self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
+        assert!(va % MapGranularity::Page2MB as usize == 0);
+        assert!(pa % MapGranularity::Page2MB as usize == 0);
+        if !attr.block() {
+            warn!("map_2mb: required block attribute");
+            return Err(ERROR_INVARG);
+        }
+
+        let directory = Aarch64PageTableEntry::from_pa(self.base_pa());
+        let mut l1e = directory.entry(va.l1x());
+
+        if !l1e.valid() {
+            let af = match frame_allocator::allocate_frames(1) {
+                Some(af) => af,
+                None => {
+                    warn!("map_2mb: failed to allocate one frame for l1e");
+                    return Err(ERROR_OOM);
+                }
+            };
+            let frame = af.start().clone();
+            frame.zero();
+            l1e = Aarch64PageTableEntry::make_table(frame.start_address().value());
+            let mut pages = self.pages.lock();
+            pages.push(af);
+            directory.set_entry(va.l1x(), l1e);
+        }
+        let l2e = l1e.entry(va.l2x());
+        if !l2e.valid() {
+            // Map as PTE_BLOCK.
+            let entry = Aarch64PageTableEntry::from(Entry::new(attr, pa));
+            l1e.set_entry(va.l2x(), entry);
+        } else {
+            warn!("map_2mb: lvl 2 already mapped with 0x{:x}", l2e.to_pte());
+        }
+        Ok(())
+    }
+
     fn unmap(&self, va: usize) {
+        debug!("unmap va {:x}", va);
         let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
         let l1e = directory.entry(va.l1x());
         assert!(l1e.valid());
         let l2e = l1e.entry(va.l2x());
         assert!(l2e.valid());
         l2e.set_entry(va.l3x(), Aarch64PageTableEntry(0));
+    }
+
+    fn unmap_2mb(&self, va: usize) {
+        debug!("unmap_2mb va {:x}", va);
+        assert!(va % MapGranularity::Page2MB as usize == 0);
+        let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
+        let l1e = directory.entry(va.l1x());
+        assert!(l1e.valid());
+        l1e.set_entry(va.l2x(), Aarch64PageTableEntry(0));
     }
 
     fn insert_page(
@@ -235,6 +303,27 @@ impl PageTableTrait for Aarch64PageTable {
         self.map(va, pa, attr)?;
         crate::arch::Arch::invalidate_tlb();
         Ok(())
+    }
+
+    fn lookup_entry(&self, va: usize) -> Option<(Entry, MapGranularity)> {
+        let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
+        let l1e = directory.entry(va.l1x());
+        if !l1e.valid() {
+            return None;
+        }
+        let l2e = l1e.entry(va.l2x());
+        if !l2e.valid() {
+            return None;
+        }
+        if l2e.blocked() {
+            return Some((Entry::from(l2e), MapGranularity::Page2MB));
+        }
+        let l3e = l2e.entry(va.l3x());
+        if l3e.valid() {
+            return Some((Entry::from(l3e), MapGranularity::Page4KB));
+        } else {
+            return None;
+        }
     }
 
     fn lookup_page(&self, va: usize) -> Option<Entry> {

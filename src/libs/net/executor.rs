@@ -116,6 +116,9 @@ where
         run_executor();
 
         if let Poll::Ready(t) = future.as_mut().poll(&mut cx) {
+            //
+            // Todo: figure out what is set_oneshot_timer.
+            //
             // if let Some(delay_millis) = network_delay(now()).map(|d| d.total_millis()) {
             //     debug!(
             //         "block_on() first poll start {} delay_millis {}",
@@ -150,6 +153,8 @@ where
             }
         }
 
+        // These code segment can be delete to improve network performance.
+        
         // let now = now();
         // Return an advisory wait time for calling [poll] the next time.
         let delay = network_delay(now()).map(|d| d.total_millis());

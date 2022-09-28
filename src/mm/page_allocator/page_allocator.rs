@@ -237,38 +237,27 @@ impl Drop for AllocatedPages {
 /// The vast majority of use cases don't  care about such precise control,
 /// so you can simply drop this struct at any time or ignore it
 /// with a `let _ = ...` binding to instantly drop it.
-pub struct DeferredAllocAction<'list> {
+pub struct DeferredAllocAction {
     /// A reference to the list into which we will insert the free `Chunk`s.
-    free_list: &'list Mutex<StaticArrayRBTree<Chunk>>,
+    // free_list: &'list Mutex<StaticArrayRBTree<Chunk>>,
     /// A free chunk that needs to be added back to the free list.
     free1: Chunk,
     /// Another free chunk that needs to be added back to the free list.
     free2: Chunk,
 }
-impl<'list> DeferredAllocAction<'list> {
-    fn new<F1, F2>(free1: F1, free2: F2) -> DeferredAllocAction<'list>
+impl DeferredAllocAction {
+    fn new<F1, F2>(free1: F1, free2: F2) -> DeferredAllocAction
     where
         F1: Into<Option<Chunk>>,
         F2: Into<Option<Chunk>>,
     {
-        let free_list = &FREE_PAGE_LIST;
+        // let free_list = &FREE_PAGE_LIST;
         let free1 = free1.into().unwrap_or(Chunk::empty());
         let free2 = free2.into().unwrap_or(Chunk::empty());
         DeferredAllocAction {
-            free_list,
+            // free_list,
             free1,
             free2,
-        }
-    }
-}
-impl<'list> Drop for DeferredAllocAction<'list> {
-    fn drop(&mut self) {
-        // Insert all of the chunks, both allocated and free ones, into the list.
-        if self.free1.size_in_pages() > 0 {
-            self.free_list.lock().insert(self.free1.clone()).unwrap();
-        }
-        if self.free2.size_in_pages() > 0 {
-            self.free_list.lock().insert(self.free2.clone()).unwrap();
         }
     }
 }
@@ -303,7 +292,7 @@ fn find_specific_chunk(
     list: &mut StaticArrayRBTree<Chunk>,
     requested_page: Page,
     num_pages: usize,
-) -> Result<(AllocatedPages, DeferredAllocAction<'static>), AllocationError> {
+) -> Result<(AllocatedPages, DeferredAllocAction), AllocationError> {
     // The end page is an inclusive bound, hence the -1. Parentheses are needed to avoid overflow.
     let requested_end_page = requested_page + (num_pages - 1);
 
@@ -373,14 +362,87 @@ fn find_specific_chunk(
     Err(AllocationError::AddressNotFree(requested_page, num_pages))
 }
 
+/// Searches the given `list` for any chunk large enough to hold at least `num_pages`
+/// and the start address satisfied the requirement of alignment.
+fn find_alignment_chunk<'list>(
+    list: &'list mut StaticArrayRBTree<Chunk>,
+    alignment: usize,
+    num_pages: usize,
+) -> Result<(AllocatedPages, DeferredAllocAction), AllocationError> {
+    // trace!("find alignment chunk");
+    // During the first pass, we ignore designated regions.
+    match list.0 {
+        Inner::Array(ref mut arr) => {
+            for elem in arr.iter_mut() {
+                if let Some(chunk) = elem {
+                    // Skip chunks that are too-small or in the designated regions.
+                    if chunk.size_in_pages() < num_pages {
+                        continue;
+                    } else {
+                        let start = *chunk.start();
+                        let start_addr =
+                            crate::util::round_up(start.start_address().value(), alignment);
+                        let start_page = Page::containing_address(VAddr::new_canonical(start_addr));
+                        let requested_end_page = start_page + (num_pages - 1);
+                        if requested_end_page <= *chunk.end() {
+                            return adjust_chosen_chunk(
+                                *chunk.start(),
+                                num_pages,
+                                &chunk.clone(),
+                                ValueRefMut::Array(elem),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        Inner::RBTree(ref mut tree) => {
+            // NOTE: if RBTree had a `range_mut()` method, we could simply do the following:
+            // ```
+            // let eligible_chunks = tree.range(
+            // 	Bound::Excluded(&DESIGNATED_PAGES_LOW_END),
+            // 	Bound::Excluded(&DESIGNATED_PAGES_HIGH_START)
+            // );
+            // for c in eligible_chunks { ... }
+            // ```
+            //
+            // However, RBTree doesn't have a `range_mut()` method, so we use cursors for manual iteration.
+            //
+            // Because we allocate new pages by peeling them off from the beginning part of a chunk,
+            // it's MUCH faster to start the search for free pages from higher addresses moving down.
+            // This results in an O(1) allocation time in the general case, until all address ranges are already in use.
+            // let mut cursor = tree.cursor_mut();
+            let mut cursor = tree.upper_bound_mut(Bound::Excluded(&PAGES_UPPER_BOUND));
+            while let Some(chunk) = cursor.get().map(|w| w.deref()) {
+                if num_pages < chunk.size_in_pages() {
+                    let start = *chunk.start();
+                    let start_addr =
+                        crate::util::round_up(start.start_address().value(), alignment);
+                    let start_page = Page::containing_address(VAddr::new_canonical(start_addr));
+                    let requested_end_page = start_page + (num_pages - 1);
+                    if requested_end_page <= *chunk.end() {
+                        return adjust_chosen_chunk(
+                            start_page,
+                            num_pages,
+                            &chunk.clone(),
+                            ValueRefMut::RBTree(cursor),
+                        );
+                    }
+                }
+                cursor.move_prev();
+            }
+        }
+    }
+    warn!("find alignment chunk, AllocationError::OutOfAddressSpace");
+    Err(AllocationError::OutOfAddressSpace(num_pages))
+}
+
 /// Searches the given `list` for any chunk large enough to hold at least `num_pages`.
-///
-/// It first attempts to find a suitable chunk **not** in the designated regions,
-/// and only allocates from the designated regions as a backup option.
 fn find_any_chunk<'list>(
     list: &'list mut StaticArrayRBTree<Chunk>,
     num_pages: usize,
-) -> Result<(AllocatedPages, DeferredAllocAction<'static>), AllocationError> {
+) -> Result<(AllocatedPages, DeferredAllocAction), AllocationError> {
+    // trace!("find any chunk");
     // During the first pass, we ignore designated regions.
     match list.0 {
         Inner::Array(ref mut arr) => {
@@ -445,7 +507,7 @@ fn adjust_chosen_chunk(
     num_pages: usize,
     chosen_chunk: &Chunk,
     mut chosen_chunk_ref: ValueRefMut<Chunk>,
-) -> Result<(AllocatedPages, DeferredAllocAction<'static>), AllocationError> {
+) -> Result<(AllocatedPages, DeferredAllocAction), AllocationError> {
     // The new allocated chunk might start in the middle of an existing chunk,
     // so we need to break up that existing chunk into 3 possible chunks: before, newly-allocated, and after.
     //
@@ -495,67 +557,100 @@ fn adjust_chosen_chunk(
 
 /// The core page allocation routine that allocates the given number of virtual pages,
 /// optionally at the requested starting `VAddr`.
-pub fn allocate_pages_deferred(
+fn inner_allocate_pages(
     requested_vaddr: Option<VAddr>,
+    requested_alignment: Option<usize>,
     num_pages: usize,
-) -> Result<(AllocatedPages, DeferredAllocAction<'static>), &'static str> {
+) -> Option<AllocatedPages> {
     if num_pages == 0 {
         warn!("PageAllocator: requested an allocation of 0 pages... stupid!");
-        return Err("cannot allocate zero pages");
+        return None;
     }
 
     let mut locked_list = FREE_PAGE_LIST.lock();
 
+    // debug!(
+    //     "inner_allocate_pages num_pages {:?} {:?} {:?}",
+    //     num_pages, requested_vaddr, requested_alignment
+    // );
     // The main logic of the allocator is to find an appropriate chunk that can satisfy the allocation request.
     // An appropriate chunk satisfies the following conditions:
     // - Can fit the requested size (starting at the requested address) within the chunk.
+    // - Can fit the requested alignment (starting at the virtual address of specific alignment) within the chunk.
     // - The chunk can only be within in a designated region if a specific address was requested,
     //   or all other non-designated chunks are already in use.
-    if let Some(vaddr) = requested_vaddr {
+    match if let Some(vaddr) = requested_vaddr {
         find_specific_chunk(&mut locked_list, Page::containing_address(vaddr), num_pages)
+    } else if let Some(alignment) = requested_alignment {
+        find_alignment_chunk(&mut locked_list, alignment, num_pages)
     } else {
         find_any_chunk(&mut locked_list, num_pages)
+    } {
+        Ok((ap, action)) => {
+            if action.free1.size_in_pages() > 0 {
+                // trace!("DeferredAllocAction insert free1 {:?}", action.free1);
+                locked_list.insert(action.free1.clone()).unwrap();
+            }
+            if action.free2.size_in_pages() > 0 {
+                // trace!("DeferredAllocAction insert free2 {:?}", action.free2);
+                locked_list.insert(action.free2.clone()).unwrap();
+            }
+            Some(ap)
+        }
+        Err(e) => {
+            let err: &'static str = e.into();
+            error!("allocate_pages error {}", err);
+            None
+        }
     }
-    .map_err(From::from) // convert from AllocationError to &str
 }
 
-/// Similar to [`allocated_pages_deferred()`](fn.allocate_pages_deferred.html),
 /// but accepts a size value for the allocated pages in number of bytes instead of number of pages.
 ///
 /// This function still allocates whole pages by rounding up the number of bytes.
-pub fn allocate_pages_by_bytes_deferred(
+fn allocate_pages_by_bytes_deferred(
     requested_vaddr: Option<VAddr>,
     num_bytes: usize,
-) -> Result<(AllocatedPages, DeferredAllocAction<'static>), &'static str> {
+) -> Option<AllocatedPages> {
     let actual_num_bytes = if let Some(vaddr) = requested_vaddr {
         num_bytes + (vaddr.value() % PAGE_SIZE)
     } else {
         num_bytes
     };
     let num_pages = (actual_num_bytes + PAGE_SIZE - 1) / PAGE_SIZE; // round up
-    allocate_pages_deferred(requested_vaddr, num_pages)
+    inner_allocate_pages(requested_vaddr, None, num_pages)
 }
 
-/// Allocates the given number of pages with no constraints on the starting virtual address.
-///
-/// See [`allocate_pages_deferred()`](fn.allocate_pages_deferred.html) for more details.
-#[allow(unused)]
+/// Allocates the given number of pages,
+/// with no constraints on the starting virtual address,
+/// with no constraints on the virtual address alignment.
 pub fn allocate_pages(num_pages: usize) -> Option<AllocatedPages> {
-    allocate_pages_deferred(None, num_pages)
-        .map(|(ap, _action)| ap)
-        .ok()
+    debug!("allocate_pages num_pages {:?}", num_pages);
+    inner_allocate_pages(None, None, num_pages)
+}
+
+/// Allocates the given number of pages
+/// with no constraints on the starting virtual address,
+/// with constraints on the virtual address alignment.
+#[allow(unused)]
+pub fn allocate_pages_alignment(num_pages: usize, alignment: usize) -> Option<AllocatedPages> {
+    debug!("allocate_pages_alignment num_pages {:?}", num_pages);
+
+    inner_allocate_pages(None, Some(alignment), num_pages)
+}
+
+/// Allocates the given number of pages starting at (inclusive of) the page containing the given `VAddr`.
+pub fn allocate_pages_at(vaddr: VAddr, num_pages: usize) -> Option<AllocatedPages> {
+    inner_allocate_pages(Some(vaddr), None, num_pages)
 }
 
 /// Allocates pages with no constraints on the starting virtual address,
 /// with a size given by the number of bytes.
 ///
 /// This function still allocates whole pages by rounding up the number of bytes.
-/// See [`allocate_pages_deferred()`](fn.allocate_pages_deferred.html) for more details.
 #[allow(unused)]
 pub fn allocate_pages_by_bytes(num_bytes: usize) -> Option<AllocatedPages> {
     allocate_pages_by_bytes_deferred(None, num_bytes)
-        .map(|(ap, _action)| ap)
-        .ok()
 }
 
 /// Converts the page allocator from using static memory (a primitive array) to dynamically-allocated memory.
@@ -575,5 +670,4 @@ pub fn dump_page_allocator_state() {
     }
     debug!("---------------------------------------------------");
     debug!("=====================================================");
-
 }

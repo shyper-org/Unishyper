@@ -3,11 +3,12 @@ mod sem;
 mod thread;
 
 use rust_shyper_os::println;
+use rust_shyper_os::*;
 /// Function and Performance tests for rust-shyperOS.
 pub fn run_tests() {
     use rust_shyper_os::*;
-    println!("run_tests");
-    mm::mm_test();
-    // thread::thread_test();
-    // sem::semaphore_test();
+    println!("generate_tests:");
+    thread_spawn_bg(mm::test_mm_thread, 1, "mm_test");
+    thread_spawn_bg(thread::test_thread_switch, 1, "thread_test");
+    thread_spawn_bg(sem::semaphore_test, 1, "semaphore_test");
 }

@@ -65,13 +65,17 @@ pub extern "C" fn loader_main(core_id: usize) {
         irqsave(|| {
             board::init();
             info!("board init ok");
-
+            logger::print_logo();
+            // Init user main thread.
             extern "C" {
                 fn main(arg: usize) -> !;
             }
-
-            let t = crate::libs::thread::thread_alloc(main as usize, 123 as usize);
+            let t = crate::libs::thread::thread_alloc(main as usize, 123 as usize, true);
             libs::thread::thread_wake(&t);
+
+            // Init shell thread.
+            #[cfg(feature = "terminal")]
+            libs::terminal::init();
         });
     }
 
@@ -81,7 +85,7 @@ pub extern "C" fn loader_main(core_id: usize) {
         fn pop_context_first(ctx: usize, core_id: usize) -> !;
     }
 
-    info!("entering first thread...");
+    debug!("entering first thread...");
     match libs::cpu::cpu().running_thread() {
         None => panic!("no running thread"),
         Some(t) => {

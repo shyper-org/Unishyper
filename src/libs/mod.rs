@@ -16,3 +16,6 @@ pub mod net;
 
 #[cfg(feature = "fs")]
 pub mod fs;
+
+#[cfg(feature = "terminal")]
+pub mod terminal;

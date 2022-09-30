@@ -88,7 +88,7 @@ pub fn allocate(size: usize) -> Option<VAddr> {
                 addr.value(),
                 region.size_in_bytes()
             );
-            t.add_address_space(addr, region);
+            t.add_mem_region(addr, region);
         }
         Err(_) => {
             warn!("allocate(): BUG,Illegal dellocate {}, only kernel virtual address can be allocated without current thread", addr);
@@ -117,7 +117,7 @@ pub fn deallocate(address: VAddr) {
     // Handle user virtual address deallocation.
     match current_thread() {
         Ok(t) => {
-            t.free_address_space(address);
+            t.free_mem_region(address);
             trace!(
                 "deallocate(): Thread [{}] deallocate region addr start 0x{:x}",
                 t.tid(),

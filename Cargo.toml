@@ -77,8 +77,9 @@ tcp = [
 smp = [
   "crossbeam-utils"
 ]
+terminal = []
 alloc = []
-default = ["alloc", "qemu", "tcp", "fs", "smp"]
+default = ["alloc", "qemu", "tcp", "fs", "smp", "terminal"]
 
 
 [profile.release]

@@ -712,12 +712,10 @@ pub fn convert_to_heap_allocated() {
 
 /// A debugging function used to dump the full internal state of the frame allocator.
 pub fn dump_frame_allocator_state() {
-    debug!("=====================================================");
-    debug!("----------------- FREE GENERAL FRAMES ---------------");
+    println!("----------------- FREE FRAMES LIST --------------");
     FREE_GENERAL_FRAMES_LIST
         .lock()
         .iter()
-        .for_each(|e| debug!("\t {:?}", e));
-    debug!("-----------------------------------------------------");
-    debug!("=====================================================");
+        .for_each(|e| println!(" {:?}", e));
+    println!("-------------------------------------------------");
 }

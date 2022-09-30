@@ -1,7 +1,7 @@
 use rust_shyper_os::*;
 
 #[allow(dead_code)]
-extern "C" fn test_mm_thread(arg: usize) {
+pub extern "C" fn test_mm_thread(arg: usize) {
     println!("[TEST] memory ===");
     let addr = allocate(1 << 12 * arg);
 
@@ -25,9 +25,4 @@ extern "C" fn test_mm_thread(arg: usize) {
         }
     }
     println!("[TEST] memory finished***");
-}
-
-#[allow(dead_code)]
-pub fn mm_test() {
-    thread_spawn(test_mm_thread, 1);
 }

@@ -40,3 +40,13 @@ pub fn init() {
     crate::arch::Arch::page_table_init();
     info!("page table init ok");
 }
+
+#[cfg(feature = "terminal")]
+pub fn dump_mm_usage() {
+    println!("--------------- HEAP Memory ---------------");
+    heap::dump_heap_allocator_state();
+    println!("------------- Virtual Address -------------");
+    page_allocator::dump_page_allocator_state();
+    println!("------------ Physical Address -------------");
+    frame_allocator::dump_frame_allocator_state();
+}

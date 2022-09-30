@@ -663,11 +663,9 @@ pub fn convert_to_heap_allocated() {
 
 /// A debugging function used to dump the full internal state of the page allocator.
 pub fn dump_page_allocator_state() {
-    debug!("=====================================================");
-    debug!("--------------- FREE PAGES LIST ---------------");
+    println!("--------------- FREE PAGES LIST ---------------");
     for c in FREE_PAGE_LIST.lock().iter() {
-        debug!("{:X?}", c);
+        println!(" {:X?}", c);
     }
-    debug!("---------------------------------------------------");
-    debug!("=====================================================");
+    println!("-----------------------------------------------");
 }

@@ -61,6 +61,7 @@ impl Core {
                 let t = crate::libs::thread::thread_alloc(
                     idle_thread as usize,
                     crate::arch::Arch::core_id(),
+                    true,
                 );
                 debug!(
                     "Alloc idle thread [{}] on core [{}]",
@@ -87,7 +88,7 @@ impl Core {
     }
 
     fn run(&mut self, t: Thread) {
-        use cortex_a::registers::*;
+        use cortex_a::registers::TPIDRRO_EL0;
         use tock_registers::interfaces::Writeable;
         TPIDRRO_EL0.set(t.tid() as u64);
 

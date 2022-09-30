@@ -69,23 +69,16 @@ impl core::fmt::Display for Aarch64ContextFrame {
 }
 
 impl ContextFrameTrait for Aarch64ContextFrame {
-    fn new(pc: usize, sp: usize, arg0: usize, arg1: usize, privileged: bool) -> Self {
+    fn new(pc: usize, sp: usize, arg0: usize, arg1: usize) -> Self {
         use cortex_a::registers::*;
         let mut r = Aarch64ContextFrame {
             gpr: [0; 31],
-            spsr: (if privileged {
-                SPSR_EL1::M::EL1t
-            } else {
-                SPSR_EL1::M::EL0t
-            } + SPSR_EL1::I::Unmasked
-                + SPSR_EL1::F::Masked)
-                .value as u64,
+            spsr: (SPSR_EL1::M::EL1t + SPSR_EL1::I::Unmasked + SPSR_EL1::F::Masked).value as u64,
             elr: pc as u64,
             sp: sp as u64,
         };
         r.set_argument(arg0);
         r.set_argument1(arg1);
-        r.set_return_address(pc);
         r
     }
 
@@ -111,10 +104,6 @@ impl ContextFrameTrait for Aarch64ContextFrame {
 
     fn set_argument1(&mut self, arg1: usize) {
         self.gpr[1] = arg1 as u64;
-    }
-
-    fn set_return_address(&mut self, pc: usize) {
-        self.gpr[30] = pc as u64;
     }
 
     fn gpr(&self, index: usize) -> usize {

@@ -1,5 +1,5 @@
 use core::mem::size_of;
-use cortex_a::registers::{ESR_EL1, VBAR_EL1};
+use cortex_a::registers::{ESR_EL1, VBAR_EL1, TPIDRRO_EL0};
 use tock_registers::interfaces::{Readable, Writeable};
 
 use crate::libs::traits::ArchTrait;
@@ -12,13 +12,20 @@ core::arch::global_asm!(include_str!("exception.S"));
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
-    println!("current_el_sp0_synchronous EC {:#X} \n{}", ec, ctx.read());
+    let tid = TPIDRRO_EL0.get();
+    println!(
+        "current_el_sp0_synchronous on Thread {}\nEC {:#X} \n{}",
+        tid,
+        ec,
+        ctx.read()
+    );
     loop {}
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
-    // trace!("current_el_sp0_irq \n{}", ctx.read());
+    // let tid = TPIDRRO_EL0.get();
+    // debug!("current_el_sp0_irq on thread [{}]\n{}", tid, ctx.read());
     use crate::libs::interrupt::*;
     let core = crate::libs::cpu::cpu();
     core.set_context(ctx);

@@ -19,7 +19,7 @@ pub fn switch_to() {
 
 #[no_mangle]
 unsafe extern "C" fn set_cpu_context(ctx: *mut ContextFrame) {
-    // println!("set_cpu_context\n {}", ctx.read());
+    // debug!("set_cpu_context\n {}", ctx.read());
     let core = crate::libs::cpu::cpu();
     core.set_context(ctx);
     // debug!("core set_context success");

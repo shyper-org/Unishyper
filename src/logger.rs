@@ -53,11 +53,10 @@ impl log::Log for SimpleLogger {
 static LOGGER: SimpleLogger = SimpleLogger;
 
 pub fn init() -> Result<(), SetLoggerError> {
-    print_welcome_info();
     log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Trace))
 }
 
-fn print_welcome_info() {
+pub fn print_logo() {
     println!(concat!(
         "-----------------------------------------------------------\n\n",
     ));
@@ -71,8 +70,4 @@ fn print_welcome_info() {
     println!(concat!(
         "-----------------------------------------------------------\n",
     ));
-    println!(concat!(
-        "Welcome to unishyper ...\n\n",
-    ));
-
 }

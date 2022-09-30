@@ -32,10 +32,9 @@ extern "C" fn test_semaphore_release_b(arg: usize) {
     }
 }
 
-#[allow(dead_code)]
-pub fn semaphore_test() {
+pub extern "C" fn semaphore_test(_arg: usize) {
     println!("[TEST] === semaphore ===");
-    thread_spawn(test_semaphore_acquire, 1);
-    thread_spawn(test_semaphore_release_a, 2);
-    thread_spawn(test_semaphore_release_b, 3);
+    thread_spawn_name(test_semaphore_acquire, 1, "test_semaphore_acquire");
+    thread_spawn_name(test_semaphore_release_a, 2, "test_semaphore_release_a");
+    thread_spawn_name(test_semaphore_release_b, 3, "test_semaphore_release_b");
 }

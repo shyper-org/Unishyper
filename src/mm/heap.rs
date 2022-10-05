@@ -12,12 +12,34 @@ pub fn init() {
             .lock()
             .init(range.start.pa2kva(), range.end - range.start)
     }
+    println!("Booting, memory layout:");
     println!(
-        "Heap range: pa [{:x} - {:x}] va [{:x} - {:x}]",
+        "Kernel range:\tpa [{:x} - {:x}] kva [{:x} - {:x}]",
+        super::config::kernel_range().start,
+        super::config::kernel_range().end,
+        super::config::kernel_range().start.pa2kva(),
+        super::config::kernel_range().end.pa2kva()
+    );
+    println!(
+        "Heap range:\tpa [{:x} - {:x}] kva [{:x} - {:x}]",
         range.start,
         range.end,
         range.start.pa2kva(),
         range.end.pa2kva()
+    );
+    println!(
+        "ELF range:\tpa [{:x} - {:x}] kva [{:x} - {:x}]",
+        super::config::elf_range().start,
+        super::config::elf_range().end,
+        super::config::elf_range().start.pa2kva(),
+        super::config::elf_range().end.pa2kva()
+    );
+    println!(
+        "Paged range:\tpa [{:x} - {:x}]  kva [{:x} - {:x}]",
+        super::config::paged_range().start,
+        super::config::paged_range().end,
+        super::config::paged_range().start.pa2kva(),
+        super::config::paged_range().end.pa2kva()
     )
 }
 

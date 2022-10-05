@@ -15,6 +15,10 @@
 // see issue #42168 <https://github.com/rust-lang/rust/issues/42168> for more information
 // add `#![feature(step_trait)]` to the crate attributes to enable
 #![feature(step_trait)]
+// error[E0658]: use of unstable library feature 'core_intrinsics': 
+// intrinsics are unlikely to ever be stabilized, 
+// instead they should be used through stabilized interfaces in the rest of the standard library
+#![feature(core_intrinsics)]
 
 #[macro_use]
 extern crate log;

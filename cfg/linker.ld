@@ -28,4 +28,6 @@ SECTIONS
         *(.stack)
     }
     KERNEL_END = .;
+
+    ELF_IMAGE = 0xFFFFFF8080000000;
 }

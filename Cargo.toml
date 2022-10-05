@@ -27,28 +27,27 @@ zerocopy = "0.5.0"
 async-task = {version = "4.2", optional = true, default-features = false}
 crossbeam-queue = {version = "0.3.5", optional = true, default-features = false, features = ["alloc"]}
 crossbeam-utils = {version = "0.8.11", optional = true, default-features = false, features = ["nightly"]}
+fallible-iterator = {version = "0.2.0", default-features = false, optional = true}
 futures-lite = {version = "1.11", optional = true, default-features = false, features = ["alloc"]}
 ioslice = {version = "0.6.0-alpha.2", optional = true, default-features = false}
 lazy_static = {version = "1.4", optional = true, features = ["spin_no_std"]}
-no-std-net = {version = "0.6.0", optional = true}
 lru = {version = "0.7.8", optional = true}
+no-std-net = {version = "0.6.0", optional = true}
+xmas-elf = {version = "0.8.0", optional = true}
 
 [dependencies.smoltcp]
 default-features = false
-version = "0.8.1"
 features = [
-    "alloc",
-    "async",
-    "medium-ethernet",
-    "proto-ipv4",
-    "proto-ipv6",
-    "socket-tcp",
-    "socket-udp",
-    # Enable for increased output
-    # "log",
-    # "verbose",
+  "alloc",
+  "async",
+  "medium-ethernet",
+  "proto-ipv4",
+  "proto-ipv6",
+  "socket-tcp",
+  "socket-udp", # Enable for increased output  # "log",  # "verbose",
 ]
 optional = true
+version = "0.8.1"
 
 [dependencies.fatfs]
 default-features = false
@@ -58,6 +57,8 @@ optional = true
 version = "0.4"
 
 [features]
+alloc = []
+default = ["alloc", "qemu", "tcp", "fs", "smp", "terminal", "unwind"]
 fs = [
   "fatfs",
   "lru",
@@ -65,6 +66,9 @@ fs = [
 ]
 qemu = []
 shyper = []
+smp = [
+  "crossbeam-utils",
+]
 tcp = [
   "async-task",
   "futures-lite",
@@ -74,13 +78,11 @@ tcp = [
   "ioslice",
   "no-std-net",
 ]
-smp = [
-  "crossbeam-utils"
-]
 terminal = []
-alloc = []
-default = ["alloc", "qemu", "tcp", "fs", "smp", "terminal"]
-
+unwind = [
+  "fallible-iterator",
+  "xmas-elf",
+]
 
 [profile.release]
 debug = true

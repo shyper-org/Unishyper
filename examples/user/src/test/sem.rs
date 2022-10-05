@@ -32,6 +32,7 @@ extern "C" fn test_semaphore_release_b(arg: usize) {
     }
 }
 
+#[allow(dead_code)]
 pub extern "C" fn semaphore_test(_arg: usize) {
     println!("[TEST] === semaphore ===");
     thread_spawn_name(test_semaphore_acquire, 1, "test_semaphore_acquire");

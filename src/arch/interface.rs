@@ -4,9 +4,12 @@ use core::mem::size_of;
 use cortex_a::registers::*;
 use tock_registers::interfaces::Readable;
 
-pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x8000_0000..0xc000_0000;
-pub const BOARD_KERNEL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0x8000_0000;
+pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0xc000_0000;
 pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x4000_0000;
+
+// pub const HEAP_SIZE: usize = 0x3000_0000;
+pub const ELF_IMAGE_LOAD_ADDR: usize = 0x8000_0000;
+pub const ELF_SIZE: usize = 0xa0_0000;
 
 use crate::board::BOARD_CORE_NUMBER;
 use crate::libs::traits::*;

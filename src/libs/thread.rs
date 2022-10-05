@@ -176,15 +176,23 @@ pub fn list_threads() {
 }
 
 /// This is the main thread alloc logic, which contains the following logic.
-/// 1. generate new thread id;
+/// 1. generate new thread id(or use the given thread id);
 /// 2. alloc mapped memory region for stack according to stack size;
 /// 3. construct thread control block, including inner and inner_mut;
 /// 4. insert thread struct into glocal THREAD_MAP;
 /// 5. return the generated Thread struct.
 ///
 /// Notes: the generated thread is at Ready state, you need to wake it up.
-pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize, privilege: bool) -> Thread {
-    let id = new_tid();
+fn thread_alloc2(
+    id: Option<usize>,
+    pc: usize,
+    arg0: usize,
+    arg1: usize,
+    privilege: bool,
+) -> Thread {
+    // Generally it should call the new_tid function to get a newly generated id,
+    // During thread_restart, the reallocated thread may use its original id.
+    let id = id.unwrap_or(new_tid());
 
     // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
@@ -225,7 +233,7 @@ pub fn thread_alloc2(pc: usize, arg0: usize, arg1: usize, privilege: bool) -> Th
 /// Thread alloc logic without another arg.
 /// See thread_alloc2 for more details.
 pub fn thread_alloc(pc: usize, arg: usize, privilege: bool) -> Thread {
-    thread_alloc2(pc, arg, 0, privilege)
+    thread_alloc2(None, pc, arg, 0, privilege)
 }
 
 /// Find target thread by thread id.
@@ -415,12 +423,35 @@ fn _inner_spawn(
 
         // Use "thread_start" as a wrapper, which automatically calls thread_exit when thread is finished.
         extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> usize {
+            #[cfg(feature = "unwind")]
+            {
+                const RETRY_MAX: usize = 5;
+                let mut i = 0;
+                use crate::libs::unwind::catch::catch_unwind;
+                loop {
+                    i += 1;
+                    let r = catch_unwind(|| func(arg));
+                    match r {
+                        Ok(_) => {
+                            break;
+                        }
+                        Err(_) => {
+                            info!("retry #{}", i);
+                            if i > RETRY_MAX {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            #[cfg(not(feature = "unwind"))]
             func(arg);
             thread_exit();
             0
         }
 
-        let child_thread = thread_alloc2(thread_start as usize, func as usize, arg, privilege);
+        let child_thread =
+            thread_alloc2(None, thread_start as usize, func as usize, arg, privilege);
         // If running, set newly allocated thread as Runnable immediately.
         if running {
             thread_wake(&child_thread);

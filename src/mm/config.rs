@@ -14,17 +14,21 @@ pub fn kernel_end_address() -> VAddr {
     VAddr::new_canonical(round_up((KERNEL_END as usize).kva2pa(), PAGE_SIZE))
 }
 
-#[allow(unused)]
 pub fn kernel_range() -> Range<usize> {
-    let normal_range = crate::arch::BOARD_KERNEL_MEMORY_RANGE;
+    let normal_range = crate::arch::BOARD_NORMAL_MEMORY_RANGE;
     normal_range.start..kernel_end_address().value()
 }
 
 pub fn heap_range() -> Range<usize> {
-    let normal_range = crate::arch::BOARD_KERNEL_MEMORY_RANGE;
-    kernel_end_address().value()..normal_range.end
+    kernel_end_address().value()..crate::arch::ELF_IMAGE_LOAD_ADDR
+}
+
+pub fn elf_range() -> Range<usize> {
+    use crate::arch::{ELF_IMAGE_LOAD_ADDR, ELF_SIZE};
+    ELF_IMAGE_LOAD_ADDR..ELF_IMAGE_LOAD_ADDR + ELF_SIZE
 }
 
 pub fn paged_range() -> Range<usize> {
-    crate::arch::BOARD_NORMAL_MEMORY_RANGE
+    let normal_range = crate::arch::BOARD_NORMAL_MEMORY_RANGE;
+    elf_range().end..normal_range.end
 }

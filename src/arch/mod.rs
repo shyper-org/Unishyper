@@ -9,5 +9,5 @@ pub mod irq;
 mod mm;
 mod mmu;
 pub mod page_table;
-mod registers;
+pub mod registers;
 mod switch;

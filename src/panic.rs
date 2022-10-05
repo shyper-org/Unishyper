@@ -5,7 +5,7 @@ use crate::libs::thread::current_thread;
 #[allow(non_snake_case)]
 #[no_mangle]
 extern "C" fn _Unwind_Resume(arg: usize) -> ! {
-    info!("Unwind resume arg {}",arg);
+    info!("Unwind resume arg {}", arg);
     loop {}
 }
 
@@ -23,5 +23,9 @@ pub fn panic_handler(info: &PanicInfo) -> ! {
     if let Some(location) = info.location() {
         error!("Location: {}:{}", location.file(), location.line());
     }
+
+    #[cfg(feature = "unwind")]
+    crate::libs::unwind::unwind_from_panic(3);
+    #[cfg(not(feature = "unwind"))]
     loop {}
 }

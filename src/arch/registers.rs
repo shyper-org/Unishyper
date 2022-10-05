@@ -1,4 +1,5 @@
 use core::ops::{Index, IndexMut};
+use core::fmt::{Debug, Formatter, Result as FmtResult};
 
 use gimli::Register;
 
@@ -37,6 +38,18 @@ impl Default for Registers {
         Registers {
             registers: [None; 32],
         }
+    }
+}
+
+impl Debug for Registers {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        for (i, reg) in self.registers.iter().enumerate() {
+            match *reg {
+                None => { } // write!(fmt, "[{}]: None, ", i)?,
+                Some(r) => write!(fmt, "[{}]: {:#X}, ", i, r)?,
+            }
+        }
+        Ok(())
     }
 }
 
@@ -90,3 +103,10 @@ registers!(Aarch64, {
     X30 = (30, "X30"),
     SP = (31, "SP"),
 });
+
+#[cfg(feature = "unwind")]
+pub const REG_RETURN_ADDRESS: Register = Aarch64::X30;
+#[cfg(feature = "unwind")]
+pub const REG_STACK_POINTER: Register = Aarch64::SP;
+#[cfg(feature = "unwind")]
+pub const REG_ARGUMENT: Register = Aarch64::X0;

@@ -2,7 +2,6 @@ use super::mm::vm_descriptor::*;
 use tock_registers::interfaces::{ReadWriteable, Writeable};
 
 use super::interface::BOARD_DEVICE_MEMORY_RANGE;
-use super::interface::BOARD_KERNEL_MEMORY_RANGE;
 use super::interface::BOARD_NORMAL_MEMORY_RANGE;
 use super::interface::PAGE_SHIFT;
 use super::interface::PAGE_SIZE;
@@ -54,19 +53,19 @@ pub unsafe extern "C" fn populate_page_table(pt: &mut PageDirectory) {
     }
 
     // Populate device range by 1GB directly.
+    //
     // Device range:    0x0000_0000..0x4000_0000
+    //
     for i in BOARD_DEVICE_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
         pt.0[i / ONE_GIGABYTE] = block_entry(i, true);
     }
-    // Normal range:    0x4000_0000..0x8000_0000
-    //
-    // Kernel range:    0x4000_8000..0x400d_7000
-    // Page range:      0x400d_7000..0x7100_0000
-    // Heap range:      0x7100_0000..0x8000_0000
-    for i in BOARD_KERNEL_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
-        pt.0[i / ONE_GIGABYTE] = block_entry(i, false);
-    }
 
+    // Populate normal range by 1GB directly.
+    // Normal range:        0x4000_0000..0xc000_0000
+    // -- Image range:      0x4000_8000..KERNEL_END
+    // -- Heap range:       KERNEL_END ..0x8000_0000
+    // -- ELF image range:  0x8000_0000..0x80a0_0000
+    // -- Paged range:      0x8000_0000..0xc000_0000
     for i in BOARD_NORMAL_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
         pt.0[i / ONE_GIGABYTE] = block_entry(i, false);
     }

@@ -4,4 +4,3 @@ break *0x40080000
 set confirm off
 display/i $pc
 set print asm-demangle on
-break current_el_sp0_irq

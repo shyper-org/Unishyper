@@ -44,8 +44,6 @@ fn touch(path: &Path) -> io::Result<()> {
 
 #[no_mangle]
 fn main() {
-    fs::init();
-
 	println!("`echo hello > /fatfs/echo.txt`");
     echo("hello", &Path::new("/fatfs/echo.txt")).unwrap_or_else(|why| {
 		println!("! {:?}", why);

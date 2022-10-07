@@ -12,10 +12,6 @@ use crate::exported::io;
 use crate::exported::io::cvt;
 use crate::exported::fd::FileDesc;
 
-pub extern "C" fn init() {
-    fs::init();
-}
-
 pub struct Path {
     inner: String,
 }

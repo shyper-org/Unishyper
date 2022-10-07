@@ -93,6 +93,8 @@ impl TryFrom<i32> for SeekWhence {
 pub trait PosixFileSystem {
     fn open(&self, _path: &str, _perms: FilePerms, fd: usize) -> Result<Box<dyn PosixFile + Send>, FileError>;
     fn unlink(&self, _path: &str) -> Result<(), FileError>;
+    fn print_dir(&self, _path: &str) -> Result<(), FileError>;
+    fn create_dir(&self, _path: &str)-> Result<(), FileError>;
 }
 
 pub trait PosixFile {

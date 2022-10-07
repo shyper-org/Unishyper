@@ -46,19 +46,8 @@ impl Fatfs {
         FATFS.call_once(|| Fatfs::new());
         FATFS.get().unwrap()
     }
-    pub fn list_files(path: &str) {
-        let root_cursor = &Fatfs::singleton().fs.root_dir();
-        info!("current dir /{}/: ", path);
-        println!("[  ]:\t[size]\t[name]",);
-        // ls root
-        for (idx, entry) in root_cursor.iter().enumerate() {
-            let entry = entry.expect("Entry");
-            println!("[{:>2}]:\t{:>5}\t{}", idx, entry.len(), entry.file_name(),);
-        }
-    }
 }
 
-#[allow(dead_code)]
 impl PosixFileSystem for &Fatfs {
     fn open(
         &self,
@@ -78,9 +67,10 @@ impl PosixFileSystem for &Fatfs {
             }
             _ => {
                 if !perms.creat {
-                    debug!("open file on path {}, file not exist", path);
+                    warn!("open file on path {}, file not exist", path);
                     Err(FileError::ENOENT)
                 } else {
+                    debug!("create file on path {}, assigned fd {}", path, fd);
                     match root.create_file(path) {
                         Ok(file) => {
                             self.fd2file.borrow_mut().insert(fd, file);
@@ -100,6 +90,44 @@ impl PosixFileSystem for &Fatfs {
         match root.remove(path) {
             Ok(_) => Ok(()),
             Err(_) => Err(FileError::ENOENT),
+        }
+    }
+
+    fn print_dir(&self, path: &str) -> Result<(), FileError> {
+        let dir = if path.is_empty() {
+            Fatfs::singleton().fs.root_dir()
+        } else {
+            let root_cursor = &Fatfs::singleton().fs.root_dir();
+            let res = root_cursor.open_dir(path);
+            match res {
+                Ok(dir) => dir,
+                _ => {
+                    warn!("directory {} not exist in this fat file system", path);
+                    return Err(FileError::ENOENT);
+                }
+            }
+        };
+        println!("[  ]:[T] [size]\t[name]");
+        // ls dir
+        for (idx, entry) in dir.iter().enumerate() {
+            let entry = entry.expect("Entry");
+            println!(
+                "[{:>2}]:[{}] {:>5}\t{}",
+                idx,
+                if entry.is_dir() { "d" } else { "-" },
+                entry.len(),
+                entry.file_name(),
+            );
+        }
+        Ok(())
+    }
+
+    fn create_dir(&self, path: &str) -> Result<(), FileError> {
+        let fs = &self.fs;
+        let root = fs.root_dir();
+        match root.create_dir(path) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(FileError::EOTHERS),
         }
     }
 }

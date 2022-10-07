@@ -139,4 +139,16 @@ impl Filesystem {
     pub fn fd_op(&mut self, fd: u64, f: impl FnOnce(&mut Box<dyn PosixFile + Send>)) {
         f(self.files.borrow_mut().get_mut(&fd).unwrap());
     }
+
+    pub fn print_dir(&self, path: &str) -> Result<(), FileError> {
+        debug!("read directory \"{}\"", path);
+        let (fs, internal_path) = self.parse_path(path)?;
+        fs.print_dir(internal_path)
+    }
+
+    pub fn create_dir(&self, path: &str) -> Result<(), FileError> {
+        debug!("create directory {} ", path);
+        let (fs, internal_path) = self.parse_path(path)?;
+        fs.create_dir(internal_path)
+    }
 }

@@ -1,19 +1,18 @@
+mod fat;
 pub mod fs;
 pub mod interface;
-mod fat;
 
 use alloc::boxed::Box;
 
-pub fn init() {
-    info!("fs init");
+pub const FAT_ROOT: &str = "/fatfs/";
 
+pub fn init() {
     let root_path = "fatfs";
     fs::FILESYSTEM
         .lock()
         .mount(root_path, Box::new(fat::Fatfs::singleton()))
         .expect("Mount failed!!!");
 
-    fat::Fatfs::list_files(root_path);
     info!("fs init success.");
 }
 
@@ -101,4 +100,22 @@ pub fn lseek(fd: i32, offset: isize, whence: i32) -> isize {
 #[allow(unused)]
 fn stat(_file: *const u8, _st: usize) -> i32 {
     unimplemented!("stat is unimplemented");
+}
+
+pub fn print_dir(path: &str) -> Result<(), FileError> {
+    let fs = fs::FILESYSTEM.lock();
+    fs.print_dir(path)
+}
+
+pub fn create_dir<P: AsRef<str>>(path: P) -> Result<(), FileError> {
+    let fs = fs::FILESYSTEM.lock();
+    fs.create_dir(path.as_ref())
+}
+
+pub fn remove_file<P: AsRef<str>>(_path: P) -> Result<(), FileError> {
+    Ok(())
+}
+
+pub fn remove_directory<P: AsRef<str>>(_path: P) -> Result<(), FileError> {
+    Ok(())
 }

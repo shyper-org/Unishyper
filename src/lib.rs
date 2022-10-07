@@ -76,8 +76,10 @@ pub extern "C" fn loader_main(core_id: usize) {
             }
             let t = crate::libs::thread::thread_alloc(main as usize, 123 as usize, true);
             libs::thread::thread_wake(&t);
-
-            // Init shell thread.
+            // Init fs if configured.
+            #[cfg(feature = "fs")]
+            libs::fs::init();
+            // Init shell if configured.
             #[cfg(feature = "terminal")]
             libs::terminal::init();
         });

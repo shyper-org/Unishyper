@@ -21,7 +21,6 @@ pub fn print_arg(args: fmt::Arguments) {
     lock.write_fmt(args).unwrap();
 }
 
-
 #[cfg(feature = "terminal")]
 pub fn getchar() -> u8 {
     loop {
@@ -53,7 +52,9 @@ pub fn getline() -> String {
         }
         if c == 127 {
             if !v.is_empty() {
-                crate::drivers::uart::putc(c);
+                crate::drivers::uart::putc(8);
+                crate::drivers::uart::putc(b' ');
+                crate::drivers::uart::putc(8);
             }
             v.pop();
             continue;

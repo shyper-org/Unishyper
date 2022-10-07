@@ -79,9 +79,11 @@ unsafe extern "C" fn current_el_spx_serror(ctx: *mut ContextFrame) {
 #[no_mangle]
 unsafe extern "C" fn lower_aarch64_synchronous(ctx: *mut ContextFrame) {
     let core_id = crate::arch::Arch::core_id();
+    let tid = crate::libs::thread::current_thread_id();
     info!(
-        "core {} lower_aarch64_synchronous\n {}",
+        "core {} T[{}] lower_aarch64_synchronous\n {}",
         core_id,
+        tid,
         ctx.read()
     );
 }

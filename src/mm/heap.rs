@@ -35,7 +35,7 @@ pub fn init() {
         super::config::elf_range().end.pa2kva()
     );
     println!(
-        "Paged range:\tpa [{:x} - {:x}]  kva [{:x} - {:x}]",
+        "Paged range:\tpa [{:x} - {:x}] kva [{:x} - {:x}]",
         super::config::paged_range().start,
         super::config::paged_range().end,
         super::config::paged_range().start.pa2kva(),

@@ -43,7 +43,7 @@ extern "C" fn netdemo_server(arg: usize) {
 
     let start = current_ms() as f64;
     for _i in 0..n_rounds {
-        // println!("round {}", _i);
+        println!("round {}", _i);
         stream.read_exact(&mut buf).unwrap();
         // match stream.read(&mut buf) {
         //     Ok(n) => {

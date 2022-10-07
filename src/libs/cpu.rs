@@ -80,6 +80,7 @@ impl Core {
             self.run(t);
         } else {
             self.run(self.idle_thread());
+            crate::arch::irq::enable();
         }
     }
 

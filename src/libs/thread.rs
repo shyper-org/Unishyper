@@ -364,7 +364,7 @@ pub fn handle_blocked_threads() {
 #[no_mangle]
 pub fn thread_yield() {
     // debug!("thread_yield is called on Thread [{}]", current_thread_id());
-    crate::arch::switch_to();
+    irqsave(|| crate::arch::switch_to());
 }
 
 #[no_mangle]

@@ -4,7 +4,8 @@ use crate::{arch::ContextFrame, libs::stack::get_core_stack};
 
 #[inline(always)]
 pub fn switch_to() {
-    // debug!("switch_to");
+    // Disable interrupt before CPU context operation.
+    crate::arch::irq::disable();
     extern "C" {
         fn save_context(stack: usize);
     }
@@ -14,6 +15,8 @@ pub fn switch_to() {
     unsafe {
         save_context(stack);
     }
+    // Enable interrupt after return to this thread.
+    crate::arch::irq::enable();
     // debug!("save_context return");
 }
 

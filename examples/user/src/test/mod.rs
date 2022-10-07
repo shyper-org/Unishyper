@@ -11,6 +11,7 @@ pub fn run_tests() {
     println!("generate_tests:");
     // thread_spawn_bg(mm::test_mm_thread, 1, "mm_test");
     // thread_spawn_bg(thread::test_thread_switch, 1, "thread_test");
+    thread_spawn(thread::test_thread_switch, 1);
     // thread_spawn_bg(sem::semaphore_test, 1, "semaphore_test");
-    thread_spawn_bg(recover::test_recover_thread, 1, "recover_test");
+    // thread_spawn_bg(recover::test_recover_thread, 1, "recover_test");
 }

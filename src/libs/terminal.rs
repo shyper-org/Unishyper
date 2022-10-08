@@ -184,7 +184,7 @@ fn handle_run(arg: Option<&str>) {
     };
     match arg {
         Ok(tid) => {
-            crate::libs::thread::thread_wake_by_tid(tid);
+            crate::libs::thread::thread_wake_to_front_by_tid(tid);
         }
         Err(_) => {
             println!("[warning] illegal argument in run, please input \"help\" for more info.");

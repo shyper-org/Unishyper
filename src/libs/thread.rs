@@ -308,6 +308,20 @@ pub fn thread_wake_to_front(t: &Thread) {
     scheduler().add_front(t.clone());
 }
 
+/// Wake up target thread as the next scheduled by thread id.
+/// See thread_wake_to_front for more details.
+pub fn thread_wake_to_front_by_tid(tid: Tid) {
+    if tid == current_thread_id() {
+        // debug!("Try to wake up running Thread[{}], return", tid);
+        return;
+    }
+    if let Some(t) = thread_lookup(tid) {
+        thread_wake_to_front(&t);
+    } else {
+        warn!("Thread [{}] not exist!!!", tid);
+    }
+}
+
 /// Block current thread.
 /// Set its status as Blocked and it can not scheduled again until waked up.
 pub fn thread_block_current() {
@@ -402,6 +416,7 @@ pub fn thread_exit() {
             panic!("failed to get current_thread");
         }
     }
+    // crate::arch::irq::enable();
     loop {}
 }
 
@@ -423,6 +438,11 @@ fn _inner_spawn(
 
         // Use "thread_start" as a wrapper, which automatically calls thread_exit when thread is finished.
         extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> usize {
+            // Enable interrupt when first enter this thread.
+            // This is awkward!!!
+            // We may need to improve context switch mechanism, see src/arch/switch.rs.
+            crate::arch::irq::enable_and_wait();
+
             #[cfg(feature = "unwind")]
             {
                 const RETRY_MAX: usize = 5;
@@ -430,13 +450,18 @@ fn _inner_spawn(
                 use crate::libs::unwind::catch::catch_unwind;
                 loop {
                     i += 1;
-                    let r = catch_unwind(|| func(arg));
+                    let r = catch_unwind(|| {
+                        func(arg);
+                    });
                     match r {
                         Ok(_) => {
                             break;
                         }
                         Err(_) => {
                             info!("retry #{}", i);
+                            // Enable interrupt when first enter this thread.
+                            // This is awkward, we may need to improve context switch mechanism, see src/arch/switch.rs.
+                            crate::arch::irq::enable_and_wait();
                             if i > RETRY_MAX {
                                 break;
                             }

@@ -1,3 +1,4 @@
+use core::ops::Range;
 use alloc::vec::Vec;
 
 use crate::drivers::gic::INT_TIMER;
@@ -13,10 +14,16 @@ pub const BOARD_CORE_NUMBER: usize = 1;
 #[cfg(feature = "smp")]
 pub const BOARD_CORE_NUMBER: usize = 2;
 
+pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0xc000_0000;
+pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x4000_0000;
+
+pub const ELF_IMAGE_LOAD_ADDR: usize = 0x8000_0000;
+pub const ELF_SIZE: usize = 0xa0_0000;
+
 pub const GICD_BASE: usize = 0x08000000;
 pub const GICC_BASE: usize = 0x08010000;
 
-#[allow(unused)]
+#[cfg(any(feature = "tcp", feature = "fs"))]
 pub fn devices() -> Vec<Device> {
     vec![
         #[cfg(feature = "fs")]

@@ -1,10 +1,8 @@
-use super::mm::vm_descriptor::*;
 use tock_registers::interfaces::{ReadWriteable, Writeable};
 
-use super::interface::BOARD_DEVICE_MEMORY_RANGE;
-use super::interface::BOARD_NORMAL_MEMORY_RANGE;
-use super::interface::PAGE_SHIFT;
-use super::interface::PAGE_SIZE;
+use crate::board::{BOARD_DEVICE_MEMORY_RANGE, BOARD_NORMAL_MEMORY_RANGE};
+use super::interface::{PAGE_SHIFT, PAGE_SIZE};
+use super::mm::vm_descriptor::*;
 
 const ENTRY_PER_PAGE: usize = PAGE_SIZE / 8;
 

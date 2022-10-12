@@ -58,7 +58,7 @@ version = "0.4"
 
 [features]
 alloc = []
-default = ["alloc", "qemu", "tcp", "fs", "smp", "terminal", "unwind"]
+default = ["alloc", "tx2", "tcp", "fs", "smp", "terminal", "unwind"]
 fs = [
   "fatfs",
   "lru",
@@ -79,6 +79,7 @@ tcp = [
   "no-std-net",
 ]
 terminal = []
+tx2 = []
 unwind = [
   "fallible-iterator",
   "xmas-elf",

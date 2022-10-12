@@ -67,6 +67,9 @@ net_client_debug:
 net_test:
 	make -C ${NET_TEST_DIR} build
 
+tx2:
+	MACHINE=tx2 make -C ${USER_DIR} tx2
+
 disk:
 	rm -rf disk
 	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null

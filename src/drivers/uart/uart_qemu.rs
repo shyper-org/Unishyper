@@ -23,7 +23,7 @@ pub fn putc(c: u8) {
     pl011.Data.set(c as u32);
 }
 
-#[allow(unused)]
+#[cfg(feature = "terminal")]
 pub fn getc() -> Option<u8> {
     let pl011 = &PL011_MMIO;
     if pl011.Flag.get() & UART_FR_RXFF == 0 {

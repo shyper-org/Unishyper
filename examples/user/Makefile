@@ -9,11 +9,7 @@ else
 CARGO_FLAGS =  --no-default-features
 endif
 
-ifeq (${MACHINE}, shyper)
-CARGO_FLAGS := ${CARGO_FLAGS} --features "shyper"
-else
-CARGO_FLAGS := ${CARGO_FLAGS} --features "qemu"
-endif
+CARGO_FLAGS := ${CARGO_FLAGS} --features "${MACHINE}"
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
@@ -59,3 +55,13 @@ endif
 
 clean:
 	-cargo clean
+
+# Use tftp to load unikernel binary file to target location on Tegra X2 ROM.
+tx2: build
+	mkimage -n unishyper -A arm64 -O linux -C none -T kernel -a 0x80080000 -e 0x80080000 -d ${KERNEL}.bin ${KERNEL}.ubi
+	cp ${KERNEL} /tftp/
+	cp ${KERNEL}.ubi /tftp/
+	# scp ${KERNEL} root@192.168.106.153:/tftp
+	# scp ${KERNEL}.ubi root@192.168.106.153:/tftp
+	# echo "tftp 0xf0200000 192.168.106.153:user; tftp 0x8a000000 192.168.106.153:user.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go" | xclip -selection c
+	echo "tftp 0xc0000000 192.168.106.140:user; tftp 0x8a000000 192.168.106.140:user.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"

@@ -1,9 +1,12 @@
 use super::ns16550::*;
 use tock_registers::interfaces::{Readable, Writeable};
 
-// const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x3100000;
 // The real mmio addressed of serial on Nvidia tx2 are 0xc280000 and 0x3100000.
+#[cfg(feature = "tx2")]
+const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x3100000;
+
 // The ipa provided by the hypervisor is 0x9000000.
+#[cfg(feature = "shyper")]
 const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x900_0000;
 
 static NS16550_MMIO: Ns16550Mmio32 = Ns16550Mmio32::new(NS16550_MMIO_BASE);
@@ -31,6 +34,7 @@ pub fn putc(c: u8) {
     send(c);
 }
 
+#[cfg(feature = "terminal")]
 pub fn getc() -> Option<u8> {
     let uart = &NS16550_MMIO;
     if uart.LSR.is_set(LSR::RDR) {

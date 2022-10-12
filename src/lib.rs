@@ -53,6 +53,9 @@ pub extern "C" fn loader_main(core_id: usize) {
     arch::Arch::exception_init();
 
     if core_id == 0 {
+        // Init serial output.
+        crate::drivers::uart::init();
+        println!("serial init ok!");
         mm::heap::init();
         let _ = logger::init();
         info!("heap init ok!!");

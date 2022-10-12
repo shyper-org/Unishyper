@@ -19,6 +19,12 @@ qemu = [
     "rust_shyper_os/qemu",
     "rust_shyper_os/unwind",
     "rust_shyper_os/terminal",
+    "rust_shyper_os/fs",
+    ]
+tx2 = [
+    "rust_shyper_os/alloc",
+    "rust_shyper_os/tx2",
+    "rust_shyper_os/terminal",
     ]
 shyper = [
     "alloc",

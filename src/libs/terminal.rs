@@ -197,13 +197,13 @@ fn print_help() {
         "This is unishyper,\n",
         "a research unikernel targeting a scalable and predictable runtime for embedded devices.\n",
         "List of classes of commands:\n\n",
-        "cat [FILE]\t\t-- Concatenate files and print on the standard output, \"fs\" feature is required.\n",
-        "free \t\t\t-- Dump memory usage info.\n",
-        "kill [TID]\t\t-- Kill target thread according to TID, you can use \"ps\" command to check running threads.\n",
-        "ls [DIRECTORY]\t\t-- List information about the FILEs (the current directory by default), \"fs\" feature is required.\n",
-        "mkdir [DIRECTORY]\t-- Create the DIRECTORY, if they do not already exist, \"fs\" feature is required.\n",
-        "ps \t\t\t-- Report a snapshot of the current threads, you can use \"run [TID]\" to wake the ready ones.\n",
-        "run [TID]\t\t-- Run target thread according to TID, you can use \"ps\" command to check available threads.\n",
-        "help \t\t\t-- Print this message.\n"
+        "cat [FILE]\t-- Concatenate files and print on the standard output, \"fs\" feature is required.\n",
+        "free \t\t-- Dump memory usage info.\n",
+        "kill [TID]\t-- Kill target thread according to TID, you can use \"ps\" command to check running threads.\n",
+        "ls [DIR]\t-- List information about the FILEs (the current directory by default), \"fs\" feature is required.\n",
+        "mkdir [DIR]\t-- Create the DIRECTORY, if they do not already exist, \"fs\" feature is required.\n",
+        "ps \t\t-- Report a snapshot of the current threads, you can use \"run [TID]\" to wake the ready ones.\n",
+        "run [TID]\t-- Run target thread according to TID, you can use \"ps\" command to check available threads.\n",
+        "help \t\t-- Print this message.\n"
     ));
 }

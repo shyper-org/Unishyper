@@ -28,6 +28,10 @@ pub fn getchar() -> u8 {
         match char {
             0 => crate::libs::thread::thread_yield(),
             8 | 127 => break 127, // backspace
+            b'\n' => {
+                let c = char as u8;
+                break c;
+            },
             b'\r' | 32..=126 => {
                 // carriage return or visible
                 let c = char as u8;
@@ -47,7 +51,7 @@ pub fn getline() -> String {
     let mut v = Vec::new();
     loop {
         let c = getchar();
-        if c == b'\r' {
+        if c == b'\r' || c == b'\n' {
             break;
         }
         if c == 127 {

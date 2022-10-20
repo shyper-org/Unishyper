@@ -8,10 +8,22 @@ use crate::libs::traits::ContextFrameTrait;
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Aarch64ContextFrame {
+    /// General purpose registers, x0 to x30.
     gpr: [u64; 31],
-    spsr: u64,
-    elr: u64,
-    sp: u64,
+    /// By default, spsr is set to 0x44, which is 0b0100_0100 in binray.
+    /// (SPSR_EL1::M::EL1t + SPSR_EL1::I::Unmasked + SPSR_EL1::F::Masked).value as u64
+    spsr: u64,            // 31 * 8
+    /// Exception return address.
+    /// During initialization, ELR_EL1 is set to the thread entry address,
+    /// which is "thread_start".
+    elr: u64,             // 32 * 8
+    /// Stack pointer.
+    sp: u64,              // 33 * 8
+    /// It's a mark showing the thread is yield from irq or thread_yield.
+    /// These two conditions may result in different context restore processes.
+    /// 1. from irq: pop_context_first
+    /// 2. from yield: see switch.S for details.
+    from_interrupt: bool, // 34 * 8
 }
 
 impl Into<Registers> for Aarch64ContextFrame {
@@ -64,24 +76,16 @@ impl core::fmt::Display for Aarch64ContextFrame {
         writeln!(f, "spsr:{:016x}", self.spsr)?;
         write!(f, "elr: {:016x}", self.elr)?;
         writeln!(f, "   sp:  {:016x}", self.sp)?;
+        writeln!(
+            f,
+            "this thread recently yield from '{}'",
+            if self.from_interrupt { "interrupt" } else { "thread_yield" }
+        )?;
         Ok(())
     }
 }
 
 impl ContextFrameTrait for Aarch64ContextFrame {
-    fn new(pc: usize, sp: usize, arg0: usize, arg1: usize) -> Self {
-        use cortex_a::registers::*;
-        let mut r = Aarch64ContextFrame {
-            gpr: [0; 31],
-            spsr: (SPSR_EL1::M::EL1t + SPSR_EL1::I::Unmasked + SPSR_EL1::F::Masked).value as u64,
-            elr: pc as u64,
-            sp: sp as u64,
-        };
-        r.set_argument(arg0);
-        r.set_argument1(arg1);
-        r
-    }
-
     fn exception_pc(&self) -> usize {
         self.elr as usize
     }
@@ -98,15 +102,69 @@ impl ContextFrameTrait for Aarch64ContextFrame {
         self.sp = sp as u64;
     }
 
-    fn set_argument(&mut self, arg: usize) {
-        self.gpr[0] = arg as u64;
-    }
-
-    fn set_argument1(&mut self, arg1: usize) {
-        self.gpr[1] = arg1 as u64;
-    }
-
     fn gpr(&self, index: usize) -> usize {
+        assert!(index < crate::arch::registers::GPR_NUM_MAX);
         self.gpr[index] as usize
     }
+
+    fn set_gpr(&mut self, index: usize, value: usize) {
+        assert!(index < crate::arch::registers::GPR_NUM_MAX);
+        self.gpr[index] = value as u64;
+    }
+
+    fn set_from_irq(&mut self) {
+        self.from_interrupt = true;
+    }
+
+    fn set_from_yield(&mut self) {
+        self.from_interrupt = false;
+    }
+}
+
+/// The entry of `thread_yield` operation,
+/// It will trigger the scheduler to actively yield to next thread,
+/// which contains the following logic:
+/// 1.  jump to `save_context_on_current_stack` to save the registers on current thread's stack space;
+/// 2.  call `switch_to_next_stack`, which will call the `core.schedule()` to pick the next thread,
+///         and switch current stack pointer to next thread.
+/// 3.  when `switch_to_next_stack` returns, the x0 holds the next thread's stack pointer,
+///         we can get if the thread is yield from irq or yield, 
+///         from irq: jump to pop_context_first.
+///         from yield, just set up the necessary registers and br 'x30'.
+#[inline(always)]
+pub fn yield_to() {
+    extern "C" {
+        fn save_context_on_current_stack();
+    }
+
+    unsafe {
+        save_context_on_current_stack();
+    }
+    // Enable interrupt after return to this thread.
+}
+
+
+use crate::arch::interface::ContextFrame;
+#[no_mangle]
+extern "C" fn switch_to_next_stack(ctx: *mut ContextFrame) -> usize {
+    // use tock_registers::interfaces::Readable;
+    // use cortex_a::registers::TPIDRRO_EL0;
+    // debug!(
+    //     "yield_to called on thread [{}], ctx on user_sp {:p}\n",
+    //     TPIDRRO_EL0.get(),
+    //     ctx,
+    // );
+    // if ctx as usize != 0 {
+    //     println!("{}", ctx.read());
+    // }
+
+    // Store current context's pointer on current core struct.
+    // Note: ctx is just a pointer to current thread stack.
+    let core = crate::libs::cpu::cpu();
+
+    core.set_current_sp(ctx as usize);
+
+    core.schedule();
+
+    core.current_sp()
 }

@@ -1,8 +1,9 @@
 use core::ops::Range;
-use alloc::vec::Vec;
 
 use crate::drivers::gic::INT_TIMER;
 use crate::libs::interrupt::InterruptController;
+
+#[cfg(any(feature = "tcp", feature = "fs"))]
 use crate::libs::device::Device;
 
 #[cfg(any(feature = "tcp", feature = "fs"))]
@@ -23,6 +24,8 @@ pub const ELF_SIZE: usize = 0xa0_0000;
 pub const GICD_BASE: usize = 0x08000000;
 pub const GICC_BASE: usize = 0x08010000;
 
+#[cfg(any(feature = "tcp", feature = "fs"))]
+use alloc::{vec,vec::Vec};
 #[cfg(any(feature = "tcp", feature = "fs"))]
 pub fn devices() -> Vec<Device> {
     vec![

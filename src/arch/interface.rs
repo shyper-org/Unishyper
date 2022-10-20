@@ -73,6 +73,7 @@ impl ArchTrait for Arch {
         FAR_EL1.get() as usize
     }
 
+    #[inline(always)]
     fn core_id() -> CoreId {
         MPIDR_EL1.get() as usize & (BOARD_CORE_NUMBER - 1)
     }

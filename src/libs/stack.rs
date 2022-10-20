@@ -28,6 +28,7 @@ pub fn stack_of_core(core_id: usize) -> usize {
 }
 
 #[no_mangle]
+#[inline(always)]
 pub fn get_core_stack() -> usize {
     let core_id = crate::arch::Arch::core_id();
     STACKS[core_id].top()

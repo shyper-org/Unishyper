@@ -64,7 +64,6 @@ pub fn init_per_core() {
     crate::drivers::INTERRUPT_CONTROLLER.init();
     crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
     crate::drivers::timer::init();
-    DAIF.write(DAIF::I::Unmasked);
 
     let mut pmcr: u32;
     // Performance Monitors Count Enable Clear register.

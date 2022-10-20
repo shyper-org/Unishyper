@@ -15,14 +15,14 @@
 // see issue #42168 <https://github.com/rust-lang/rust/issues/42168> for more information
 // add `#![feature(step_trait)]` to the crate attributes to enable
 #![feature(step_trait)]
-// error[E0658]: use of unstable library feature 'core_intrinsics': 
-// intrinsics are unlikely to ever be stabilized, 
+// error[E0658]: use of unstable library feature 'core_intrinsics':
+// intrinsics are unlikely to ever be stabilized,
 // instead they should be used through stabilized interfaces in the rest of the standard library
 #![feature(core_intrinsics)]
 
 #[macro_use]
 extern crate log;
-#[macro_use]
+// #[macro_use]
 extern crate alloc;
 #[macro_use]
 extern crate derive_more;
@@ -45,8 +45,8 @@ pub mod libs;
 
 pub use crate::libs::traits::ArchTrait;
 pub use exported::*;
-
-use crate::util::irqsave;
+// This `irq_disable` is just for test, to be moved.
+pub use crate::arch::irq::disable as irq_disable;
 
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
@@ -55,7 +55,6 @@ pub extern "C" fn loader_main(core_id: usize) {
     if core_id == 0 {
         // Init serial output.
         crate::drivers::uart::init();
-        println!("serial init ok!");
         mm::heap::init();
         let _ = logger::init();
         info!("heap init ok!!");
@@ -69,39 +68,38 @@ pub extern "C" fn loader_main(core_id: usize) {
     info!("per core init ok on core [{}]", core_id);
 
     if core_id == 0 {
-        irqsave(|| {
-            board::init();
-            info!("board init ok");
-            logger::print_logo();
-            // Init user main thread.
-            extern "C" {
-                fn main(arg: usize) -> !;
-            }
-            let t = crate::libs::thread::thread_alloc(main as usize, 123 as usize, true);
-            libs::thread::thread_wake(&t);
-            // Init fs if configured.
-            #[cfg(feature = "fs")]
-            libs::fs::init();
-            // Init shell if configured.
-            #[cfg(feature = "terminal")]
-            libs::terminal::init();
-        });
+        board::init();
+        info!("board init ok");
+        logger::print_logo();
+        // Init user main thread.
+        extern "C" {
+            fn main(arg: usize) -> !;
+        }
+        let t = crate::libs::thread::thread_alloc(None, main as usize, 123 as usize, 0, true);
+        libs::thread::thread_wake(&t);
+        // Init fs if configured.
+        #[cfg(feature = "fs")]
+        libs::fs::init();
+        // Init shell if configured.
+        #[cfg(feature = "terminal")]
+        libs::terminal::init();
+        debug!("main logic init ok");
     }
+
+    debug!("call schedule");
 
     libs::cpu::cpu().schedule();
 
     extern "C" {
-        fn pop_context_first(ctx: usize, core_id: usize) -> !;
+        fn pop_context_first(ctx: usize) -> !;
     }
 
     debug!("entering first thread...");
     match libs::cpu::cpu().running_thread() {
         None => panic!("no running thread"),
         Some(t) => {
-            let ctx = t.context();
-            unsafe {
-                pop_context_first(&ctx as *const _ as usize, core_id);
-            }
+            let sp = t.last_stack_pointer();
+            unsafe { pop_context_first(sp) }
         }
     }
 }

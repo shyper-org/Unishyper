@@ -1,4 +1,6 @@
 use alloc::collections::VecDeque;
+#[cfg(feature = "fs")]
+use alloc::format;
 
 use spin::{Mutex, Once};
 

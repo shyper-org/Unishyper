@@ -2,16 +2,17 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::sync::Arc;
 use core::fmt;
+use core::mem;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering::Relaxed;
 
 use spin::Mutex;
 
 use crate::arch::{ContextFrame, PAGE_SIZE, STACK_SIZE};
+use crate::libs::traits::ContextFrameTrait;
 use crate::libs::cpu::cpu;
 use crate::libs::error::*;
 use crate::libs::scheduler::scheduler;
-use crate::libs::traits::*;
 use crate::mm::address::VAddr;
 use crate::mm::stack::Stack;
 use crate::mm::paging::MappedRegion;
@@ -61,7 +62,7 @@ struct Inner {
 
 struct InnerMut {
     status: Mutex<Status>,
-    context_frame: Mutex<ContextFrame>,
+    last_stack_pointer: Mutex<usize>,
     mem_regions: Mutex<BTreeMap<VAddr, MappedRegion>>,
 }
 
@@ -102,26 +103,15 @@ impl Thread {
         self.0.inner.level
     }
 
-    /// Set thread's context_frame.
-    pub fn set_context(&self, ctx: ContextFrame) {
-        let mut context_frame = self.0.inner_mut.context_frame.lock();
-        *context_frame = ctx;
+    pub fn set_last_stack_pointer(&self, sp: usize) {
+        let mut last_stack_pointer = self.0.inner_mut.last_stack_pointer.lock();
+        *last_stack_pointer = sp;
     }
 
-    /// Get thread's context_frame.
-    pub fn context(&self) -> ContextFrame {
-        let lock = self.0.inner_mut.context_frame.lock();
-        lock.clone()
+    pub fn last_stack_pointer(&self) -> usize {
+        let last_stack_pointer = self.0.inner_mut.last_stack_pointer.lock();
+        *last_stack_pointer
     }
-
-    // Executed something withtin given context, currently not supported.
-    // pub fn map_with_context<F, T>(&self, f: F) -> T
-    // where
-    //     F: FnOnce(&mut ContextFrame) -> T,
-    // {
-    //     let mut context_frame = self.0.inner_mut.context_frame.lock();
-    //     f(&mut *context_frame)
-    // }
 
     /// Add newly allocated MappedRegion to thread's control block.
     /// The ownership of region is token over by this thread.
@@ -176,18 +166,27 @@ pub fn list_threads() {
 }
 
 /// This is the main thread alloc logic, which contains the following logic.
-/// 1. generate new thread id(or use the given thread id);
-/// 2. alloc mapped memory region for stack according to stack size;
-/// 3. construct thread control block, including inner and inner_mut;
-/// 4. insert thread struct into glocal THREAD_MAP;
-/// 5. return the generated Thread struct.
+/// 1.  generate new thread id(or use the given thread id);
+/// 2.  alloc mapped memory region for stack according to stack size;
+/// 3.  construct thread control block, including inner and inner_mut;
+/// 4.  init context frame inside the thread's stack region, including entry, sp, e.g.
+/// 5.  insert thread struct into glocal THREAD_MAP;
+/// 6.  return the generated Thread struct.
 ///
+/// ## Arguments
+///
+/// * `id`        - Expected thread id, if None this function will call new_tid to atomicly generate a new one.
+/// * `start`     - Thread's entry address, a wrapper of thread, generally it's set as `thread_start`, see _inner_spawn for details.
+/// * `entry`     - Thread's first executed function, it's the true entry inside the wrapper.
+/// * `arg`       - Thread's first argument.
+/// * `privilege` - Thread's privilige level, if true the thread is set as KERNEL thread, which can not be killed by user.
+/// 
 /// Notes: the generated thread is at Ready state, you need to wake it up.
-fn thread_alloc2(
+pub fn thread_alloc(
     id: Option<usize>,
-    pc: usize,
-    arg0: usize,
-    arg1: usize,
+    start: usize,
+    entry: usize,
+    arg: usize,
     privilege: bool,
 ) -> Thread {
     // Generally it should call the new_tid function to get a newly generated id,
@@ -202,7 +201,26 @@ fn thread_alloc2(
     let stack_start = stack_region.start_address();
 
     let sp = stack_start + stack_region.size_in_bytes();
-    let sp = sp.value();
+
+    let last_stack_pointer = sp - mem::size_of::<ContextFrame>();
+    // Init thread context in stack region.
+    unsafe {
+        core::ptr::write_bytes(
+            last_stack_pointer.as_mut_ptr::<u8>(),
+            0,
+            mem::size_of::<ContextFrame>(),
+        );
+        let context_frame = &mut *last_stack_pointer
+            .as_mut_ptr::<ContextFrame>()
+            .as_mut()
+            .unwrap();
+        context_frame.set_exception_pc(start);
+        context_frame.set_gpr(0, entry);
+        context_frame.set_gpr(1, arg);
+        context_frame.set_stack_pointer(sp.value());
+        context_frame.set_from_irq();
+        // debug!("NEW context_frame:\n{}", context_frame);
+    }
 
     let t = Thread(Arc::new(ControlBlock {
         inner: Inner {
@@ -216,7 +234,7 @@ fn thread_alloc2(
         },
         inner_mut: InnerMut {
             status: Mutex::new(Status::Ready),
-            context_frame: Mutex::new(ContextFrame::new(pc, sp, arg0, arg1)),
+            last_stack_pointer: Mutex::new(last_stack_pointer.value()),
             mem_regions: Mutex::new(BTreeMap::new()),
         },
     }));
@@ -228,12 +246,6 @@ fn thread_alloc2(
         id, stack_start, sp
     );
     t
-}
-
-/// Thread alloc logic without another arg.
-/// See thread_alloc2 for more details.
-pub fn thread_alloc(pc: usize, arg: usize, privilege: bool) -> Thread {
-    thread_alloc2(None, pc, arg, 0, privilege)
 }
 
 /// Find target thread by thread id.
@@ -375,10 +387,15 @@ pub fn handle_blocked_threads() {
 
 /// Actively give up CPU clock cycles.
 /// Todo: make thread yield more efficient.
-#[no_mangle]
+#[inline(always)]
 pub fn thread_yield() {
     // debug!("thread_yield is called on Thread [{}]", current_thread_id());
-    irqsave(|| crate::arch::switch_to());
+    // let icntr = crate::libs::timer::current_cycle();
+    irqsave(|| {
+        // let icntr_2 = crate::libs::timer::current_cycle();
+        // println!("\nthread_yield: irqsave {}", icntr_2 - icntr);
+        crate::arch::yield_to();
+    });
 }
 
 #[no_mangle]
@@ -405,17 +422,46 @@ pub fn current_thread() -> Result<Thread, Error> {
     }
 }
 
-/// Actively destory current running thread.
+/// Actively destroy current running thread.
+/// After thread_exit is called, current thread's resource will be dropped automatically.
+/// This function will call `thread_schedule` to schedule to next active thread.
+#[allow(unreachable_code)]
 pub fn thread_exit() {
     let result = current_thread();
     match result {
         Ok(t) => {
+            debug!("thread_exit on Thread [{}]", &t.tid());
             crate::libs::thread::thread_destroy(&t);
+
+            // Drop thread resource, including mapped region.
+            // Note:
+            // We know that this thread owns its stask, which is alse a mapped memory region,
+            // During the resource releasing process, the stack region is automically unmapped,
+            // But during fuction process, current sp space is still used.
+            // So we need to operate the SPSel register to change the sp to SP_EL1.
+            // It's strange, but its necessary.
+
+            use cortex_a::registers::SPSel;
+            use tock_registers::interfaces::Writeable;
+            SPSel.set(1);
+            drop(t);
+            let core = crate::libs::cpu::cpu();
+            // core.set_current_sp(0);
+
+            crate::libs::thread::thread_schedule();
+            extern "C" {
+                fn pop_context_first(ctx: usize) -> !;
+            }
+            unsafe {
+                // pop_context(&ctx as *const _ as usize, core_id);
+                pop_context_first(core.current_sp())
+            }
         }
         Err(_) => {
             panic!("failed to get current_thread");
         }
     }
+    warn!("thread_exit, should not reach here!!!");
     // crate::arch::irq::enable();
     loop {}
 }
@@ -438,11 +484,6 @@ fn _inner_spawn(
 
         // Use "thread_start" as a wrapper, which automatically calls thread_exit when thread is finished.
         extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> usize {
-            // Enable interrupt when first enter this thread.
-            // This is awkward!!!
-            // We may need to improve context switch mechanism, see src/arch/switch.rs.
-            crate::arch::irq::enable_and_wait();
-
             #[cfg(feature = "unwind")]
             {
                 const RETRY_MAX: usize = 5;
@@ -475,8 +516,7 @@ fn _inner_spawn(
             0
         }
 
-        let child_thread =
-            thread_alloc2(None, thread_start as usize, func as usize, arg, privilege);
+        let child_thread = thread_alloc(None, thread_start as usize, func as usize, arg, privilege);
         // If running, set newly allocated thread as Runnable immediately.
         if running {
             thread_wake(&child_thread);

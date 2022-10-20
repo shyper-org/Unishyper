@@ -1,13 +1,12 @@
 use spin::Once;
 
-use crate::arch::ContextFrame;
 use crate::board::BOARD_CORE_NUMBER;
 use crate::libs::scheduler::scheduler;
 use crate::libs::thread::Thread;
 use crate::libs::traits::*;
 
 pub struct Core {
-    context: Option<*mut ContextFrame>,
+    current_stack_pointer: usize,
     // pointer points at stack
     running_thread: Option<Thread>,
     idle_thread: Once<Thread>,
@@ -19,8 +18,8 @@ unsafe impl core::marker::Send for Core {}
 unsafe impl core::marker::Sync for Core {}
 
 const CORE: Core = Core {
-    context: None,
     running_thread: None,
+    current_stack_pointer: 0xDEAD_BEEF,
     idle_thread: Once::new(),
 };
 
@@ -28,22 +27,12 @@ static mut CORES: [Core; BOARD_CORE_NUMBER] = [CORE; BOARD_CORE_NUMBER];
 // static mut schedule_count: usize =  0;
 
 impl Core {
-    // context
-
-    pub fn context(&self) -> &ContextFrame {
-        unsafe { self.context.unwrap().as_ref() }.unwrap()
+    pub fn set_current_sp(&mut self, sp: usize) {
+        self.current_stack_pointer = sp
     }
 
-    pub fn context_mut(&self) -> &mut ContextFrame {
-        unsafe { self.context.unwrap().as_mut() }.unwrap()
-    }
-
-    pub fn set_context(&mut self, ctx: *mut ContextFrame) {
-        self.context = Some(ctx);
-    }
-
-    pub fn clear_context(&mut self) {
-        self.context = None;
+    pub fn current_sp(&self) -> usize {
+        self.current_stack_pointer
     }
 
     // thread
@@ -55,12 +44,21 @@ impl Core {
         self.running_thread = t
     }
 
+    /// Alloc idle thread on each core when there is no running thread on scheduler.
+    /// Each idle only inits once.
+    ///
+    /// Note: idle thread id depends on core number,
+    /// for example, core 0's idle thread id is 11, core 1's idle thread id is 22.
     fn idle_thread(&self) -> Thread {
         match self.idle_thread.get() {
             None => {
+                let core_id = crate::arch::Arch::core_id();
+                let idle_thread_id = (core_id + 1) * 10 + (core_id + 1);
                 let t = crate::libs::thread::thread_alloc(
+                    Some(idle_thread_id),
                     idle_thread as usize,
-                    crate::arch::Arch::core_id(),
+                    core_id,
+                    0,
                     true,
                 );
                 debug!(
@@ -76,9 +74,9 @@ impl Core {
 
     pub fn schedule(&mut self) {
         if let Some(t) = scheduler().pop() {
-            trace!("==== switch thread to [{}] ====\n", t.tid());
             self.run(t);
         } else {
+            // debug!("scheduler empty, alloc idle thread\n");
             self.run(self.idle_thread());
             crate::arch::irq::enable();
         }
@@ -94,31 +92,27 @@ impl Core {
         TPIDRRO_EL0.set(t.tid() as u64);
 
         if let Some(prev) = self.running_thread() {
-            // debug!("switch thread from [{}] to [{}]", prev.tid(), t.tid());
             // Note: normal switch
-            prev.set_context(*self.context());
+            // debug!("switch thread from [{}] to [{}]", prev.tid(), t.tid());
+            prev.set_last_stack_pointer(self.current_sp());
+
             // add back to scheduler queue
             if prev.runnable() {
                 scheduler().add(prev.clone());
             }
-            // debug!("next ctx:\n {}", t.context());
-            *self.context_mut() = t.context();
-        } else {
-            trace!("run thread {}", t.tid());
-            if self.context.is_some() {
-                // Note: previous process has been destroyed
-                // debug!("previous process has been destroyed, next ctx:\n {}", t.context());
-                *self.context_mut() = t.context();
-            } else {
-                // Note: this is first run
-                // `loader_main` prepare the context to stack
-                debug!("first run thread {}", t.tid());
-            }
+
+            // debug!(
+            //     "prev sp {:x}, next sp {:x}",
+            //     self.current_sp(),
+            //     t.stack_pointer()
+            // );
         }
         self.set_running_thread(Some(t.clone()));
+        self.set_current_sp(t.last_stack_pointer());
     }
 }
 
+#[inline(always)]
 pub fn cpu() -> &'static mut Core {
     let core_id = crate::arch::Arch::core_id();
     unsafe { &mut CORES[core_id] }
@@ -127,8 +121,6 @@ pub fn cpu() -> &'static mut Core {
 #[no_mangle]
 fn idle_thread(_arg: usize) {
     loop {
-        // info!("idle_thread {}, wfi\n", _arg);
-        // loop{}
         crate::arch::Arch::wait_for_interrupt();
     }
 }

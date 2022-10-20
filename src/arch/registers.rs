@@ -104,6 +104,8 @@ registers!(Aarch64, {
     SP = (31, "SP"),
 });
 
+pub const GPR_NUM_MAX: usize = 31;
+
 #[cfg(feature = "unwind")]
 pub const REG_RETURN_ADDRESS: Register = Aarch64::X30;
 #[cfg(feature = "unwind")]

@@ -8,6 +8,7 @@ pub struct RoundRobinScheduler {
     running_queue: Mutex<VecDeque<Thread>>,
     blocked_queue: Mutex<BTreeMap<usize, Thread>>,
 }
+
 impl RoundRobinScheduler {
     fn new() -> Self {
         RoundRobinScheduler {

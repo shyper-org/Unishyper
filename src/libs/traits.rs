@@ -22,14 +22,31 @@ pub trait ArchTrait {
 }
 
 pub trait ContextFrameTrait {
-    fn new(pc: usize, sp: usize, arg0: usize, arg1: usize) -> Self;
+    /// Get context frame's execption return address.
     fn exception_pc(&self) -> usize;
+    /// Set context frame's execption return address.
+    /// During thread context initialization process,
+    /// exception pc is set as the thread's entry pc address,
+    /// and use 'eret' to jump to entry.
     fn set_exception_pc(&mut self, pc: usize);
+    /// Get context frame's stack pointer.
     fn stack_pointer(&self) -> usize;
+    /// Set context frame's stack pointer.
     fn set_stack_pointer(&mut self, sp: usize);
-    fn set_argument(&mut self, arg: usize);
-    fn set_argument1(&mut self, arg1: usize);
+    /// Get context frame's general purpose register value of given index.
+    /// Note: the callee may check the index's legality(x0-x30 on aarch 64).
     fn gpr(&self, index: usize) -> usize;
+    /// Set context frame's general purpose register value of given index.
+    /// Note: the callee may check the index's legality(x0-x30 on aarch 64).
+    fn set_gpr(&mut self, index: usize, value: usize);
+    /// Mark the thread is yield from irq.
+    /// During context restore processes, from irq will end in 'pop_context_first'.
+    fn set_from_irq(&mut self);
+    /// Mark the thread is yield yield,
+    /// which means, the thread called the `thread_yield` function to give up the cpu cycle.
+    /// During context restore processes, from irq will not end in 'pop_context_first'.
+    /// See switch.S for details.
+    fn set_from_yield(&mut self);
 }
 
 pub trait ArchPageTableEntryTrait {

@@ -599,7 +599,10 @@ fn inner_allocate_pages(
         }
         Err(e) => {
             let err: &'static str = e.into();
-            error!("allocate_pages error {}", err);
+            error!(
+                "allocate_pages error {}\nrequested_vaddr {:?} requested_alignment {:?}",
+                err, requested_vaddr, requested_alignment
+            );
             None
         }
     }

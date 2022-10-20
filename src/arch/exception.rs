@@ -1,9 +1,7 @@
-use core::mem::size_of;
 use cortex_a::registers::{ESR_EL1, VBAR_EL1, TPIDRRO_EL0};
 use tock_registers::interfaces::{Readable, Writeable};
 
 use crate::libs::traits::ArchTrait;
-use crate::libs::traits::ContextFrameTrait;
 
 use crate::arch::ContextFrame;
 
@@ -13,22 +11,29 @@ core::arch::global_asm!(include_str!("exception.S"));
 unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
     let tid = TPIDRRO_EL0.get();
-    println!(
+    panic!(
         "current_el_sp0_synchronous on Thread {}\nEC {:#X} \n{}",
         tid,
         ec,
         ctx.read()
     );
-    loop {}
 }
 
 #[no_mangle]
-unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
-    // let tid = TPIDRRO_EL0.get();
-    // debug!("current_el_sp0_irq on thread [{}]\n{}", tid, ctx.read());
+unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) -> usize {
+    // debug!(
+    //     "current_el_sp0_irq, thread [{}], ctx on user_sp {:p}\n",
+    //     TPIDRRO_EL0.get(),
+    //     ctx
+    // );
+    // println!("{}", ctx.read());
     use crate::libs::interrupt::*;
+
+    // Store current context's pointer on current core struct.
+    // Note: ctx is just a pointer to current core stack.
     let core = crate::libs::cpu::cpu();
-    core.set_context(ctx);
+    core.set_current_sp(ctx as usize);
+
     use crate::drivers::{gic::INT_TIMER, INTERRUPT_CONTROLLER};
     let irq = INTERRUPT_CONTROLLER.fetch();
     match irq {
@@ -49,25 +54,28 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
     if irq.is_some() {
         INTERRUPT_CONTROLLER.finish(irq.unwrap());
     }
-    core.clear_context();
+    // debug!(
+    //     "current_el_sp0_irq call pop_context, cur_sp {:x}",
+    //     core.current_sp()
+    // );
+    core.current_sp()
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
-    error!("current_el_spx_synchronous EC {:#X} \n{}", ec, ctx.read());
-    let ctx_mut = ctx.as_mut().unwrap();
-    ctx_mut.set_stack_pointer(ctx as usize + size_of::<ContextFrame>());
-    // let page_fault = ESR_EL1.matches_all(ESR_EL1::EC::InstrAbortCurrentEL)
-    //     | ESR_EL1.matches_all(ESR_EL1::EC::DataAbortCurrentEL);
-    //   crate::libs::exception::handle_kernel(ctx.as_ref().unwrap(), page_fault);
-    panic!("current_el_spx_synchronous EC {:#X} \n{}", ec, ctx.read());
-    // loop {}
+    let tid = TPIDRRO_EL0.get();
+    panic!(
+        "current_el_spx_synchronous on Thread {}\nEC {:#X} \n{}",
+        tid,
+        ec,
+        ctx.read()
+    );
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
-    trace!("current_el_spx_irq");
+    warn!("current_el_spx_irq");
     current_el_sp0_irq(ctx);
 }
 
@@ -80,7 +88,7 @@ unsafe extern "C" fn current_el_spx_serror(ctx: *mut ContextFrame) {
 unsafe extern "C" fn lower_aarch64_synchronous(ctx: *mut ContextFrame) {
     let core_id = crate::arch::Arch::core_id();
     let tid = crate::libs::thread::current_thread_id();
-    info!(
+    panic!(
         "core {} T[{}] lower_aarch64_synchronous\n {}",
         core_id,
         tid,
@@ -90,27 +98,20 @@ unsafe extern "C" fn lower_aarch64_synchronous(ctx: *mut ContextFrame) {
 
 #[no_mangle]
 unsafe extern "C" fn lower_aarch64_irq(ctx: *mut ContextFrame) {
-    let core = crate::libs::cpu::cpu();
     let core_id = crate::arch::Arch::core_id();
 
-    core.set_context(ctx);
-    info!(
+    panic!(
         "core {} lower_aarch64_irq EL{} \n {}",
         core_id,
         crate::arch::Arch::curent_privilege(),
         ctx.read()
     );
-    core.clear_context();
 }
 
 #[no_mangle]
 unsafe extern "C" fn lower_aarch64_serror(ctx: *mut ContextFrame) {
-    let core = crate::libs::cpu::cpu();
-
     let core_id = crate::arch::Arch::core_id();
-    core.set_context(ctx);
-    info!("core {} lower_aarch64_serror\n {}", core_id, ctx.read());
-    core.clear_context();
+    panic!("core {} lower_aarch64_serror\n {}", core_id, ctx.read());
 }
 
 pub fn init() {

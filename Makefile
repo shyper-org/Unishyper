@@ -7,7 +7,7 @@ PROFILE ?= release
 RUSTFLAGS := -C llvm-args=-global-isel=false
 
 # NOTE: generate frame pointer for every function
-export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
+export RUSTFLAGS := ${RUSTFLAGS} # -C force-frame-pointers=yes
 
 CARGO_FLAGS := ${CARGO_FLAGS} #--features ${MACHINE}
 CARGO_FLAGS := ${CARGO_FLAGS} --release

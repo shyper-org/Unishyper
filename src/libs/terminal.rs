@@ -37,8 +37,19 @@ extern "C" fn input_thread(_arg: usize) {
 
 extern "C" fn shell_thread(_arg: usize) {
     debug!("shell_thread started Thread [{}]", current_thread_id());
+    #[cfg(feature = "fs")]
+    println!(
+        concat!(
+            "\nWelcome to unishyper ...\n\n",
+            "Rootfs mounted on {}.\n",
+            "You can input \"help\" for more info.\n"
+        ),
+        crate::libs::fs::FS_ROOT
+    );
+    #[cfg(not(feature = "fs"))]
     println!(concat!(
         "Welcome to unishyper ...\n\n",
+        "No FS support.",
         "You can input \"help\" for more info.\n"
     ));
     loop {

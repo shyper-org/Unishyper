@@ -83,10 +83,7 @@ pub extern "C" fn loader_main(core_id: usize) {
         // Init shell if configured.
         #[cfg(feature = "terminal")]
         libs::terminal::init();
-        debug!("main logic init ok");
     }
-
-    debug!("call schedule");
 
     libs::cpu::cpu().schedule();
 

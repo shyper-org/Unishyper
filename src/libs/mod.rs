@@ -22,3 +22,6 @@ pub mod terminal;
 
 #[cfg(feature = "unwind")]
 pub mod unwind;
+
+#[cfg(feature = "unilib")]
+pub mod unilib;

@@ -1,20 +1,20 @@
-mod smc;
+pub mod smc;
 pub mod gic;
 pub mod psci;
 pub mod timer;
 pub mod uart;
 
-#[cfg(feature = "fs")]
+#[cfg(feature = "fat")]
 pub mod blk;
 #[cfg(feature = "tcp")]
 pub mod net;
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 pub mod virtio;
 
 pub use gic::{Interrupt, INTERRUPT_CONTROLLER};
 
 pub mod error {
-    #[cfg(any(feature = "tcp", feature = "fs"))]
+    #[cfg(any(feature = "tcp", feature = "fat"))]
     use crate::drivers::virtio::error::VirtioError;
     use core::fmt;
 
@@ -23,11 +23,11 @@ pub mod error {
         #[allow(dead_code)]
         CommonDevErr(u16),
 
-        #[cfg(any(feature = "tcp", feature = "fs"))]
+        #[cfg(any(feature = "tcp", feature = "fat"))]
         InitVirtioDevFail(VirtioError),
     }
 
-    #[cfg(any(feature = "tcp", feature = "fs"))]
+    #[cfg(any(feature = "tcp", feature = "fat"))]
     impl From<VirtioError> for DriverError {
         fn from(err: VirtioError) -> Self {
             DriverError::InitVirtioDevFail(err)
@@ -40,7 +40,7 @@ pub mod error {
                 DriverError::CommonDevErr(err) => {
                     write!(f, "Common driver failed: {:?}", err)
                 }
-                #[cfg(any(feature = "tcp", feature = "fs"))]
+                #[cfg(any(feature = "tcp", feature = "fat"))]
                 DriverError::InitVirtioDevFail(ref err) => {
                     write!(f, "Virtio driver failed: {:?}", err)
                 }
@@ -51,6 +51,6 @@ pub mod error {
 
 pub fn init_devices() {
     info!("init virtio devices");
-    #[cfg(any(feature = "tcp", feature = "fs"))]
+    #[cfg(any(feature = "tcp", feature = "fat"))]
     crate::drivers::virtio::init_drivers();
 }

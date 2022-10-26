@@ -1,10 +1,10 @@
-# Rust-ShyperOS Demo Version
+# Unishyper Demo Version
 
-Rust-ShyperOS is a research unikernel, targeting a scalable and predictable runtime for embedded devices. Unikernel means, you bundle your application directly with the kernel library, so that it can run without any installed operating system.
+Unishyper is a research unikernel, targeting a scalable and predictable runtime for embedded devices. Unikernel means, you bundle your application directly with the kernel library, so that it can run without any installed operating system.
 
 ## Boards and Platforms
 
-Rust-ShyperOS  now supports following platforms.
+Unishyper  now supports following platforms.
 
 | MACHINE | ARCH                    | Description                             |
 |---------|-------------------------|-----------------------------------------|
@@ -20,9 +20,10 @@ Rust-ShyperOS  now supports following platforms.
 3. Semaphores and synchronization mechanisms support.
 4. Network stack and file system support.
 5. Virtio drivers (virtio-net, virtio-blk).
+6. Terminal support.
 ## Toolchains
 
-1. Nightly Rust (`nightly-2022-05-04` tested)
+1. Nightly Rust (`nightly-2022-09-14` tested)
 2. `rust-src` component (use `make dependencies` to install)
 3. QEMU emulator version 5.0.0, `qemu-system-aarch64`.
 4. Linaro GCC 7.5-2019.12
@@ -52,9 +53,30 @@ make user_debug
 make fs_debug
 ```
 
-## Booting
+## Terminal Support
 
-> wait for implementation...
+The unishyper support command line interaction through a simple terminal implementation with "terminal" feature enabled. The simple terminal supports basic input and output, and some basic file operations, including ls, mkdir, cat, e.g.
+
+You can input "help" in terminal for more information.
+
+```bash
+☻ SHELL➜ help
+This is unishyper,
+a research unikernel targeting a scalable and predictable runtime for embedded devices.
+List of classes of commands:
+
+cat [FILE]      -- Concatenate files and print on the standard output, "fs" feature is required.
+free            -- Dump memory usage info.
+kill [TID]      -- Kill target thread according to TID, you can use "ps" command to check running threads.
+ls [DIR]        -- List information about the FILEs (the current directory by default), "fs" feature is required.
+mkdir [DIR]     -- Create the DIRECTORY, if they do not already exist, "fs" feature is required.
+ps              -- Report a snapshot of the current threads, you can use "run [TID]" to wake the ready ones.
+run [TID]       -- Run target thread according to TID, you can use "ps" command to check available threads.
+help            -- Print this message.
+
+☻ SHELL➜
+
+```
 
 ## Network Support
 To enable an ethernet device, we have to setup a tap device on the
@@ -68,7 +90,7 @@ sudo ip link set dev tap0 up
 sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
 ```
 
-Add the feature `tcp` in the `Cargo.toml`. Rust-ShyperOS use the network stack [smoltcp](https://github.com/smoltcp-rs/smoltcp) to offer TCP/UDP communication.
+Add the feature `tcp` in the `Cargo.toml`. Unishyper use the network stack [smoltcp](https://github.com/smoltcp-rs/smoltcp) to offer TCP/UDP communication.
 ```toml
 # Cargo.toml
 
@@ -91,11 +113,11 @@ features = [
 ]
 ```
 
-By default, Rust-ShyperOS's network interface uses `10.0.0.2` as IP address, `10.0.0.1`
+By default, Unishyper's network interface uses `10.0.0.2` as IP address, `10.0.0.1`
 for the gateway and `255.255.255.0` as network mask.
 
-Currently, Rust-ShyperOS does only support network interfaces through [virtio-net](https://www.redhat.com/en/blog/introduction-virtio-networking-and-vhost-net).
-To use it, you have to start Rust-ShyperOS in Qemu with following parameters:
+Currently, Unishyper does only support network interfaces through [virtio-net](https://www.redhat.com/en/blog/introduction-virtio-networking-and-vhost-net).
+To use it, you have to start Unishyper in Qemu with following parameters:
 
 ```Makefile
 QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no \
@@ -115,15 +137,19 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
  * run `make net_emu`
  * run `/examples/net_test/client `
 
- ## Fatfs Support
+ ## FS Support
 
- Rust-ShyperOS's Fatfs support based on virtio-blk. To enable fatfs, we need to prefare a disk.img for it. The following command make a disk image from zero, or you can just run `make disk` to prepare a disk img.
+ Currently Unishyper provides two types of file system, including Fatfs based on virtio and Unilib-fs based on Unilib API running on rust hypervisor. 
+
+### Fatfs
+
+To enable Fatfs, we need to enable the features `fs` and `fat`, and prefare a disk.img for it. The following command make a disk image from zero, or you can just run `make disk` to prepare a disk img.
 ```Makefile
 dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
 mkfs.fat -F 32 disk.img
 ```
 
-Add the feature `fs` in the Cargo.toml. Rust-ShyperOS use the [fatfs](https://github.com/rafalh/rust-fatfs) to offer fatfs support.
+Unishyper use the [fatfs](https://github.com/rafalh/rust-fatfs) to offer fatfs support.
 
 ```toml
 [dependencies.fatfs]
@@ -132,12 +158,20 @@ git = "https://github.com/rafalh/rust-fatfs"
 default-features = false
 features = ["lfn", "alloc", "unicode", "log_level_trace"]
 ```
-Currently, Rust-ShyperOS does only support blk operation through [virtio-blk](https://www.qemu.org/2021/01/19/virtio-blk-scsi-configuration/).
-To use it, you have to start Rust-ShyperOS in Qemu with following parameters:
+Currently, Unishyper does only support blk operation through [virtio-blk](https://www.qemu.org/2021/01/19/virtio-blk-scsi-configuration/).
+To use it, you have to start Unishyper in Qemu with following parameters:
 
 ```Makefile
 QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
 					 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
 					 -global virtio-mmio.force-legacy=false
 ```
- You may see Makefile for details.
+You may see Makefile for details.
+
+### Unilib-FS
+
+Unishyper's Unilib-FS is based on the support of rust-hypervisor. Unishyper's fs operation request is passed to the MVM by a HVC request from Unishyper and a IPI request inside hypervisor. The MVM will perform the file operation on its user daemon process and send the result back to Unishyper.
+
+Through the thought of unilib, Unishyper can get rid of the huge code size of file system and block device driver, replaced with just a few lines of HVC calls.
+
+The unilib is still under developing.

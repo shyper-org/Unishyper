@@ -3,10 +3,10 @@ use core::ops::Range;
 use crate::drivers::gic::INT_TIMER;
 use crate::libs::interrupt::InterruptController;
 
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 use crate::libs::device::Device;
 
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 use crate::libs::device::VirtioDevice;
 
 #[cfg(not(feature = "smp"))]
@@ -24,12 +24,12 @@ pub const ELF_SIZE: usize = 0xa0_0000;
 pub const GICD_BASE: usize = 0x08000000;
 pub const GICC_BASE: usize = 0x08010000;
 
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 use alloc::{vec,vec::Vec};
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 pub fn devices() -> Vec<Device> {
     vec![
-        #[cfg(feature = "fs")]
+        #[cfg(feature = "fat")]
         Device::Virtio(VirtioDevice::new(
             "virtio_blk",
             0x0a00_0000..0x0a00_0200,

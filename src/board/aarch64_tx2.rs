@@ -27,22 +27,31 @@ pub const GICC_BASE: usize = 0x8010000;
 pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x8000_0000..0xf000_0000;
 #[cfg(feature = "tx2")]
 pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x8000_0000;
+#[cfg(feature = "tx2")]
+pub const ELF_IMAGE_LOAD_ADDR: usize = 0xc000_0000;
 
+// Todo: redesign memory range in shyper.
+//       When running on hypervisor, unikernel should not take up so much memory region.
 #[cfg(feature = "shyper")]
-pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0xc000_0000;
+pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0x8000_0000;
 #[cfg(feature = "shyper")]
 pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x4000_0000;
+#[cfg(feature = "shyper")]
+pub const ELF_IMAGE_LOAD_ADDR: usize = 0x6000_0000;
 
-pub const ELF_IMAGE_LOAD_ADDR: usize = 0xc000_0000;
 pub const ELF_SIZE: usize = 0xa0_0000;
 
-#[cfg(any(feature = "tcp", feature = "fs"))]
-use {alloc::vec::Vec, crate::libs::device::Device};
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
+use {
+    alloc::vec::Vec,
+    alloc::vec,
+    crate::libs::device::Device,
+};
+#[cfg(any(feature = "tcp", feature = "fat"))]
 pub fn devices() -> Vec<Device> {
     use crate::libs::device::VirtioDevice;
     vec![
-        #[cfg(feature = "fs")]
+        #[cfg(feature = "fat")]
         Device::Virtio(VirtioDevice::new(
             "virtio_blk",
             0x0a00_0000..0x0a00_0200,

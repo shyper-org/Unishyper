@@ -42,7 +42,8 @@ extern "C" fn shell_thread(_arg: usize) {
         "You can input \"help\" for more info.\n"
     ));
     loop {
-        print!("SHELL> ");
+        // ☺
+        print!("☻ SHELL➜ ");
         let cmd = crate::libs::print::getline();
         println!();
         if cmd.trim().is_empty() {
@@ -91,9 +92,9 @@ fn handle_cat(_arg: Option<&str>) {
     #[cfg(feature = "fs")]
     match _arg {
         Some(s) => {
-            use crate::libs::fs::FAT_ROOT;
+            use crate::libs::fs::FS_ROOT;
             use crate::libs::fs::interface::O_RDONLY;
-            let fd = crate::libs::fs::open(format!("{}{}", FAT_ROOT, s).as_str(), O_RDONLY, 0);
+            let fd = crate::libs::fs::open(format!("{}{}", FS_ROOT, s).as_str(), O_RDONLY, 0);
             if fd < 0 {
                 println!("cat: {}: No such file or directory", s);
                 return;
@@ -121,8 +122,8 @@ fn handle_mkdir(_arg: Option<&str>) {
     #[cfg(feature = "fs")]
     match _arg {
         Some(s) => {
-            use crate::libs::fs::FAT_ROOT;
-            if crate::libs::fs::create_dir(format!("{}{}", FAT_ROOT, s).as_str()).is_err() {
+            use crate::libs::fs::FS_ROOT;
+            if crate::libs::fs::create_dir(format!("{}{}", FS_ROOT, s).as_str()).is_err() {
                 println!("mkdir: cannot create directory '{}'.", s);
             }
         }
@@ -138,14 +139,14 @@ fn handle_ls(_arg: Option<&str>) {
     #[cfg(feature = "fs")]
     match _arg {
         Some(s) => {
-            use crate::libs::fs::FAT_ROOT;
-            if crate::libs::fs::print_dir(format!("{}{}", FAT_ROOT, s).as_str()).is_err() {
+            use crate::libs::fs::FS_ROOT;
+            if crate::libs::fs::print_dir(format!("{}{}", FS_ROOT, s).as_str()).is_err() {
                 println!("ls: cannot access '{}': No such file or directory", s);
             }
         }
         None => {
-            use crate::libs::fs::FAT_ROOT;
-            if crate::libs::fs::print_dir(FAT_ROOT).is_err() {
+            use crate::libs::fs::FS_ROOT;
+            if crate::libs::fs::print_dir(FS_ROOT).is_err() {
                 println!("ls: cannot access root dir, something is wrong with fs");
             }
         }

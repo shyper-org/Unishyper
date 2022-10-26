@@ -17,9 +17,9 @@ pub mod net;
 #[cfg(feature = "tcp")]
 pub use net::*;
 
-#[cfg(feature = "fs")]
+#[cfg(all(feature = "fs", feature = "fat"))]
 pub mod fs;
-#[cfg(feature = "fs")]
+#[cfg(all(feature = "fs", feature = "fat"))]
 pub mod fd;
-#[cfg(feature = "fs")]
+#[cfg(all(feature = "fs", feature = "fat"))]
 pub mod io;

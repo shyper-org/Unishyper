@@ -1,20 +1,20 @@
 pub mod env;
 /// A module containing Virtio's feature bits.
 pub mod features;
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 pub mod mmio;
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 pub mod transport;
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 pub mod virtqueue;
 
-#[cfg(any(feature = "tcp", feature = "fs"))]
+#[cfg(any(feature = "tcp", feature = "fat"))]
 pub use mmio::init_drivers;
 
 pub const VIRTIO_MAX_QUEUE_SIZE: u16 = 1024;
 
 pub mod error {
-    #[cfg(feature = "fs")]
+    #[cfg(feature = "fat")]
     use crate::drivers::blk::virtio_blk::error::VirtioBlkError;
     #[cfg(feature = "tcp")]
     pub use crate::drivers::net::virtio_net::error::VirtioNetError;
@@ -25,7 +25,7 @@ pub mod error {
         DevNotSupported(u16),
         #[cfg(feature = "tcp")]
         NetDriver(VirtioNetError),
-        #[cfg(feature = "fs")]
+        #[cfg(feature = "fat")]
         BlkDriver(VirtioBlkError),
         Unknown,
     }
@@ -48,7 +48,7 @@ pub mod error {
                     VirtioNetError::ProcessOngoing => write!(f, "Driver performed an unsuitable operation upon an ongoging transfer."),
 					VirtioNetError::Unknown => write!(f, "Virtio network driver failed due unknown reason!"),
                 },
-                #[cfg(feature = "fs")]
+                #[cfg(feature = "fat")]
 				VirtioError::BlkDriver(blk_error) => match blk_error {
 					VirtioBlkError::General => write!(f, "Virtio block driver failed due to unknown reasons!"),
 					VirtioBlkError::NoDevCfg(id)=> write!(f, "Virtio block driver failed, for device {:x}, due to a missing or malformed device config!", id),

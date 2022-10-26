@@ -32,21 +32,8 @@ pub struct FilePerms {
     pub mode: u32,
 }
 
+/// Currently the mode bit is unsupported.
 pub fn open_flags_to_perm(flags: i32, mode: u32) -> FilePerms {
-    // mode is passed in as hex (0x777). Linux/Fuse expects octal (0o777).
-    // just passing mode as is to FUSE create, leads to very weird permissions: 0b0111_0111_0111 -> 'r-x rwS rwt'
-    // TODO: change in stdlib
-    let mode = match mode {
-        0x777 => 0o777,
-        0 => 0,
-        _ => {
-            info!(
-                "Mode neither 777 nor 0, should never happen with current hermit stdlib! Using 777"
-            );
-            0o777
-        }
-    };
-
     let mut perms = FilePerms {
         raw: flags as u32,
         mode,
@@ -58,7 +45,9 @@ pub fn open_flags_to_perm(flags: i32, mode: u32) -> FilePerms {
     perms.trunc = flags & (O_TRUNC) != 0;
     perms.append = flags & (O_APPEND) != 0;
     perms.directio = flags & (O_DIRECT) != 0;
-    if flags & !(O_WRONLY | O_RDWR | O_CREAT | O_EXCL | O_TRUNC | O_APPEND | O_DIRECT) != 0 {
+    if flags & !(O_RDONLY | O_WRONLY | O_RDWR | O_CREAT | O_EXCL | O_TRUNC | O_APPEND | O_DIRECT)
+        != 0
+    {
         warn!("Unknown file flags used! {}", flags);
     }
     perms
@@ -78,23 +67,42 @@ const SEEK_END: i32 = 2;
 #[allow(unused_variables)]
 #[allow(unreachable_patterns)]
 impl TryFrom<i32> for SeekWhence {
-	type Error = &'static str;
+    type Error = &'static str;
 
-	fn try_from(value: i32) -> Result<Self, Self::Error> {
-		match value {
-			SEEK_CUR => Ok(SeekWhence::Cur),
-			SEEK_SET => Ok(SeekWhence::Set),
-			SEEK_END => Ok(SeekWhence::End),
-			_ => Err("Got invalid seek whence parameter!"),
-		}
-	}
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            SEEK_CUR => Ok(SeekWhence::Cur),
+            SEEK_SET => Ok(SeekWhence::Set),
+            SEEK_END => Ok(SeekWhence::End),
+            _ => Err("Got invalid seek whence parameter!"),
+        }
+    }
+}
+
+#[allow(unused_variables)]
+#[allow(unreachable_patterns)]
+impl TryInto<i32> for SeekWhence {
+    type Error = &'static str;
+    fn try_into(self) -> Result<i32, Self::Error> {
+        match self {
+            SeekWhence::Cur => Ok(SEEK_CUR),
+            SeekWhence::Set => Ok(SEEK_SET),
+            SeekWhence::End => Ok(SEEK_END),
+            _ => Err("Got invalid seek whence parameter!"),
+        }
+    }
 }
 
 pub trait PosixFileSystem {
-    fn open(&self, _path: &str, _perms: FilePerms, fd: usize) -> Result<Box<dyn PosixFile + Send>, FileError>;
-    fn unlink(&self, _path: &str) -> Result<(), FileError>;
-    fn print_dir(&self, _path: &str) -> Result<(), FileError>;
-    fn create_dir(&self, _path: &str)-> Result<(), FileError>;
+    fn open(
+        &self,
+        path: &str,
+        perms: FilePerms,
+        fd: usize,
+    ) -> Result<Box<dyn PosixFile + Send>, FileError>;
+    fn unlink(&self, path: &str) -> Result<(), FileError>;
+    fn print_dir(&self, path: &str) -> Result<(), FileError>;
+    fn create_dir(&self, path: &str) -> Result<(), FileError>;
 }
 
 pub trait PosixFile {

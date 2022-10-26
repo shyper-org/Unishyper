@@ -44,6 +44,7 @@ impl Fatfs {
     }
     pub fn singleton() -> &'static Self {
         FATFS.call_once(|| Fatfs::new());
+        info!("fat fs init success.");
         FATFS.get().unwrap()
     }
 }

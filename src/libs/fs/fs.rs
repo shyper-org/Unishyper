@@ -111,7 +111,7 @@ impl Filesystem {
     /// Looks up MOUNTPOINT in mounted dirs, passes internal-path to filesystem backend
     /// Returns the file descriptor of the newly opened file, or an error on failure
     pub fn open(&mut self, path: & str, perms: FilePerms) -> Result<u64, FileError> {
-        trace!("Opening file {} {:?}", path, perms);
+        debug!("Opening file {} {:?}", path, perms);
         let (fs, internal_path) = self.parse_path(path)?;
         let fd = self.assign_new_fd();
         let file = fs.open(internal_path, perms, fd as usize)?;
@@ -129,7 +129,7 @@ impl Filesystem {
 
     /// Unlinks a file given by path.
     pub fn unlink(&mut self, path: &str) -> Result<(), FileError> {
-        info!("Unlinking file {}", path);
+        debug!("Unlinking file {}", path);
         let (fs, internal_path) = self.parse_path(path)?;
         fs.unlink(internal_path)?;
         Ok(())

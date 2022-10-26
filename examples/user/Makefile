@@ -56,6 +56,8 @@ endif
 clean:
 	-cargo clean
 
+shyper: build
+
 # Use tftp to load unikernel binary file to target location on Tegra X2 ROM.
 tx2: build
 	mkimage -n unishyper -A arm64 -O linux -C none -T kernel -a 0x80080000 -e 0x80080000 -d ${KERNEL}.bin ${KERNEL}.ubi

@@ -70,6 +70,9 @@ net_test:
 tx2:
 	MACHINE=tx2 make -C ${USER_DIR} tx2
 
+shyper: 
+	MACHINE=shyper make -C ${USER_DIR} shyper
+
 disk:
 	rm -rf disk
 	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null

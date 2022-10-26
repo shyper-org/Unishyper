@@ -12,10 +12,10 @@ pub trait BlkInterface {
     fn handle_interrupt(&mut self) -> bool;
 }
 
-#[cfg(feature = "fs")]
+#[cfg(feature = "fat")]
 use crate::drivers::virtio::mmio::get_block_driver;
 
-#[cfg(feature = "fs")]
+#[cfg(feature = "fat")]
 pub fn blk_irqhandler() {
     match get_block_driver() {
         Some(driver) => {
@@ -27,7 +27,7 @@ pub fn blk_irqhandler() {
     }
 }
 
-#[cfg(feature = "fs")]
+#[cfg(feature = "fat")]
 pub fn read(sector: usize, count: usize, buf: usize) {
     match get_block_driver() {
         Some(driver) => driver.lock().read_block(sector, count, buf),
@@ -35,7 +35,7 @@ pub fn read(sector: usize, count: usize, buf: usize) {
     }
 }
 
-#[cfg(feature = "fs")]
+#[cfg(feature = "fat")]
 pub fn write(sector: usize, count: usize, buf: usize) {
     match get_block_driver() {
         Some(driver) => driver.lock().write_block(sector, count, buf),

@@ -59,15 +59,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crossbeam-utils"
-version = "0.8.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51887d4adc7b564537b15adcfb307936f8075dfcd5f00dde9a9f1d29383682bc"
-dependencies = [
- "cfg-if",
-]
-
-[[package]]
 name = "derive_more"
 version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -106,6 +97,12 @@ checksum = "bfe531a7789d7120f3e17d4f3f2cd95f54418ba7354f60b7b622b6644a07888a"
 dependencies = [
  "memoffset",
 ]
+
+[[package]]
+name = "ioslice"
+version = "0.6.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a24d672e3d113a545b51b9d859ae18093fa254adcb45acaf7fe631e0740782d"
 
 [[package]]
 name = "lock_api"
@@ -167,10 +164,10 @@ dependencies = [
  "buddy_system_allocator",
  "cfg-if",
  "cortex-a",
- "crossbeam-utils",
  "derive_more",
  "gimli",
  "intrusive-collections",
+ "ioslice",
  "log",
  "spin 0.9.3",
  "static_assertions",

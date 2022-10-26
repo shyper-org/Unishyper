@@ -1,19 +1,82 @@
+#[cfg(feature = "fat")]
 mod fat;
+
+#[cfg(feature = "unilib")]
+mod unilib;
+
 pub mod fs;
 pub mod interface;
 
 use alloc::boxed::Box;
 
-pub const FAT_ROOT: &str = "/fatfs/";
+/// By default, the terminal's fs operation is operated under FAT-fs's directory.
+#[cfg(not(feature = "unilib"))]
+pub const FS_ROOT: &str = "/fatfs/";
+
+#[cfg(feature = "unilib")]
+pub const FS_ROOT: &str = "/unilibfs/";
 
 pub fn init() {
-    let root_path = "fatfs";
+    #[cfg(feature = "fat")]
     fs::FILESYSTEM
         .lock()
-        .mount(root_path, Box::new(fat::Fatfs::singleton()))
+        .mount("fatfs", Box::new(fat::Fatfs::singleton()))
+        .expect("Mount failed!!!");
+
+    #[cfg(feature = "unilib")]
+    fs::FILESYSTEM
+        .lock()
+        .mount("unilibfs", Box::new(unilib::UnilibFs::new()))
         .expect("Mount failed!!!");
 
     info!("fs init success.");
+
+    if false {
+        use alloc::vec;
+        use alloc::string::String;
+        use alloc::format;
+        // Test open.
+        debug!("This is just for uni-lib test during development");
+        let fd = open(format!("{}{}", FS_ROOT, "test_path").as_str(), 111, 222);
+        debug!("Open test passed, get fd {}", fd);
+
+        // Test write.
+        let write_str = "hello";
+        let write_res = write(fd, write_str.as_bytes().as_ptr(), write_str.len());
+        debug!("Write test passed, get write_res {}", write_res);
+
+        // Test lseek.
+        // SEEK_SET = 0
+        let lseek_res = lseek(fd, 0, 0);
+        debug!("Lseek test passed, get lseek_res {}", lseek_res);
+
+        // Test read.
+        let mut read_str = vec![0 as u8; 10];
+        let read_res = read(fd, &mut read_str[0], write_str.len());
+        debug!(
+            "Read test passed, get res {}, get str '{}'",
+            read_res,
+            String::from_utf8(read_str).expect("failed to convert vec u8 to string")
+        );
+
+        // Test lseek.
+        // SEEK_SET = 0
+        let lseek_res = lseek(fd, 1, 0);
+        debug!("Lseek test passed, get lseek_res {}", lseek_res);
+
+        // After lseek, start should remove to 1;
+        let mut read_str = vec![0 as u8; 3];
+        let read_res = read(fd, &mut read_str[0], 3);
+        debug!(
+            "After Lseek to 1, read buffer of 3 bytes, get res {}, get str '{}'",
+            read_res,
+            String::from_utf8(read_str).expect("failed to convert vec u8 to string")
+        );
+
+        // Test close.
+        let close_res = close(fd);
+        debug!("CLose test passed, get close_res {}", close_res);
+    }
 }
 
 use interface::*;

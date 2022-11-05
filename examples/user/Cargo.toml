@@ -32,6 +32,7 @@ shyper = [
     "rust_shyper_os/shyper",
     "rust_shyper_os/terminal",
     "rust_shyper_os/fs",
-    "rust_shyper_os/unilib"
+    "rust_shyper_os/unilib",
+    "rust_shyper_os/fat",
     ]
 alloc = []

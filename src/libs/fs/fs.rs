@@ -47,35 +47,21 @@ impl Filesystem {
 
         if path.starts_with('/') {
             pathsplit.next(); // empty, since first char is /
-
-            let mount = pathsplit.next().unwrap();
-            let internal_path = pathsplit.next().unwrap();
-            if let Some(fs) = self.mounts.get(mount) {
-                return Ok((fs.deref(), internal_path));
-            }
-
-            warn!(
-                "Trying to open file on non-existing mount point '{}'!",
-                mount
-            );
-        } else {
-            let mount = ".";
-            let internal_path = pathsplit.next().unwrap();
-
-            debug!(
-                "Assume that the directory '{}' is used as mount point!",
-                mount
-            );
-
-            if let Some(fs) = self.mounts.get(mount) {
-                return Ok((fs.deref(), internal_path));
-            }
-
-            info!(
-                "Trying to open file on non-existing mount point '{}'!",
-                mount
-            );
         }
+
+        let mount = pathsplit.next().unwrap();
+        let internal_path = match pathsplit.next() {
+            Some(path) => path,
+            None => "",
+        };
+        if let Some(fs) = self.mounts.get(mount) {
+            return Ok((fs.deref(), internal_path));
+        }
+
+        warn!(
+            "Trying to open file on non-existing mount point '{}'!",
+            mount
+        );
 
         Err(FileError::ENOENT)
     }
@@ -110,8 +96,8 @@ impl Filesystem {
     /// Tries to open file at given path (/MOUNTPOINT/internal-path).
     /// Looks up MOUNTPOINT in mounted dirs, passes internal-path to filesystem backend
     /// Returns the file descriptor of the newly opened file, or an error on failure
-    pub fn open(&mut self, path: & str, perms: FilePerms) -> Result<u64, FileError> {
-        debug!("Opening file {} {:?}", path, perms);
+    pub fn open(&mut self, path: &str, perms: FilePerms) -> Result<u64, FileError> {
+        trace!("Opening file {} {:?}", path, perms);
         let (fs, internal_path) = self.parse_path(path)?;
         let fd = self.assign_new_fd();
         let file = fs.open(internal_path, perms, fd as usize)?;

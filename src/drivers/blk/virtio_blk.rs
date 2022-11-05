@@ -7,9 +7,7 @@ use crate::drivers::blk::constants::{RespStatus, BLK_SIZE, ReqType};
 use crate::drivers::blk::virtio_blk::error::VirtioBlkError;
 
 use crate::drivers::virtio::transport::mmio::{IsrStatus, NotifCfg, ComCfg};
-use crate::drivers::virtio::virtqueue::{
-    AsSliceU8, BufferToken, Virtq, VqIndex, VqSize, VqType,
-};
+use crate::drivers::virtio::virtqueue::{AsSliceU8, BufferToken, Virtq, VqIndex, VqSize, VqType};
 use crate::drivers::virtio::VIRTIO_MAX_QUEUE_SIZE;
 use crate::drivers::virtio::features::Features;
 
@@ -173,7 +171,9 @@ impl BlkInterface for VirtioBlkDriver {
     fn read_block(&mut self, sector: usize, count: usize, buf: usize) {
         trace!(
             "read_block() sector {} count {} buf 0x{:x}",
-            sector, count, buf
+            sector,
+            count,
+            buf
         );
         let len = count * BLK_SIZE;
         let mut buf = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len) };
@@ -217,7 +217,9 @@ impl BlkInterface for VirtioBlkDriver {
     fn write_block(&mut self, sector: usize, count: usize, buf: usize) {
         trace!(
             "write_block() sector {} count {} buf 0x{:x}",
-            sector, count, buf
+            sector,
+            count,
+            buf
         );
         let len = count * BLK_SIZE;
         let mut buf = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len) };
@@ -323,7 +325,7 @@ impl VirtioBlkDriver {
 
         match self.dev_spec_init() {
             Ok(_) => info!(
-                "Device specific initialization for Virtio network device {:x} finished",
+                "Device specific initialization for Virtio block device {:x} finished",
                 self.dev_cfg.dev_id
             ),
             Err(vnet_err) => return Err(vnet_err),

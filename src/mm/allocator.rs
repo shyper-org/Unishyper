@@ -2,6 +2,7 @@ use alloc::collections::BTreeMap;
 use spin::Mutex;
 
 use crate::arch::PAGE_SIZE;
+use crate::libs::string::memset;
 use crate::libs::thread::current_thread;
 use crate::libs::traits::Address;
 use crate::mm::page_allocator;
@@ -38,6 +39,10 @@ pub fn kallocate(size: usize) -> Option<VAddr> {
     };
     let addr = frames.start_address();
     let kaddr = VAddr::new_canonical(addr.value().pa2kva());
+    // Zero allocated memory space.
+    unsafe {
+        memset(kaddr.value() as *mut u8, 0, size);
+    }
     // debug!("kernel allocate size {:x} {} to => {}", size, addr, kaddr);
     GLOBAL_MM_MAP.lock().insert(kaddr, frames);
     Some(kaddr)

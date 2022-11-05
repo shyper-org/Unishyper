@@ -6,6 +6,8 @@ use spin::{Mutex, Once};
 
 use crate::drivers::uart::getc;
 use crate::libs::thread::{thread_yield, current_thread_id, thread_spawn_privilege};
+#[cfg(feature = "fs")]
+use crate::libs::fs::FS_ROOT;
 
 static BUFFER: Once<Mutex<VecDeque<u8>>> = Once::new();
 
@@ -41,10 +43,10 @@ extern "C" fn shell_thread(_arg: usize) {
     println!(
         concat!(
             "\nWelcome to unishyper ...\n\n",
-            "Rootfs mounted on {}.\n",
+            "File System is enabled, current path on {}.\n",
             "You can input \"help\" for more info.\n"
         ),
-        crate::libs::fs::FS_ROOT
+        FS_ROOT
     );
     #[cfg(not(feature = "fs"))]
     println!(concat!(
@@ -103,7 +105,6 @@ fn handle_cat(_arg: Option<&str>) {
     #[cfg(feature = "fs")]
     match _arg {
         Some(s) => {
-            use crate::libs::fs::FS_ROOT;
             use crate::libs::fs::interface::O_RDONLY;
             let fd = crate::libs::fs::open(format!("{}{}", FS_ROOT, s).as_str(), O_RDONLY, 0);
             if fd < 0 {
@@ -133,7 +134,6 @@ fn handle_mkdir(_arg: Option<&str>) {
     #[cfg(feature = "fs")]
     match _arg {
         Some(s) => {
-            use crate::libs::fs::FS_ROOT;
             if crate::libs::fs::create_dir(format!("{}{}", FS_ROOT, s).as_str()).is_err() {
                 println!("mkdir: cannot create directory '{}'.", s);
             }
@@ -150,13 +150,11 @@ fn handle_ls(_arg: Option<&str>) {
     #[cfg(feature = "fs")]
     match _arg {
         Some(s) => {
-            use crate::libs::fs::FS_ROOT;
             if crate::libs::fs::print_dir(format!("{}{}", FS_ROOT, s).as_str()).is_err() {
                 println!("ls: cannot access '{}': No such file or directory", s);
             }
         }
         None => {
-            use crate::libs::fs::FS_ROOT;
             if crate::libs::fs::print_dir(FS_ROOT).is_err() {
                 println!("ls: cannot access root dir, something is wrong with fs");
             }

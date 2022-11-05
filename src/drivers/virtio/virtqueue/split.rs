@@ -123,6 +123,7 @@ impl DescrRing {
             let (desc, _) = desc_lst[0];
             (desc.id.as_ref().unwrap().0 - 1) as usize
         };
+        // println!("push() desc_count {}, index {}", len, index);
         let mut desc_cnt = 0usize;
 
         while len != 0 {
@@ -130,6 +131,10 @@ impl DescrRing {
             // This is due to dhe fact that i have ids from one to 255 and not from 0 to 254 for u8::MAX sized pool
             let write_indx = (desc.id.as_ref().unwrap().0 - 1) as usize;
 
+            // println!(
+            //     "push() desc.id [{}], desc.len {}, desc.ptr 0x{:x} is_write {}",
+            //     write_indx, desc.len, desc.ptr as usize, is_write
+            // );
             let descriptor = if is_indirect {
                 assert!(len == 1);
                 if is_write {
@@ -205,15 +210,19 @@ impl DescrRing {
             let cur_ring_index = self.read_idx as usize % self.used_ring.ring.len();
             let used_elem = self.used_ring.ring[cur_ring_index];
 
+            // println!(
+            //     "poll() read_idx [{}], cur_ring_index [{}], used_elem id {}, len {}",
+            //     self.read_idx, cur_ring_index, used_elem.id, used_elem.len
+            // );
             let tkn = unsafe { &mut *(self.ref_ring[used_elem.id as usize]) };
 
-            if tkn.buff_tkn.as_ref().unwrap().recv_buff.as_ref().is_some() {
-                tkn.buff_tkn
-                    .as_mut()
-                    .unwrap()
-                    .restr_size(None, Some(used_elem.len as usize))
-                    .unwrap();
-            }
+            // if tkn.buff_tkn.as_ref().unwrap().recv_buff.as_ref().is_some() {
+            //     tkn.buff_tkn
+            //         .as_mut()
+            //         .unwrap()
+            //         .restr_size(None, Some(used_elem.len as usize));
+            //         // .unwrap();
+            // }
             match tkn.await_queue {
                 Some(_) => {
                     tkn.state = TransferState::Finished;
@@ -414,9 +423,17 @@ impl SplitVq {
         }
 
         // Provide memory areas of the queues data structures to the device
-        vq_handler.set_ring_addr(VAddr::from(table_raw as usize).to_physical_address().value());
+        vq_handler.set_ring_addr(
+            VAddr::from(table_raw as usize)
+                .to_physical_address()
+                .value(),
+        );
         // As usize is safe here, as the *mut EventSuppr raw pointer is a thin pointer of size usize
-        vq_handler.set_drv_ctrl_addr(VAddr::from(avail_raw as usize).to_physical_address().value());
+        vq_handler.set_drv_ctrl_addr(
+            VAddr::from(avail_raw as usize)
+                .to_physical_address()
+                .value(),
+        );
         vq_handler.set_dev_ctrl_addr(VAddr::from(used_raw as usize).to_physical_address().value());
 
         let descr_ring = DescrRing {
@@ -870,6 +887,11 @@ impl SplitVq {
         inputs: &[&[u8]],
         outputs: &[&mut [u8]],
     ) -> Result<BufferToken, VirtqError> {
+        // println!(
+        //     "prep_buffer inputs_len {} outputs len {}",
+        //     inputs.len(),
+        //     outputs.len()
+        // );
         if inputs.is_empty() && outputs.is_empty() {
             return Err(VirtqError::BufferNotSpecified);
         }
@@ -895,6 +917,7 @@ impl SplitVq {
                 len,
                 next_write: 0,
             };
+            // println!("prep_buffer send_buff len {}", len);
             send_buff = Some(buffer);
             ret_send = true;
         }
@@ -916,6 +939,7 @@ impl SplitVq {
                 len,
                 next_write: 0,
             };
+            // println!("prep_buffer recv_buff len {}", len);
             recv_buff = Some(buffer);
             ret_recv = true;
         }

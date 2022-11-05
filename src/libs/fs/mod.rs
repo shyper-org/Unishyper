@@ -9,28 +9,47 @@ pub mod interface;
 
 use alloc::boxed::Box;
 
-/// By default, the terminal's fs operation is operated under FAT-fs's directory.
-#[cfg(not(feature = "unilib"))]
-pub const FS_ROOT: &str = "/fatfs/";
+#[cfg(feature = "fat")]
+pub const FAT_FS_ROOT: &str = "/fatfs/";
 
 #[cfg(feature = "unilib")]
-pub const FS_ROOT: &str = "/unilibfs/";
+pub const UNILIB_FS_ROOT: &str = "/unilibfs/";
+
+#[cfg(all(not(feature = "fat"), not(feature = "unilib")))]
+compile_error!("When \"fs\" feature is enabled, you need to choose fs type, which means at least one of the  features \"fat\" and \"unilib\" should be enabled.");
+
+/// By default, the terminal's fs operation is operated under FAT-fs's directory.
+// #[cfg(not(feature = "unilib"))]
+#[cfg(all(feature = "fat", not(feature = "unilib")))]
+pub const FS_ROOT: &str = FAT_FS_ROOT;
+
+#[cfg(all(feature = "unilib", not(feature = "fat")))]
+pub const FS_ROOT: &str = UNILIB_FS_ROOT;
+
+#[cfg(all(feature = "fat", feature = "unilib"))]
+pub const FS_ROOT: &str = "";
 
 pub fn init() {
     #[cfg(feature = "fat")]
-    fs::FILESYSTEM
-        .lock()
-        .mount("fatfs", Box::new(fat::Fatfs::singleton()))
-        .expect("Mount failed!!!");
+    {
+        fs::FILESYSTEM
+            .lock()
+            .mount("fatfs", Box::new(fat::Fatfs::singleton()))
+            .expect("Mount failed!!!");
+        info!("fat fs mount success on \"{}\".", FAT_FS_ROOT);
+    }
 
     #[cfg(feature = "unilib")]
-    fs::FILESYSTEM
-        .lock()
-        .mount("unilibfs", Box::new(unilib::UnilibFs::new()))
-        .expect("Mount failed!!!");
-
+    {
+        fs::FILESYSTEM
+            .lock()
+            .mount("unilibfs", Box::new(unilib::UnilibFs::new()))
+            .expect("Mount failed!!!");
+        info!("unilib fs mount success on \"{}\".", UNILIB_FS_ROOT);
+    }
     info!("fs init success.");
 
+    // This is just for uni-lib test during development.
     if false {
         use alloc::vec;
         use alloc::string::String;
@@ -166,6 +185,14 @@ fn stat(_file: *const u8, _st: usize) -> i32 {
 }
 
 pub fn print_dir(path: &str) -> Result<(), FileError> {
+    #[cfg(all(feature = "fat", feature = "unilib"))]
+    if path == "" {
+        println!("[  ]:[T] [size]\t[name]");
+        println!("[{:>2}]:[{}] {:>5}\t{}", 0, "d", "-", FAT_FS_ROOT);
+        println!("[{:>2}]:[{}] {:>5}\t{}", 1, "d", "-", UNILIB_FS_ROOT);
+        return Ok(());
+    }
+
     let fs = fs::FILESYSTEM.lock();
     fs.print_dir(path)
 }

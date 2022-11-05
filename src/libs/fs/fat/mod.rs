@@ -38,13 +38,13 @@ static FATFS: Once<Fatfs> = Once::new();
 
 impl Fatfs {
     fn new() -> Self {
-        let fs = FileSystem::new(DiskCursor::new(0), FsOptions::new()).expect("FATFS init");
+        let fs = FileSystem::new(DiskCursor::new(0), FsOptions::new()).expect("FATFS init failed");
         let fd2file = RefCell::new(BTreeMap::new());
+        info!("fat fs init success.");
         Fatfs { fs, fd2file }
     }
     pub fn singleton() -> &'static Self {
         FATFS.call_once(|| Fatfs::new());
-        info!("fat fs init success.");
         FATFS.get().unwrap()
     }
 }
@@ -124,6 +124,7 @@ impl PosixFileSystem for &Fatfs {
     }
 
     fn create_dir(&self, path: &str) -> Result<(), FileError> {
+        debug!("create_dir on path {}", path);
         let fs = &self.fs;
         let root = fs.root_dir();
         match root.create_dir(path) {

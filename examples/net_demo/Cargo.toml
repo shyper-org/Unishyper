@@ -19,20 +19,30 @@ qemu = [
     "alloc",
     "rust_shyper_os/alloc",
     "rust_shyper_os/tcp", 
-    "rust_shyper_os/qemu"
+    "rust_shyper_os/qemu",
+    "rust_shyper_os/serial",
     ]
 shyper = [
     "alloc", 
     "rust_shyper_os/alloc", 
     "rust_shyper_os/tcp", 
-    "rust_shyper_os/shyper"
+    "rust_shyper_os/shyper",
+    "rust_shyper_os/serial",
     ]
 alloc = []
 
 [[bin]]
-name = "server"
-path = "src/server.rs"
+name = "server-bw"
+path = "src/tcp-bandwidth/server.rs"
 
 [[bin]]
-name = "client"
-path = "src/client.rs"
+name = "client-bw"
+path = "src/tcp-bandwidth/client.rs"
+
+[[bin]]
+name = "server-latency"
+path = "src/tcp-latency/server.rs"
+
+[[bin]]
+name = "client-latency"
+path = "src/tcp-latency/client.rs"

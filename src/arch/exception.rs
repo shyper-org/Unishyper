@@ -1,7 +1,9 @@
-use cortex_a::registers::{ESR_EL1, VBAR_EL1, TPIDRRO_EL0};
+use cortex_a::registers::{ESR_EL1, VBAR_EL1, TPIDRRO_EL0, DAIF};
 use tock_registers::interfaces::{Readable, Writeable};
 
+use crate::drivers::INTERRUPT_CONTROLLER;
 use crate::libs::traits::ArchTrait;
+use crate::libs::interrupt::*;
 
 use crate::arch::ContextFrame;
 
@@ -21,21 +23,23 @@ unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
 
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) -> usize {
+    let irq = INTERRUPT_CONTROLLER.fetch();
     // debug!(
-    //     "current_el_sp0_irq, thread [{}], ctx on user_sp {:p}\n",
+    //     "current_el_sp0_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on user_sp {:p}\n",
     //     TPIDRRO_EL0.get(),
+    //     crate::arch::Arch::curent_privilege(),
+    //     irq.unwrap(),
+    //     DAIF.get(),
     //     ctx
     // );
     // println!("{}", ctx.read());
-    use crate::libs::interrupt::*;
 
     // Store current context's pointer on current core struct.
     // Note: ctx is just a pointer to current core stack.
     let core = crate::libs::cpu::cpu();
     core.set_current_sp(ctx as usize);
 
-    use crate::drivers::{gic::INT_TIMER, INTERRUPT_CONTROLLER};
-    let irq = INTERRUPT_CONTROLLER.fetch();
+    use crate::drivers::gic::INT_TIMER;
     match irq {
         Some(INT_TIMER) => {
             crate::libs::timer::interrupt();
@@ -75,8 +79,16 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
-    warn!("current_el_spx_irq");
-    current_el_sp0_irq(ctx);
+    warn!(
+        "current_el_spx_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on user_sp {:p}\n",
+        TPIDRRO_EL0.get(),
+        crate::arch::Arch::curent_privilege(),
+        INTERRUPT_CONTROLLER.fetch().unwrap(),
+        DAIF.get(),
+        ctx
+    );
+    println!("{}", ctx.read());
+    loop {}
 }
 
 #[no_mangle]

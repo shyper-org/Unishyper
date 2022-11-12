@@ -1,7 +1,6 @@
 *target/
 .vscode
-*Cargo.lock
+*/Cargo.lock
 Cargo.lock
 disk.img
-examples/net_test/server
-examples/net_test/client
+examples/linux_test/*

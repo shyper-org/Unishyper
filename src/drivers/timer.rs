@@ -10,6 +10,7 @@ pub fn next() {
     CNTV_CTL_EL0.write(CNTV_CTL_EL0::ENABLE.val(1) + CNTV_CTL_EL0::IMASK.val(0));
 }
 
+/// Clock frequency. Indicates the system counter clock frequency, in Hz.
 pub fn frequency() -> usize {
     CNTFRQ_EL0.get() as usize
 }

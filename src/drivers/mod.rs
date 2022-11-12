@@ -2,6 +2,8 @@ pub mod smc;
 pub mod gic;
 pub mod psci;
 pub mod timer;
+
+#[cfg(feature = "serial")]
 pub mod uart;
 
 #[cfg(feature = "fat")]

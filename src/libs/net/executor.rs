@@ -154,30 +154,36 @@ where
         }
 
         // These code segment can be delete to improve network performance.
-        
-        // let now = now();
-        // Return an advisory wait time for calling [poll] the next time.
-        let delay = network_delay(now()).map(|d| d.total_millis());
+        if false {
+            // let now = now();
+            // Return an advisory wait time for calling [poll] the next time.
+            let delay = network_delay(now()).map(|d| d.total_millis());
 
-        // debug!("block_on, Poll not Ready, get delay {:?}", delay);
+            // debug!("block_on, Poll not Ready, get delay {:?}", delay);
 
-        if delay.unwrap_or(10_000) > 100 {
-            let unparked = thread_notify.unparked.swap(false, Ordering::AcqRel);
-            // info!(
-            //     "block_on() unparked {} delay {:?}",
-            //     unparked, delay
-            // );
-            if !unparked {
-                if delay.is_some() {
-                    trace!("block_on() unparked {} delay {:?} now {} ms", unparked, delay, now().millis());
-                    thread_block_current_with_timeout(delay.unwrap() as usize);
+            if delay.unwrap_or(10_000) > 100 {
+                let unparked = thread_notify.unparked.swap(false, Ordering::AcqRel);
+                // info!(
+                //     "block_on() unparked {} delay {:?}",
+                //     unparked, delay
+                // );
+                if !unparked {
+                    if delay.is_some() {
+                        trace!(
+                            "block_on() unparked {} delay {:?} now {} ms",
+                            unparked,
+                            delay,
+                            now().millis()
+                        );
+                        thread_block_current_with_timeout(delay.unwrap() as usize);
+                    }
+                    // allow interrupts => NIC thread is able to run
+                    set_polling_mode(false);
+                    // switch to another task
+                    thread_yield();
+                    // Polling mode => no NIC interrupts => NIC thread should not run
+                    set_polling_mode(true);
                 }
-                // allow interrupts => NIC thread is able to run
-                set_polling_mode(false);
-                // switch to another task
-                thread_yield();
-                // Polling mode => no NIC interrupts => NIC thread should not run
-                set_polling_mode(true);
             }
         }
     }

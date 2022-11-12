@@ -1,12 +1,18 @@
 use core::fmt;
+
+#[cfg(feature = "serial")]
 use core::fmt::Write;
 
+#[cfg(feature = "serial")]
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 
+#[cfg(feature = "serial")]
 pub struct Writer;
 
+#[cfg(feature = "serial")]
 static LOCK: SpinlockIrqSave<Writer> = SpinlockIrqSave::new(Writer);
 
+#[cfg(feature = "serial")]
 impl fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for b in s.bytes() {
@@ -16,9 +22,12 @@ impl fmt::Write for Writer {
     }
 }
 
-pub fn print_arg(args: fmt::Arguments) {
-    let mut lock = LOCK.lock();
-    lock.write_fmt(args).unwrap();
+pub fn print_arg(_args: fmt::Arguments) {
+    #[cfg(feature = "serial")]
+    {
+        let mut lock = LOCK.lock();
+        lock.write_fmt(_args).unwrap();
+    }
 }
 
 #[cfg(feature = "terminal")]
@@ -31,7 +40,7 @@ pub fn getchar() -> u8 {
             b'\n' => {
                 let c = char as u8;
                 break c;
-            },
+            }
             b'\r' | 32..=126 => {
                 // carriage return or visible
                 let c = char as u8;

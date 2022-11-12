@@ -54,6 +54,7 @@ pub extern "C" fn loader_main(core_id: usize) {
 
     if core_id == 0 {
         // Init serial output.
+        #[cfg(feature = "serial")]
         crate::drivers::uart::init();
         mm::heap::init();
         let _ = logger::init();

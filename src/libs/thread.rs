@@ -427,6 +427,9 @@ pub fn current_thread() -> Result<Thread, Error> {
 /// This function will call `thread_schedule` to schedule to next active thread.
 #[allow(unreachable_code)]
 pub fn thread_exit() {
+
+    crate::arch::irq::disable();
+    
     let result = current_thread();
     match result {
         Ok(t) => {

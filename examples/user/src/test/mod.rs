@@ -13,6 +13,7 @@ pub fn run_tests() {
     // thread_spawn_bg(thread::test_thread_switch, 1, "thread_test");
     // thread_spawn(thread::test_thread_switch, 1);
     // thread_spawn_bg(sem::semaphore_test, 1, "semaphore_test");
+    thread_spawn(thread::test_thread_getid, 1);
     #[cfg(feature = "unwind")]
     thread_spawn_bg(recover::test_recover_thread, 1, "recover_test");
 }

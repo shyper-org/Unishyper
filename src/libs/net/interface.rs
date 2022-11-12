@@ -62,10 +62,16 @@ where
     }
 
     pub fn poll_common(&mut self, timestamp: Instant) {
+        // let mut start = crate::libs::timer::current_us();
+        // let _start = start;
         while self.iface.poll(timestamp).unwrap_or(true) {
             // just to make progress
             // debug!("NetworkInterface::poll_common::poll:send or receive packets!!!");
+            // let end = crate::libs::timer::current_us();
+            // println!("poll_common , one pull use {} us, current {} us", end - start, end);
+            // start = crate::libs::timer::current_us();
         }
+        // println!("poll_common end , totally use {} us, current {} us", start - _start, start);
     }
 
     pub fn poll_delay(&mut self, timestamp: Instant) -> Option<Duration> {
@@ -92,16 +98,33 @@ impl AsyncSocket {
         let mut guard = NIC.lock();
         let nic = guard.as_nic_mut().unwrap();
         let res = {
+            // let start = crate::libs::timer::current_us();
+
             let s = nic.iface.get_socket::<TcpSocket<'_>>(self.0);
-            f(s)
+            let res = f(s);
+
+            // let end = crate::libs::timer::current_us();
+            // println!(
+            //     "AsyncSocket with() f use {} us, current {} us",
+            //     end - start,
+            //     end
+            // );
+            res
         };
         // To flush send buffers.
         // After using the socket, the network interface has to poll the nic,
         // This is required to flush all send buffers.
         let t = now();
+        // let start = t.total_micros() as usize;
         if nic.poll_delay(t).map(|d| d.total_millis()).unwrap_or(0) == 0 {
             nic.poll_common(t);
         }
+        // let end = crate::libs::timer::current_us();
+        // println!(
+        //     "AsyncSocket with() poll_common use {} us, current {} us",
+        //     end - start,
+        //     end
+        // );
         res
     }
 
@@ -344,6 +367,20 @@ async fn network_run() {
 //         }
 //     }
 // }
+
+#[inline]
+pub fn network_poll() {
+    // debug!("network poll");
+    if let Ok(mut guard) = NIC.try_lock() {
+        if let NetworkState::Initialized(nic) = guard.deref_mut() {
+            let time = now();
+            nic.poll_common(time);
+            // if let Some(delay) = nic.poll_delay(time).map(|d| d.total_micros()) {
+            //     debug!("network poll, get delay {}", delay);
+            // }
+        }
+    }
+}
 
 pub fn network_init() {
     info!("network_init() lib init");

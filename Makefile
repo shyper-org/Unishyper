@@ -17,9 +17,9 @@ EXAMPLES_DIR := $(shell find examples -maxdepth 1 -mindepth 1 -type d)
 USER_DIR := examples/user
 FS_DEMO_DIR := examples/fs_demo
 NET_DEMO_DIR := examples/net_demo
-NET_TEST_DIR := examples/net_test
+LINUX_TEST_DIR := examples/linux_test
 
-.PHONY: all build clean user net_server net_client disk tap_setup net_server_debug net_client_debug net_test
+.PHONY: all build clean user net_bw_server net_bw_client disk tap_setup linux_test
 
 build: 
 	cargo build --lib --target ./cfg/${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
@@ -46,11 +46,17 @@ user:
 fs:
 	make -C ${FS_DEMO_DIR} emu
 
-net_server:
-	make -C ${NET_DEMO_DIR} server_emu
+net_bw_server:
+	make -C ${NET_DEMO_DIR} server_bw_emu
 
-net_client:
-	make -C ${NET_DEMO_DIR} client_emu
+net_bw_client:
+	make -C ${NET_DEMO_DIR} client_bw_emu
+
+net_latency_server:
+	make -C ${NET_DEMO_DIR} server_latency_emu
+
+net_latency_client:
+	make -C ${NET_DEMO_DIR} client_latency_emu
 
 user_debug:
 	make -C ${USER_DIR} debug
@@ -58,14 +64,8 @@ user_debug:
 fs_debug:
 	make -C ${FS_DEMO_DIR} debug
 
-net_server_debug:
-	make -C ${NET_DEMO_DIR} server_debug
-
-net_client_debug:
-	make -C ${NET_DEMO_DIR} client_debug
-
-net_test:
-	make -C ${NET_TEST_DIR} build
+linux_test:
+	make -C ${LINUX_TEST_DIR} build
 
 tx2:
 	MACHINE=tx2 make -C ${USER_DIR} tx2

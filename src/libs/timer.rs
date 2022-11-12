@@ -1,9 +1,10 @@
 #[allow(dead_code)]
 const TIMER_SEC_TO_MS: usize = 1000;
 #[allow(dead_code)]
-const TIMER_SEC_TO_US: usize = 1000000;
+const TIMER_SEC_TO_US: usize = 1000_000;
 
 #[allow(dead_code)]
+/// Get current time in microsecond(10 ^ -6 second).
 pub fn current_us() -> usize {
     let count = crate::drivers::timer::counter();
     let freq = crate::drivers::timer::frequency();
@@ -11,6 +12,7 @@ pub fn current_us() -> usize {
 }
 
 #[allow(dead_code)]
+/// Get current time in millisecond(10 ^ -3 second).
 pub fn current_ms() -> usize {
     let count = crate::drivers::timer::counter();
     let freq = crate::drivers::timer::frequency();
@@ -18,6 +20,7 @@ pub fn current_ms() -> usize {
 }
 
 #[allow(dead_code)]
+/// Get current time in second.
 pub fn current_sec() -> usize {
     let count = crate::drivers::timer::counter();
     let freq = crate::drivers::timer::frequency();

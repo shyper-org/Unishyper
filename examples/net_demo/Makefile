@@ -17,9 +17,7 @@ endif
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL_DIR := target/${ARCH}${MACHINE}/${PROFILE}
-SERVER_KERNEL := ${KERNEL_DIR}/server
-CLIENT_KERNEL := ${KERNEL_DIR}/client
+KERNEL_DIR := target/${ARCH}${MACHINE}/${PROFILE}/
 
 # Arch-specific tools
 OBJCOPY := aarch64-elf-objcopy
@@ -27,49 +25,76 @@ OBJDUMP := aarch64-elf-objdump
 
 .PHONY: server client clean
 
-server:
-	cargo build --target ${TARGET_CFG} --bin server \
+server-bw:
+	cargo build --target ${TARGET_CFG} --bin $@ \
 		-Z build-std=core,alloc ${CARGO_FLAGS}
-	${OBJCOPY} ${SERVER_KERNEL} -O binary ${SERVER_KERNEL}.bin
-	${OBJDUMP} --demangle -d ${SERVER_KERNEL} > ${SERVER_KERNEL}.asm
+	${OBJCOPY} ${KERNEL_DIR}$@ -O binary ${KERNEL_DIR}$@.bin
+	${OBJDUMP} --demangle -d ${KERNEL_DIR}$@ > ${KERNEL_DIR}$@.asm
 
-client:
-	cargo build --target ${TARGET_CFG} --bin client \
+client-bw:
+	cargo build --target ${TARGET_CFG} --bin $@ \
 		-Z build-std=core,alloc ${CARGO_FLAGS}
-	${OBJCOPY} ${CLIENT_KERNEL} -O binary ${CLIENT_KERNEL}.bin
-	${OBJDUMP} --demangle -d ${CLIENT_KERNEL} > ${CLIENT_KERNEL}.asm
+	${OBJCOPY} ${KERNEL_DIR}$@ -O binary ${KERNEL_DIR}$@.bin
+	${OBJDUMP} --demangle -d ${KERNEL_DIR}$@ > ${KERNEL_DIR}$@.asm
 
-QEMU_COMMAND := qemu-system-aarch64 -M virt -cpu cortex-a53 \
-				-device loader,file=${CLIENT_KERNEL},addr=0x80000000,force-raw=on
+server-latency:
+	cargo build --target ${TARGET_CFG} --bin $@ \
+		-Z build-std=core,alloc ${CARGO_FLAGS}
+	${OBJCOPY} ${KERNEL_DIR}$@ -O binary ${KERNEL_DIR}$@.bin
+	${OBJDUMP} --demangle -d ${KERNEL_DIR}$@ > ${KERNEL_DIR}$@.asm
+
+client-latency:
+	cargo build --target ${TARGET_CFG} --bin $@ \
+		-Z build-std=core,alloc ${CARGO_FLAGS}
+	${OBJCOPY} ${KERNEL_DIR}$@ -O binary ${KERNEL_DIR}$@.bin
+	${OBJDUMP} --demangle -d ${KERNEL_DIR}$@ > ${KERNEL_DIR}$@.asm
+
 QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no \
 						-device virtio-net-device,mac=48:b0:2d:0e:6e:9e,netdev=tap0 \
 						-global virtio-mmio.force-legacy=false
 QEMU_COMMON_OPTIONS := -serial stdio -display none -smp 4 -m 2048
 
-server_emu: server
+server_bw_emu: server-bw
 	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
-		-device loader,file=${SERVER_KERNEL},addr=0x80000000,force-raw=on \
+		-device loader,file=${KERNEL_DIR}$<,addr=0x80000000,force-raw=on \
 		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS} \
-		-kernel ${SERVER_KERNEL}.bin -s
+		-kernel ${KERNEL_DIR}$<.bin -s
 
-client_emu: client
-	sudo ${QEMU_COMMAND} \
+client_bw_emu: client-bw
+	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${KERNEL_DIR}$<,addr=0x80000000,force-raw=on \
 		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS} \
-		-kernel ${CLIENT_KERNEL}.bin -s
+		-kernel ${KERNEL_DIR}$<.bin -s
 
-server_debug: server
-	sudo ${QEMU_COMMAND} \
+server_latency_emu: server-latency
+	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${KERNEL_DIR}$<,addr=0x80000000,force-raw=on \
 		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS} \
-		-kernel ${SERVER_KERNEL}.bin -s -S
+		-kernel ${KERNEL_DIR}$<.bin -s
 
-client_debug: client
-	sudo ${QEMU_COMMAND} \
+client_latency_emu: client-latency
+	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${KERNEL_DIR}$<,addr=0x80000000,force-raw=on \
 		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS} \
-		-kernel ${CLIENT_KERNEL}.bin -s -S
+		-kernel ${KERNEL_DIR}$<.bin -s
+
+server_bw_debug: server-bw
+	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${KERNEL_DIR}$<,addr=0x80000000,force-raw=on \
+		${QEMU_COMMON_OPTIONS} \
+		${QEMU_NETWORK_OPTIONS} \
+		-kernel ${KERNEL_DIR}$<.bin -s -S
+
+client_bw_debug: client-bw
+	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${KERNEL_DIR}$<,addr=0x80000000,force-raw=on \
+		${QEMU_COMMON_OPTIONS} \
+		${QEMU_NETWORK_OPTIONS} \
+		-kernel ${KERNEL_DIR}$<.bin -s -S
 
 clean:
 	-cargo clean

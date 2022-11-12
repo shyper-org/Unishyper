@@ -69,7 +69,7 @@ impl TcpStream {
         };
         for addr in addrs {
             match tcpstream::connect(addr.ip().to_string().as_bytes(), addr.port(), None) {
-                Ok(handle) =>  return Ok(TcpStream(Arc::new(Socket(handle)))),
+                Ok(handle) => return Ok(TcpStream(Arc::new(Socket(handle)))),
                 _ => continue,
             }
         }
@@ -116,13 +116,17 @@ impl TcpStream {
     }
 
     pub fn read(&self, buffer: &mut [u8]) -> IoResult<usize> {
-        self.read_vectored(&mut [IoSliceMut::new(buffer)])
+        // self.read_vectored(&mut [IoSliceMut::new(buffer)])
+        let ret = tcpstream::read(*self.0.as_inner(), &mut buffer[0..])
+            .map_err(|_| "Unable to read on socket")?;
+            Ok(ret)
     }
 
     pub fn read_exact(&mut self, buf: &mut [u8]) -> IoResult<()> {
         default_read_exact(self, buf)
     }
 
+    // Why use vectored???
     pub fn read_vectored(&self, ioslice: &mut [IoSliceMut<'_>]) -> IoResult<usize> {
         let mut size: usize = 0;
 
@@ -144,9 +148,13 @@ impl TcpStream {
     }
 
     pub fn write(&self, buffer: &[u8]) -> IoResult<usize> {
-        self.write_vectored(&[IoSlice::new(buffer)])
+        // self.write_vectored(&[IoSlice::new(buffer)])
+        let size = tcpstream::write(*self.0.as_inner(), buffer)
+            .map_err(|_| "Unable to write on socket")?;
+        Ok(size)
     }
 
+    // Why use vectored???
     pub fn write_vectored(&self, ioslice: &[IoSlice<'_>]) -> IoResult<usize> {
         let mut size: usize = 0;
 

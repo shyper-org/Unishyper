@@ -33,3 +33,28 @@ pub extern "C" fn test_thread_switch(_: usize) {
     println!("[[TEST]] test_thread_switch {}/10000", sum);
     println!("[TEST] thread finished***");
 }
+
+#[allow(dead_code)]
+pub extern "C" fn test_thread_getid(_: usize) {
+    println!("[TEST] thread get pid test begin ===");
+    irq_disable();
+    let mut results = vec![];
+    for i in 0..10010 {
+        let icntr = current_cycle();
+        let _ = current_thread_id();
+        let icntr2 = current_cycle();
+        if i >= 10 {
+            results.push(icntr2 - icntr);
+        }
+        if i % 1000 == 0 || i < 10 {
+            println!("round [{}] cycle {}", i, icntr2 - icntr);
+        }
+    }
+    let mut sum = 0;
+    for result in results {
+        // println!("[{}] result {} cycle", i, result);
+        sum += result;
+    }
+    println!("[[TEST]] test_thread_getid {}/10000", sum);
+    println!("[TEST] thread get pid test finished***");
+}

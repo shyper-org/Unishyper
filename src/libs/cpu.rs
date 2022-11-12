@@ -75,10 +75,10 @@ impl Core {
     pub fn schedule(&mut self) {
         if let Some(t) = scheduler().pop() {
             self.run(t);
-        } else {
-            // debug!("scheduler empty, alloc idle thread\n");
+        } else if self.running_thread().is_none() {
+            debug!("scheduler empty, run idle thread\n");
             self.run(self.idle_thread());
-            crate::arch::irq::enable();
+            // crate::arch::irq::enable();
         }
     }
 

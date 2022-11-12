@@ -130,12 +130,12 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
 
  To run network test, you may follow these steps:
 
- * use gcc to compile socket_client.c in examples/net_test dir
-   * `gcc examples/net_test/socket_client.c -o examples/net_test/client`
+ * use gcc to compile socket_client.c in examples/linux_test dir
+   * `gcc examples/linux_test/socket_client.c -o examples/linux_test/client`
  * spawn `netdemo_server ` thread in examples/net_demo/main.c
  * run `sudo tcpdump -i tap0 -vvv -nn -e -p net 10.0.0 and not proto \\udp` to trace useful network packets
  * run `make net_emu`
- * run `/examples/net_test/client `
+ * run `/examples/linux_test/client `
 
  ## FS Support
 

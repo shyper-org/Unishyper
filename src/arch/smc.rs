@@ -1,5 +1,6 @@
 #[cfg(not(feature = "tx2"))]
 #[allow(unused)]
+#[cfg(target_arch = "aarch64")]
 pub fn smc_call(x0: u64, x1: u64, x2: u64, x3: u64, x4: u64, x5: u64, x6: u64, x7: u64) -> u64 {
     let r;
     unsafe {
@@ -10,6 +11,7 @@ pub fn smc_call(x0: u64, x1: u64, x2: u64, x3: u64, x4: u64, x5: u64, x6: u64, x
 }
 
 #[cfg(feature = "tx2")]
+#[cfg(target_arch = "aarch64")]
 pub fn smc_call(x0: u64, x1: u64, x2: u64, x3: u64, x4: u64, x5: u64, x6: u64, x7: u64) -> u64 {
     let r;
     unsafe {

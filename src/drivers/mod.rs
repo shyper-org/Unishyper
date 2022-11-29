@@ -1,4 +1,3 @@
-pub mod smc;
 pub mod gic;
 pub mod psci;
 pub mod timer;

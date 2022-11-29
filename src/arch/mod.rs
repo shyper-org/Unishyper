@@ -12,3 +12,4 @@ mod mm;
 mod mmu;
 pub mod page_table;
 pub mod registers;
+pub mod smc;

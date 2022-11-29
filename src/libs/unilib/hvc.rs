@@ -34,5 +34,5 @@ macro_rules! hvc_mode {
 /// ## Return value
 /// * Return hvc call result from hypervisor pass through x0 register.
 pub fn hvc_call(x0: usize, x1: usize, x2: usize, hvc_mode: usize) -> u64 {
-    crate::drivers::smc::smc_call(x0 as u64, x1 as u64, x2 as u64, 0, 0, 0, 0, hvc_mode as u64)
+    crate::arch::smc::smc_call(x0 as u64, x1 as u64, x2 as u64, 0, 0, 0, 0, hvc_mode as u64)
 }

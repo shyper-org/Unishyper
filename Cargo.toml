@@ -68,6 +68,8 @@ fs = [
   "ioslice",
 ]
 qemu = []
+scheduler-percore = ["smp"]
+scheduler-global = ["smp"]
 serial = []
 shyper = []
 smp = []

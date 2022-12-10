@@ -32,6 +32,7 @@ fn main() {
     //     thread_yield();
     //     println!("round [{}], yield back", i);
     // }
-    // loop{}
+    println!("enter loop on main!!!");
+    loop{}
     exit();
 }

@@ -1,15 +1,18 @@
 use spin::Once;
 
 use crate::board::BOARD_CORE_NUMBER;
-use crate::libs::scheduler::scheduler;
 use crate::libs::thread::Thread;
 use crate::libs::traits::*;
+use crate::libs::scheduler::{Scheduler, ScheduerType};
+
+pub type CoreId = usize;
 
 pub struct Core {
     current_stack_pointer: usize,
     // pointer points at stack
     running_thread: Option<Thread>,
     idle_thread: Once<Thread>,
+    sched: ScheduerType,
 }
 
 // Note: only the core itself can be allowed to access its `Core`
@@ -21,6 +24,7 @@ const CORE: Core = Core {
     running_thread: None,
     current_stack_pointer: 0xDEAD_BEEF,
     idle_thread: Once::new(),
+    sched: ScheduerType::None,
 };
 
 static mut CORES: [Core; BOARD_CORE_NUMBER] = [CORE; BOARD_CORE_NUMBER];
@@ -56,15 +60,17 @@ impl Core {
                 let idle_thread_id = (core_id + 1) * 10 + (core_id + 1);
                 let t = crate::libs::thread::thread_alloc(
                     Some(idle_thread_id),
+                    Some(core_id),
                     idle_thread as usize,
                     core_id,
                     0,
                     true,
                 );
                 debug!(
-                    "Alloc idle thread [{}] on core [{}]",
+                    "Alloc idle thread [{}] on core [{}], context on sp {:x}",
                     t.tid(),
-                    crate::arch::Arch::core_id()
+                    crate::arch::Arch::core_id(),
+                    t.last_stack_pointer()
                 );
                 self.idle_thread.call_once(|| t).clone()
             }
@@ -72,19 +78,37 @@ impl Core {
         }
     }
 
-    pub fn schedule(&mut self) {
-        if let Some(t) = scheduler().pop() {
-            self.run(t);
-        } else if self.running_thread().is_none() {
-            debug!("scheduler empty, run idle thread\n");
-            self.run(self.idle_thread());
-            // crate::arch::irq::enable();
+    pub fn set_scheduler(&mut self, scheduler: ScheduerType) {
+        self.sched = scheduler;
+        let core_id = crate::arch::Arch::core_id();
+        info!("Scheduler init ok on core [{}]", core_id);
+    }
+
+    pub fn scheduler(&self) -> &impl Scheduler {
+        match &self.sched {
+            ScheduerType::None => panic!("scheduler is None"),
+            ScheduerType::PerCoreSchedRoundRobin(rr) => rr,
+            ScheduerType::GlobalSchedRoundRobin => {
+                crate::libs::scheduler::global_scheduler()
+            },
         }
     }
 
-    pub fn schedule_to(&mut self, t: Thread) {
-        self.run(t);
+    pub fn schedule(&mut self) {
+        if let Some(t) = self.scheduler().pop() {
+            self.run(t);
+        } else if self.running_thread().is_none() {
+            debug!(
+                "scheduler empty on core [{}], run idle thread\n",
+                crate::arch::Arch::core_id()
+            );
+            self.run(self.idle_thread());
+        }
     }
+
+    // pub fn schedule_to(&mut self, t: Thread) {
+    //     self.run(t);
+    // }
 
     fn run(&mut self, t: Thread) {
         use cortex_a::registers::TPIDRRO_EL0;
@@ -98,7 +122,7 @@ impl Core {
 
             // add back to scheduler queue
             if prev.runnable() {
-                scheduler().add(prev.clone());
+                self.scheduler().add(prev.clone());
             }
 
             // debug!(
@@ -112,9 +136,16 @@ impl Core {
     }
 }
 
+/// Get current CPU structure.
 #[inline(always)]
 pub fn cpu() -> &'static mut Core {
     let core_id = crate::arch::Arch::core_id();
+    unsafe { &mut CORES[core_id] }
+}
+
+/// Get target CPU structure of given cpu id.
+#[inline(always)]
+pub fn get_cpu(core_id: usize) -> &'static mut Core {
     unsafe { &mut CORES[core_id] }
 }
 

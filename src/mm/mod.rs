@@ -14,8 +14,7 @@ pub use self::page_allocator::Page;
 pub use self::frame_allocator::Frame;
 
 // Only run on core 0.
-pub fn init() {
-    info!("page pool init ok");
+pub fn allocator_init() {
     match frame_allocator::init() {
         Ok(_) => {
             info!("frame allocator init ok");
@@ -35,10 +34,8 @@ pub fn init() {
             warn!("page allocator init failed, error {}", e);
         }
     }
-    // After Page allocator and Frame allocator init finished, init user page table.
-    use crate::ArchTrait;
-    crate::arch::Arch::page_table_init();
-    info!("page table init ok");
+    info!("page_allocator init ok");
+    
 }
 
 #[cfg(feature = "terminal")]

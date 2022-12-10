@@ -67,6 +67,7 @@ pub fn init() {
 }
 
 pub fn init_per_core() {
+    // Init interrupt controller.
     use cortex_a::registers::*;
     use tock_registers::interfaces::Writeable;
     DAIF.write(DAIF::I::Masked);
@@ -74,10 +75,13 @@ pub fn init_per_core() {
     crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
     crate::drivers::timer::init();
 
+    // Init page table.
+    crate::arch::page_table::install_page_table();
+
+    // Init PMU.
     let mut pmcr: u32;
     // Performance Monitors Count Enable Clear register.
     let pmcntenclr = u32::MAX as u64;
-    //
     let pmcntenset = 1u64 << 31;
     let pmuserenr = 1u64 << 2 | 1u64;
     unsafe {

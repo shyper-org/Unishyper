@@ -18,6 +18,11 @@ pub fn panic_handler(info: &PanicInfo) -> ! {
                 current_thread().unwrap().tid(),
                 message
             );
+        } else {
+            error!(
+                "PANIC on  None Thread : {}",
+                message
+            );
         }
     }
     if let Some(location) = info.location() {

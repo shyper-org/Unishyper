@@ -12,13 +12,13 @@ pub struct Aarch64ContextFrame {
     gpr: [u64; 31],
     /// By default, spsr is set to 0x44, which is 0b0100_0100 in binray.
     /// (SPSR_EL1::M::EL1t + SPSR_EL1::I::Unmasked + SPSR_EL1::F::Masked).value as u64
-    spsr: u64,            // 31 * 8
+    spsr: u64, // 31 * 8
     /// Exception return address.
     /// During initialization, ELR_EL1 is set to the thread entry address,
     /// which is "thread_start".
-    elr: u64,             // 32 * 8
+    elr: u64, // 32 * 8
     /// Stack pointer.
-    sp: u64,              // 33 * 8
+    sp: u64, // 33 * 8
     /// It's a mark showing the thread is yield from irq or thread_yield.
     /// These two conditions may result in different context restore processes.
     /// 1. from irq: pop_context_first
@@ -79,7 +79,11 @@ impl core::fmt::Display for Aarch64ContextFrame {
         writeln!(
             f,
             "this thread recently yield from '{}'",
-            if self.from_interrupt { "interrupt" } else { "thread_yield" }
+            if self.from_interrupt {
+                "interrupt"
+            } else {
+                "thread_yield"
+            }
         )?;
         Ok(())
     }
@@ -128,7 +132,7 @@ impl ContextFrameTrait for Aarch64ContextFrame {
 /// 2.  call `switch_to_next_stack`, which will call the `core.schedule()` to pick the next thread,
 ///         and switch current stack pointer to next thread.
 /// 3.  when `switch_to_next_stack` returns, the x0 holds the next thread's stack pointer,
-///         we can get if the thread is yield from irq or yield, 
+///         we can get if the thread is yield from irq or yield,
 ///         from irq: jump to pop_context_first.
 ///         from yield, just set up the necessary registers and br 'x30'.
 #[inline(always)]
@@ -142,7 +146,6 @@ pub fn yield_to() {
     }
     // Enable interrupt after return to this thread.
 }
-
 
 use crate::arch::interface::ContextFrame;
 #[no_mangle]

@@ -39,8 +39,6 @@ pub type ContextFrame = super::context_frame::Aarch64ContextFrame;
 
 pub type PageTable = super::page_table::Aarch64PageTable;
 
-pub type CoreId = usize;
-
 pub struct Arch;
 
 impl ArchTrait for Arch {
@@ -74,7 +72,7 @@ impl ArchTrait for Arch {
     }
 
     #[inline(always)]
-    fn core_id() -> CoreId {
+    fn core_id() -> crate::libs::cpu::CoreId {
         MPIDR_EL1.get() as usize & (BOARD_CORE_NUMBER - 1)
     }
 

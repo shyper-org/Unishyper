@@ -160,18 +160,25 @@ pub fn page_table() -> &'static SpinlockIrqSave<Aarch64PageTable> {
 }
 
 pub fn init() {
-    let pgdir_frame = frame_allocator::allocate_frames(1).unwrap();
-    pgdir_frame.start().zero();
-    let pgdir_addr = pgdir_frame.start().start_address();
-    PAGE_TABLE.call_once(|| SpinlockIrqSave::new(PageTable::new(pgdir_frame)));
+    PAGE_TABLE.call_once(|| {
+        let pgdir_frame = frame_allocator::allocate_frames(1).unwrap();
+        pgdir_frame.start().zero();
+        info!(
+            "Page table init ok, dir at {}",
+            pgdir_frame.start().start_address()
+        );
+        SpinlockIrqSave::new(PageTable::new(pgdir_frame))
+    });
+}
 
-    info!("page table init, pgdir frame at {}", pgdir_addr);
-
+/// Install page table for user address,
+/// Store directory in TTBR0_EL1.
+pub fn install_page_table() {
     use cortex_a::registers::TTBR0_EL1;
     use tock_registers::interfaces::Writeable;
-    // Install page table for user address.
-    // TTBR0_EL1.write(TTBR0_EL1::BADDR.val((pgdir_frame.start_address().value() >> 1) as u64));
+    let pgdir_addr = page_table().lock().directory.start().start_address();
     TTBR0_EL1.set(pgdir_addr.value() as u64);
+    info!("Page table is installed");
     crate::arch::Arch::invalidate_tlb();
 }
 

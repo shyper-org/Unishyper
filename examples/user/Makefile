@@ -2,6 +2,8 @@ ARCH ?= aarch64
 PROFILE ?= release
 MACHINE ?= qemu
 
+export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
+
 # Cargo flags.
 ifeq (${PROFILE}, release)
 CARGO_FLAGS = --release  --no-default-features

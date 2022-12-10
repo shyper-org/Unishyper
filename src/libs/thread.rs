@@ -4,15 +4,15 @@ use alloc::sync::Arc;
 use core::fmt;
 use core::mem;
 use core::sync::atomic::AtomicUsize;
-use core::sync::atomic::Ordering::Relaxed;
+use core::sync::atomic::Ordering;
 
 use spin::Mutex;
 
 use crate::arch::{ContextFrame, PAGE_SIZE, STACK_SIZE};
 use crate::libs::traits::ContextFrameTrait;
-use crate::libs::cpu::cpu;
+use crate::libs::cpu::{CoreId, cpu, get_cpu};
+use crate::libs::scheduler::Scheduler;
 use crate::libs::error::*;
-use crate::libs::scheduler::scheduler;
 use crate::mm::address::VAddr;
 use crate::mm::stack::Stack;
 use crate::mm::paging::MappedRegion;
@@ -61,6 +61,9 @@ struct Inner {
 }
 
 struct InnerMut {
+    // Todo: these Mutexes may be removed.
+    affinity_core: Option<CoreId>,
+    // running_core: Mutex<CoreId>,
     status: Mutex<Status>,
     last_stack_pointer: Mutex<usize>,
     mem_regions: Mutex<BTreeMap<VAddr, MappedRegion>>,
@@ -85,6 +88,15 @@ impl Thread {
     pub fn tid(&self) -> Tid {
         self.0.inner.uuid
     }
+
+    pub fn affinity_core(&self) -> Option<CoreId> {
+        self.0.inner_mut.affinity_core
+    }
+
+    // pub fn set_core_id(&self, target_core_id: CoreId) {
+    //     let mut lock = self.0.inner_mut.core_id.lock();
+    //     *lock = target_core_id
+    // }
 
     /// Get thread status.
     pub fn status(&self) -> Status {
@@ -134,7 +146,7 @@ static THREAD_UUID_ALLOCATOR: AtomicUsize = AtomicUsize::new(100);
 
 /// Alloc global unique id for new thread.
 fn new_tid() -> Tid {
-    THREAD_UUID_ALLOCATOR.fetch_add(1, Relaxed)
+    THREAD_UUID_ALLOCATOR.fetch_add(1, Ordering::Relaxed)
 }
 
 /// Store thread IDs and its corresponding thread struct.
@@ -180,10 +192,11 @@ pub fn list_threads() {
 /// * `entry`     - Thread's first executed function, it's the true entry inside the wrapper.
 /// * `arg`       - Thread's first argument.
 /// * `privilege` - Thread's privilige level, if true the thread is set as KERNEL thread, which can not be killed by user.
-/// 
+///
 /// Notes: the generated thread is at Ready state, you need to wake it up.
 pub fn thread_alloc(
     id: Option<usize>,
+    affinity_core: Option<CoreId>,
     start: usize,
     entry: usize,
     arg: usize,
@@ -233,6 +246,7 @@ pub fn thread_alloc(
             stack: stack_region,
         },
         inner_mut: InnerMut {
+            affinity_core,
             status: Mutex::new(Status::Ready),
             last_stack_pointer: Mutex::new(last_stack_pointer.value()),
             mem_regions: Mutex::new(BTreeMap::new()),
@@ -242,7 +256,7 @@ pub fn thread_alloc(
     map.insert(id, t.clone());
 
     debug!(
-        "thread_alloc success id [{}] sp [{} to 0x{:016x}]",
+        "thread_alloc success id [{}]\n\t\t\t\t\t\tsp [{} to 0x{:016x}]",
         id, stack_start, sp
     );
     t
@@ -259,9 +273,9 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 /// Remove it from THREAD_NAME_MAP and THREAD_MAP.
 pub fn thread_destroy(t: &Thread) {
     debug!("Destroy t{}", t.tid());
-    if let Some(current_thread) = crate::libs::cpu::cpu().running_thread() {
+    if let Some(current_thread) = cpu().running_thread() {
         if t.tid() == current_thread.tid() {
-            crate::libs::cpu::cpu().set_running_thread(None);
+            cpu().set_running_thread(None);
         }
     }
     let mut name_map = THREAD_NAME_MAP.lock();
@@ -288,13 +302,30 @@ pub fn thread_destroy_by_tid(tid: Tid) {
     }
 }
 
+static CORE_COUNTER: AtomicUsize = AtomicUsize::new(1);
+
 /// Wake up target thread.
-/// Set its status as Runnable and add it to scheduler().
+/// Set its status as Runnable and add it to target cpu's scheduler.
 pub fn thread_wake(t: &Thread) {
-    debug!("thread_wake set thread [{}] Runnable", t.tid());
     let mut status = t.0.inner_mut.status.lock();
     *status = Status::Runnable;
-    scheduler().add(t.clone());
+
+    let affinity_core_id = match t.affinity_core() {
+        Some(affinity_core_id) => {
+            affinity_core_id
+        }
+        None => {
+            CORE_COUNTER.fetch_add(1, Ordering::SeqCst) % crate::board::BOARD_CORE_NUMBER
+        }
+    };
+
+    let target_cpu = get_cpu(affinity_core_id);
+    target_cpu.scheduler().add(t.clone());
+    debug!(
+        "thread_wake set thread [{}] Runnable on core [{}]",
+        t.tid(),
+        affinity_core_id
+    );
 }
 
 /// Wake up target thread by thread id.
@@ -317,14 +348,23 @@ pub fn thread_wake_to_front(t: &Thread) {
     trace!("thread_wake set thread [{}] as next thread", t.tid());
     let mut status = t.0.inner_mut.status.lock();
     *status = Status::Runnable;
-    scheduler().add_front(t.clone());
+    let affinity_core_id = match t.affinity_core() {
+        Some(affinity_core_id) => {
+            affinity_core_id
+        }
+        None => {
+            CORE_COUNTER.fetch_add(1, Ordering::SeqCst) % crate::board::BOARD_CORE_NUMBER
+        }
+    };
+    let target_cpu = get_cpu(affinity_core_id);
+    target_cpu.scheduler().add(t.clone());
 }
 
 /// Wake up target thread as the next scheduled by thread id.
 /// See thread_wake_to_front for more details.
 pub fn thread_wake_to_front_by_tid(tid: Tid) {
     if tid == current_thread_id() {
-        // debug!("Try to wake up running Thread[{}], return", tid);
+        warn!("Try to wake up running Thread[{}], return", tid);
         return;
     }
     if let Some(t) = thread_lookup(tid) {
@@ -337,7 +377,7 @@ pub fn thread_wake_to_front_by_tid(tid: Tid) {
 /// Block current thread.
 /// Set its status as Blocked and it can not scheduled again until waked up.
 pub fn thread_block_current() {
-    if let Some(current_thread) = crate::libs::cpu::cpu().running_thread() {
+    if let Some(current_thread) = cpu().running_thread() {
         irqsave(|| {
             debug!("Thread[{}]  thread_block_current", current_thread.tid());
             let t = &current_thread;
@@ -355,7 +395,7 @@ pub fn thread_block_current() {
 /// Block current thread with specific timeout ms.
 /// Set its status as Blocked and it can not scheduled until blocked time exhausted.
 pub fn thread_block_current_with_timeout(timeout_ms: usize) {
-    if let Some(current_thread) = crate::libs::cpu::cpu().running_thread() {
+    if let Some(current_thread) = cpu().running_thread() {
         irqsave(|| {
             debug!(
                 "Thread[{}] thread_block_current_with_timeout {} milliseconds",
@@ -368,7 +408,7 @@ pub fn thread_block_current_with_timeout(timeout_ms: usize) {
             let mut status = t.0.inner_mut.status.lock();
             *status = reason;
             drop(status);
-            scheduler().blocked(t.clone(), Some(timeout_ms));
+            cpu().scheduler().blocked(t.clone(), Some(timeout_ms));
         });
     } else {
         warn!("No Running Thread!");
@@ -379,7 +419,7 @@ pub fn thread_block_current_with_timeout(timeout_ms: usize) {
 /// This function is called during the process of timer interrupt.
 pub fn handle_blocked_threads() {
     use crate::libs::timer::current_ms;
-    while let Some(t) = scheduler().get_wakeup_thread_by_time(current_ms()) {
+    while let Some(t) = cpu().scheduler().get_wakeup_thread_by_time(current_ms()) {
         debug!("handle_blocked_threads: thread [{}] is wake up", t.tid());
         thread_wake(&t);
     }
@@ -427,9 +467,8 @@ pub fn current_thread() -> Result<Thread, Error> {
 /// This function will call `thread_schedule` to schedule to next active thread.
 #[allow(unreachable_code)]
 pub fn thread_exit() {
-
     crate::arch::irq::disable();
-    
+
     let result = current_thread();
     match result {
         Ok(t) => {
@@ -448,7 +487,7 @@ pub fn thread_exit() {
             use tock_registers::interfaces::Writeable;
             SPSel.set(1);
             drop(t);
-            let core = crate::libs::cpu::cpu();
+            let core = cpu();
             // core.set_current_sp(0);
 
             crate::libs::thread::thread_schedule();
@@ -480,10 +519,14 @@ fn _inner_spawn(
     running: bool,
     privilege: bool,
     name: Option<String>,
+    selector: isize,
 ) -> Tid {
     let mut tid = 0 as Tid;
     irqsave(|| {
-        debug!("thread_spawn func: {:x} arg: {}", func as usize, arg);
+        debug!(
+            "thread_spawn func: {:x} arg: {} selector [{}]",
+            func as usize, arg, selector
+        );
 
         // Use "thread_start" as a wrapper, which automatically calls thread_exit when thread is finished.
         extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> usize {
@@ -519,7 +562,21 @@ fn _inner_spawn(
             0
         }
 
-        let child_thread = thread_alloc(None, thread_start as usize, func as usize, arg, privilege);
+        // Choose affinity core according to selector.
+        let affinity_core = if selector < 0 {
+            None
+        } else {
+            Some(selector as usize)
+        };
+
+        let child_thread = thread_alloc(
+            None,
+            affinity_core,
+            thread_start as usize,
+            func as usize,
+            arg,
+            privilege,
+        );
         // If running, set newly allocated thread as Runnable immediately.
         if running {
             thread_wake(&child_thread);
@@ -538,21 +595,21 @@ fn _inner_spawn(
 /// Target thread is waked immediately.
 /// Return its thread ID.
 pub fn thread_spawn(func: extern "C" fn(usize), arg: usize) -> Tid {
-    _inner_spawn(func, arg, true, false, None)
+    _inner_spawn(func, arg, true, false, None, -1)
 }
 
 /// Spawn a new thread with a given entry address and name.
 /// Target thread is waked immediately.
 /// Return its thread ID.
 pub fn thread_spawn_name(func: extern "C" fn(usize), arg: usize, name: &str) -> Tid {
-    _inner_spawn(func, arg, true, false, Some(String::from(name)))
+    _inner_spawn(func, arg, true, false, Some(String::from(name)), -1)
 }
 
 /// Spawn a new thread with a given entry address and its name.
 /// Target thread is not waked immediately.
 /// Return its thread ID.
 pub fn thread_spawn_bg(func: extern "C" fn(usize), arg: usize, name: &str) -> Tid {
-    _inner_spawn(func, arg, false, false, Some(String::from(name)))
+    _inner_spawn(func, arg, false, false, Some(String::from(name)), -1)
 }
 
 /// Spawn a new thread with a given entry address and name.
@@ -561,5 +618,13 @@ pub fn thread_spawn_bg(func: extern "C" fn(usize), arg: usize, name: &str) -> Ti
 /// Return its thread ID.
 #[allow(unused)]
 pub(crate) fn thread_spawn_privilege(func: extern "C" fn(usize), arg: usize, name: &str) -> Tid {
-    _inner_spawn(func, arg, true, true, Some(String::from(name)))
+    _inner_spawn(func, arg, true, true, Some(String::from(name)), -1)
+}
+
+/// Spawn a new thread with a given entry address and core id.
+/// Target thread is waked immediately on target core.
+/// Return its thread ID.
+#[allow(unused)]
+pub fn thread_spawn_on_core(func: extern "C" fn(usize), arg: usize, core_id: isize) -> Tid {
+    _inner_spawn(func, arg, true, false, None, core_id)
 }

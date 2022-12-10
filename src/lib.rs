@@ -43,10 +43,10 @@ mod util;
 
 pub mod libs;
 
-pub use crate::libs::traits::ArchTrait;
+pub use libs::traits::ArchTrait;
 pub use exported::*;
 // This `irq_disable` is just for test, to be moved.
-pub use crate::arch::irq::disable as irq_disable;
+pub use arch::irq::disable as irq_disable;
 
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
@@ -55,28 +55,36 @@ pub extern "C" fn loader_main(core_id: usize) {
     if core_id == 0 {
         // Init serial output.
         #[cfg(feature = "serial")]
-        crate::drivers::uart::init();
+        drivers::uart::init();
+        logger::print_logo();
         mm::heap::init();
         let _ = logger::init();
         info!("heap init ok!!");
-        mm::init();
-    }
+        mm::allocator_init();
+        // After Page allocator and Frame allocator init finished, init user page table.
+        arch::Arch::page_table_init();
+        info!("page table init ok");
 
-    #[cfg(feature = "smp")]
-    board::launch_other_cores();
+        #[cfg(feature = "smp")]
+        board::launch_other_cores();
+    }
 
     board::init_per_core();
     info!("per core init ok on core [{}]", core_id);
 
+    // Init schedule for per core.
+    libs::scheduler::init();
+
     if core_id == 0 {
         board::init();
         info!("board init ok");
-        logger::print_logo();
-        // Init user main thread.
+        // logger::print_logo();
+        // Init user main thread on core 0 by default.
         extern "C" {
             fn main(arg: usize) -> !;
         }
-        let t = crate::libs::thread::thread_alloc(None, main as usize, 123 as usize, 0, true);
+        let t =
+            libs::thread::thread_alloc(None, Some(core_id), main as usize, 123 as usize, 0, true);
         libs::thread::thread_wake(&t);
         // Init fs if configured.
         #[cfg(feature = "fs")]
@@ -92,11 +100,12 @@ pub extern "C" fn loader_main(core_id: usize) {
         fn pop_context_first(ctx: usize) -> !;
     }
 
-    debug!("entering first thread...");
+    // debug!("entering first thread...");
     match libs::cpu::cpu().running_thread() {
         None => panic!("no running thread"),
         Some(t) => {
             let sp = t.last_stack_pointer();
+            debug!("entering first thread on sp {:x}...", sp);
             unsafe { pop_context_first(sp) }
         }
     }

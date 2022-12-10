@@ -49,14 +49,18 @@ pub fn init() {
 }
 
 pub fn init_per_core() {
+    // Init interrupt controller.
     use cortex_a::registers::*;
     use tock_registers::interfaces::Writeable;
     DAIF.write(DAIF::I::Masked);
     crate::drivers::INTERRUPT_CONTROLLER.init();
     crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
     crate::drivers::timer::init();
-    // DAIF.write(DAIF::I::Unmasked);
 
+    // Init page table.
+    crate::arch::page_table::install_page_table();
+
+    // Init PMU.
     let pmcr = 1u64;
     let pmcntenset = 1u64 << 32;
     let pmuserenr = 1u64 << 2 | 1u64;

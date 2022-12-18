@@ -1,4 +1,4 @@
-use core::alloc::Layout;
+// use core::alloc::Layout;
 
 // rCore buddy system allocator
 use buddy_system_allocator::LockedHeap;
@@ -60,7 +60,7 @@ pub fn dump_heap_allocator_state() {
 #[global_allocator]
 static HEAP_ALLOCATOR: LockedHeap<32> = LockedHeap::empty();
 
-#[alloc_error_handler]
-fn alloc_error_handler(_: Layout) -> ! {
-    panic!("alloc_error_handler: heap panic");
-}
+// #[alloc_error_handler]
+// fn alloc_error_handler(_: Layout) -> ! {
+//     panic!("alloc_error_handler: heap panic");
+// }

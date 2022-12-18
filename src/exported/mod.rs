@@ -5,6 +5,9 @@ pub use crate::libs::timer::*;
 mod mm;
 pub use mm::*;
 
+mod syscalls;
+pub use syscalls::*;
+
 pub use crate::libs::thread::thread_exit as exit;
 
 pub fn core_id() -> usize {

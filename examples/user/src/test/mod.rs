@@ -4,11 +4,11 @@ mod thread;
 mod recover;
 mod schedule;
 
-use rust_shyper_os::println;
-use rust_shyper_os::*;
+use unishyper::println;
+use unishyper::*;
 /// Function and Performance tests for rust-shyperOS.
 pub fn run_tests() {
-    use rust_shyper_os::*;
+    use unishyper::*;
     println!("generate_tests:");
     // thread_spawn_bg(mm::test_mm_thread, 1, "mm_test");
     // thread_spawn_bg(thread::test_thread_switch, 1, "thread_test");

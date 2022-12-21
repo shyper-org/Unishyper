@@ -1,5 +1,5 @@
-use rust_shyper_os::*;
-use rust_shyper_os::semaphore::Semaphore;
+use unishyper::*;
+use unishyper::semaphore::Semaphore;
 
 static TEST_SEM: Semaphore = Semaphore::new(0);
 

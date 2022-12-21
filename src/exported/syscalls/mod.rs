@@ -1,5 +1,7 @@
+#[cfg(feature = "tcp")]
 mod tcp;
 
+#[cfg(feature = "tcp")]
 pub use tcp::*;
 
 use core::ffi::c_void;
@@ -176,6 +178,7 @@ pub extern "C" fn sys_unlink(_name: *const i8) -> i32 {
 }
 #[no_mangle]
 pub extern "C" fn sys_network_init() -> i32 {
+    debug!("Unishyper network init");
     0
 }
 #[no_mangle]

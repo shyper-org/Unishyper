@@ -6,7 +6,7 @@ authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies.rust_shyper_os]
+[dependencies.unishyper]
 path = "../../"
 default-features = false
 
@@ -14,19 +14,19 @@ default-features = false
 default = ["qemu"]
 qemu = [
     "alloc",
-    "rust_shyper_os/alloc",
-    # "rust_shyper_os/smp",
-    "rust_shyper_os/fs",
-    "rust_shyper_os/fat",
-    "rust_shyper_os/qemu",
-    "rust_shyper_os/terminal"
+    "unishyper/alloc",
+    # "unishyper/smp",
+    "unishyper/fs",
+    "unishyper/fat",
+    "unishyper/qemu",
+    "unishyper/terminal"
     ]
 shyper = [
     "alloc",
-    "rust_shyper_os/alloc",
-    # "rust_shyper_os/smp",
-    "rust_shyper_os/fs",
-    "rust_shyper_os/unilib",
-    "rust_shyper_os/shyper"
+    "unishyper/alloc",
+    # "unishyper/smp",
+    "unishyper/fs",
+    "unishyper/unilib",
+    "unishyper/shyper"
     ]
 alloc = []

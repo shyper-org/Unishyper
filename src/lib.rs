@@ -2,17 +2,17 @@
 // Drop the #![no_main] attribute as it has no effect on library crates.
 // #![no_main]
 #![feature(alloc_error_handler)]
-// #![feature(panic_info_message)]
+#![feature(panic_info_message)]
 #![feature(format_args_nl)]
 #![feature(lang_items)]
 // warning: the feature `const_btree_new` has been stable since 1.66.0 and no longer requires an attribute to enable
-// #![feature(const_btree_new)]
+#![feature(const_btree_new)]
 #![feature(allocator_api)]
 #![feature(never_type)]
 #![feature(asm_const)]
 #![feature(drain_filter)]
 // warning: the feature `map_first_last` has been stable since 1.66.0 and no longer requires an attribute to enable
-// #![feature(map_first_last)]
+#![feature(map_first_last)]
 // use of unstable library feature 'step_trait': recently redesigned
 // see issue #42168 <https://github.com/rust-lang/rust/issues/42168> for more information
 // add `#![feature(step_trait)]` to the crate attributes to enable

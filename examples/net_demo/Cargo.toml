@@ -9,7 +9,7 @@ version = "0.1.0"
 [dependencies]
 no-std-net = "0.6.0"
 
-[dependencies.rust_shyper_os]
+[dependencies.unishyper]
 default-features = false
 path = "../../"
 
@@ -17,17 +17,17 @@ path = "../../"
 default = ["qemu"]
 qemu = [
     "alloc",
-    "rust_shyper_os/alloc",
-    "rust_shyper_os/tcp", 
-    "rust_shyper_os/qemu",
-    "rust_shyper_os/serial",
+    "unishyper/alloc",
+    "unishyper/tcp", 
+    "unishyper/qemu",
+    "unishyper/serial",
     ]
 shyper = [
     "alloc", 
-    "rust_shyper_os/alloc", 
-    "rust_shyper_os/tcp", 
-    "rust_shyper_os/shyper",
-    "rust_shyper_os/serial",
+    "unishyper/alloc", 
+    "unishyper/tcp", 
+    "unishyper/shyper",
+    "unishyper/serial",
     ]
 alloc = []
 

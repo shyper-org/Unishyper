@@ -1,4 +1,4 @@
-use rust_shyper_os::*;
+use unishyper::*;
 
 #[allow(dead_code)]
 extern "C" fn test_spawned_thread(index: usize) {

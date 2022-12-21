@@ -1,4 +1,4 @@
-use rust_shyper_os::*;
+use unishyper::*;
 
 #[allow(dead_code)]
 extern "C" fn switch_back(_: usize) {

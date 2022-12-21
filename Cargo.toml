@@ -1,12 +1,12 @@
 [package]
 authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 edition = "2021"
-name = "rust_shyper_os"
+name = "unishyper"
 version = "0.1.0"
 
 [lib]
 crate-type = ["lib"]
-name = "rust_shyper_os"
+name = "unishyper"
 
 [dependencies]
 bit_field = "0.7.0"

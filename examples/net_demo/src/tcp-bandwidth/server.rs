@@ -7,7 +7,7 @@
 use alloc::vec;
 use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 
-use rust_shyper_os::*;
+use unishyper::*;
 
 #[macro_use]
 extern crate alloc;

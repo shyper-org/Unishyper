@@ -1,4 +1,4 @@
-use rust_shyper_os::*;
+use unishyper::*;
 
 #[allow(dead_code)]
 pub extern "C" fn test_mm_thread(arg: usize) {

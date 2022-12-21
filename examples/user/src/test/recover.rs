@@ -1,4 +1,4 @@
-use rust_shyper_os::*;
+use unishyper::*;
 
 static mut TEST: usize = 0;
 

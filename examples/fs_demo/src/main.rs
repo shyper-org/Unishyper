@@ -4,10 +4,10 @@
 #![feature(alloc_error_handler)]
 #![allow(unused_imports)]
 
-use rust_shyper_os::*;
-use rust_shyper_os::fs;
-use rust_shyper_os::io;
-use rust_shyper_os::fs::{File, Path};
+use unishyper::*;
+use unishyper::fs;
+use unishyper::io;
+use unishyper::fs::{File, Path};
 
 use alloc::string::String;
 

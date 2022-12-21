@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use rust_shyper_os::*;
+use unishyper::*;
 
 /// Sends first n_bytes from wbuf using the given stream.
 /// Make sure wbuf.len >= n_bytes

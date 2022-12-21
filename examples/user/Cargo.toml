@@ -6,7 +6,7 @@ authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies.rust_shyper_os]
+[dependencies.unishyper]
 path = "../../"
 default-features = false
 
@@ -14,27 +14,27 @@ default-features = false
 default = ["qemu"]
 qemu = [
     # "alloc",
-    "rust_shyper_os/alloc",
-    # "rust_shyper_os/smp",
-    "rust_shyper_os/scheduler-percore",
-    "rust_shyper_os/qemu",
-    "rust_shyper_os/serial",
-    "rust_shyper_os/unwind",
-    # "rust_shyper_os/terminal",
-    # "rust_shyper_os/fs",
+    "unishyper/alloc",
+    # "unishyper/smp",
+    "unishyper/scheduler-percore",
+    "unishyper/qemu",
+    "unishyper/serial",
+    "unishyper/unwind",
+    # "unishyper/terminal",
+    # "unishyper/fs",
     ]
 tx2 = [
-    "rust_shyper_os/alloc",
-    "rust_shyper_os/tx2",
-    # "rust_shyper_os/terminal",
+    "unishyper/alloc",
+    "unishyper/tx2",
+    # "unishyper/terminal",
     ]
 shyper = [
-    "rust_shyper_os/alloc",
-    # "rust_shyper_os/smp",
-    "rust_shyper_os/shyper",
-    "rust_shyper_os/terminal",
-    "rust_shyper_os/fs",
-    "rust_shyper_os/unilib",
-    "rust_shyper_os/fat",
+    "unishyper/alloc",
+    # "unishyper/smp",
+    "unishyper/shyper",
+    "unishyper/terminal",
+    "unishyper/fs",
+    "unishyper/unilib",
+    "unishyper/fat",
     ]
 alloc = []

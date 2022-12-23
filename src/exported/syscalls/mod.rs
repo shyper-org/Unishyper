@@ -4,6 +4,9 @@ mod tcp;
 #[cfg(feature = "tcp")]
 pub use tcp::*;
 
+mod tls;
+pub use tls::*;
+
 use core::ffi::c_void;
 use crate::libs::thread::Tid;
 

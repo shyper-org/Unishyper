@@ -2,17 +2,17 @@
 // Drop the #![no_main] attribute as it has no effect on library crates.
 // #![no_main]
 #![feature(alloc_error_handler)]
-#![feature(panic_info_message)]
+// #![feature(panic_info_message)]
 #![feature(format_args_nl)]
 #![feature(lang_items)]
 // warning: the feature `const_btree_new` has been stable since 1.66.0 and no longer requires an attribute to enable
-#![feature(const_btree_new)]
+// #![feature(const_btree_new)]
 #![feature(allocator_api)]
 #![feature(never_type)]
 #![feature(asm_const)]
 #![feature(drain_filter)]
 // warning: the feature `map_first_last` has been stable since 1.66.0 and no longer requires an attribute to enable
-#![feature(map_first_last)]
+// #![feature(map_first_last)]
 // use of unstable library feature 'step_trait': recently redesigned
 // see issue #42168 <https://github.com/rust-lang/rust/issues/42168> for more information
 // add `#![feature(step_trait)]` to the crate attributes to enable
@@ -21,7 +21,10 @@
 // intrinsics are unlikely to ever be stabilized,
 // instead they should be used through stabilized interfaces in the rest of the standard library
 #![feature(core_intrinsics)]
-
+// error[E0658]: use of unstable library feature 'new_uninit'
+// note: see issue #63291 <https://github.com/rust-lang/rust/issues/63291> for more information
+// help: add `#![feature(new_uninit)]` to the crate attributes to enable
+#![feature(new_uninit)]
 #[macro_use]
 extern crate log;
 // #[macro_use]
@@ -62,6 +65,44 @@ pub extern "C" fn loader_main(core_id: usize) {
         mm::heap::init();
         let _ = logger::init();
         info!("heap init ok!!");
+
+        // use core::cell::Cell;
+        // use core::cell::RefCell;
+        // use alloc::vec;
+        // use alloc::rc::Rc;
+        // use alloc::boxed::Box;
+        // use spin::Mutex;
+        // let test = Cell::new(0 as u8);
+        // test.replace(val);
+
+        // println!(
+        //     "sizeof Mutex<*mut u8> {}",
+        //     core::mem::size_of::<Mutex<*mut u8>>()
+        // );
+        // println!(
+        //     "sizeof Cell<*mut u8> {}",
+        //     core::mem::size_of::<Cell<*mut u8>>()
+        // );
+        // println!(
+        //     "sizeof Rc<Cell<*mut u8>> {}",
+        //     core::mem::size_of::<Rc<Cell<*mut u8>>>()
+        // );
+        // println!(
+        //     "sizeof RefCell<*mut u8> {}",
+        //     core::mem::size_of::<RefCell<*mut u8>>()
+        // );
+        // println!("sizeof *mut u8 {}", core::mem::size_of::<*mut u8>());
+        // // println!("sizeof mut u8 {}", core::mem::size_of::<mut u8>());
+        // println!("sizeof u8 {} end", core::mem::size_of::<u8>());
+        // let vec1 = Box::<[*mut u8]>::new_zeroed_slice(128);
+        // println!("end");
+        // let vec1 = unsafe { vec1.assume_init() };
+        // println!("end");
+        // println!("sizeof Box<[u8]> {}", vec1.len());
+        // println!("end");
+
+        // loop {}
+
         mm::allocator_init();
         // After Page allocator and Frame allocator init finished, init user page table.
         arch::Arch::page_table_init();

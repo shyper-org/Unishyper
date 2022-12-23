@@ -10,6 +10,7 @@ pub mod interrupt;
 pub mod synch;
 pub mod error;
 pub mod device;
+pub mod tls;
 
 #[cfg(feature = "tcp")]
 pub mod net;

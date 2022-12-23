@@ -58,6 +58,7 @@ struct Inner {
     uuid: usize,
     level: PrivilegedLevel,
     stack: Stack,
+    tls: crate::libs::tls::ThreadTls,
 }
 
 struct InnerMut {
@@ -139,6 +140,10 @@ impl Thread {
     pub fn free_mem_region(&self, addr: VAddr) {
         let mut addr_space = self.0.inner_mut.mem_regions.lock();
         addr_space.remove(&addr);
+    }
+
+    pub fn get_tls_ptr(&self) -> *const u8 {
+        self.0.inner.tls.get_tls_start().as_ptr::<u8>()
     }
 }
 
@@ -235,6 +240,10 @@ pub fn thread_alloc(
         // debug!("NEW context_frame:\n{}", context_frame);
     }
 
+    // Init thread local storage region.
+    let tls = crate::libs::tls::alloc_thread_local_storage_region();
+    debug!("tls_region alloc at {}", tls.get_tls_start());
+
     let t = Thread(Arc::new(ControlBlock {
         inner: Inner {
             uuid: id,
@@ -244,6 +253,7 @@ pub fn thread_alloc(
                 PrivilegedLevel::User
             },
             stack: stack_region,
+            tls,
         },
         inner_mut: InnerMut {
             affinity_core,

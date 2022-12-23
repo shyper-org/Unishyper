@@ -8,7 +8,7 @@ use crate::libs::traits::Address;
 use crate::mm::page_allocator;
 use crate::mm::frame_allocator;
 use crate::mm::frame_allocator::AllocatedFrames;
-use crate::mm::paging::{map_allocated_pages, EntryAttribute};
+use crate::mm::paging::{map_allocated_pages, EntryAttribute, MappedRegion};
 use crate::mm::address::VAddr;
 use crate::mm::interface::PageTableEntryAttrTrait;
 
@@ -47,6 +47,28 @@ pub fn kallocate(size: usize) -> Option<VAddr> {
     GLOBAL_MM_MAP.lock().insert(kaddr, frames);
     Some(kaddr)
 }
+
+pub fn allocate_region(size: usize) -> Result<MappedRegion, &'static str> {
+    debug!("user allocate size {:x}", size);
+    assert!(size > 0);
+    assert_eq!(
+        size % PAGE_SIZE,
+        0,
+        "Size {:#X} is not a multiple of {:#X}",
+        size,
+        size % PAGE_SIZE,
+    );
+    let size_in_pages = size / PAGE_SIZE;
+    let pages = match page_allocator::allocate_pages(size_in_pages) {
+        Some(pages) => pages,
+        None => {
+            return Err("allocate_region(): Failed to allocate");
+        }
+    };
+    let attr = EntryAttribute::user_default();
+    map_allocated_pages(pages, attr)
+}
+
 
 pub fn allocate(size: usize) -> Option<VAddr> {
     debug!("user allocate size {:x}", size);

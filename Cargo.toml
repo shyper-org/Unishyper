@@ -59,7 +59,7 @@ version = "0.4"
 
 [features]
 alloc = []
-default = ["alloc", "shyper", "tcp", "fs", "smp", "terminal", "unwind", "unilib", "fat"]
+default = ["alloc", "shyper", "tcp", "fs", "smp", "terminal", "unwind", "unilib", "fat", "std"]
 fat = [
   "fatfs",
   "lru",
@@ -73,6 +73,7 @@ scheduler-global = ["smp"]
 serial = []
 shyper = []
 smp = []
+std = ["serial"]
 tcp = [
   "async-task",
   "futures-lite",

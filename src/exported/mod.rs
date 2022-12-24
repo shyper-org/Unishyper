@@ -5,8 +5,10 @@ pub use crate::libs::timer::*;
 mod mm;
 pub use mm::*;
 
-mod syscalls;
-pub use syscalls::*;
+#[cfg(feature = "std")]
+mod abicalls;
+#[cfg(feature = "std")]
+pub use abicalls::*;
 
 pub use crate::libs::thread::thread_exit as exit;
 

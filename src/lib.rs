@@ -65,44 +65,6 @@ pub extern "C" fn loader_main(core_id: usize) {
         mm::heap::init();
         let _ = logger::init();
         info!("heap init ok!!");
-
-        // use core::cell::Cell;
-        // use core::cell::RefCell;
-        // use alloc::vec;
-        // use alloc::rc::Rc;
-        // use alloc::boxed::Box;
-        // use spin::Mutex;
-        // let test = Cell::new(0 as u8);
-        // test.replace(val);
-
-        // println!(
-        //     "sizeof Mutex<*mut u8> {}",
-        //     core::mem::size_of::<Mutex<*mut u8>>()
-        // );
-        // println!(
-        //     "sizeof Cell<*mut u8> {}",
-        //     core::mem::size_of::<Cell<*mut u8>>()
-        // );
-        // println!(
-        //     "sizeof Rc<Cell<*mut u8>> {}",
-        //     core::mem::size_of::<Rc<Cell<*mut u8>>>()
-        // );
-        // println!(
-        //     "sizeof RefCell<*mut u8> {}",
-        //     core::mem::size_of::<RefCell<*mut u8>>()
-        // );
-        // println!("sizeof *mut u8 {}", core::mem::size_of::<*mut u8>());
-        // // println!("sizeof mut u8 {}", core::mem::size_of::<mut u8>());
-        // println!("sizeof u8 {} end", core::mem::size_of::<u8>());
-        // let vec1 = Box::<[*mut u8]>::new_zeroed_slice(128);
-        // println!("end");
-        // let vec1 = unsafe { vec1.assume_init() };
-        // println!("end");
-        // println!("sizeof Box<[u8]> {}", vec1.len());
-        // println!("end");
-
-        // loop {}
-
         mm::allocator_init();
         // After Page allocator and Frame allocator init finished, init user page table.
         arch::Arch::page_table_init();

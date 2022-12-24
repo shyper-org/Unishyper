@@ -30,6 +30,16 @@ pub fn print_arg(_args: fmt::Arguments) {
     }
 }
 
+pub fn print_byte(buf: &[u8]) {
+    #[cfg(feature = "serial")]
+    {
+        let _lock = LOCK.lock();
+        for b in buf {
+            crate::drivers::uart::putc(*b);
+        }
+    }
+}
+
 #[cfg(feature = "terminal")]
 pub fn getchar() -> u8 {
     loop {

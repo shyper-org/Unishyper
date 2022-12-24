@@ -12,7 +12,6 @@ use core::ffi::c_void;
 use crate::libs::thread::Tid;
 use crate::libs::thread::thread_exit;
 
-
 #[no_mangle]
 pub extern "C" fn sys_rand() -> u32 {
     0
@@ -85,8 +84,20 @@ pub extern "C" fn sys_read(_fd: i32, _buf: *mut u8, _len: usize) -> isize {
 }
 
 #[no_mangle]
-pub extern "C" fn sys_write(_fd: i32, _buf: *const u8, _len: usize) -> isize {
-    0
+pub extern "C" fn sys_write(fd: i32, buf: *const u8, len: usize) -> isize {
+    assert!(len <= isize::MAX as usize);
+    let buf = unsafe { core::slice::from_raw_parts(buf, len) };
+
+    if fd > 2 {
+        // Normal file
+        // crate::libs::fs::write(fd, buf, len)
+        0 as isize
+    } else {
+        // stdin/err/out all go to console
+        crate::libs::print::print_byte(buf);
+
+        len as isize
+    }
 }
 
 #[no_mangle]
@@ -173,7 +184,6 @@ pub extern "C" fn sys_exit(arg: i32) {
     debug!("main thread exit with arg {}", arg);
     thread_exit();
 }
-
 
 #[no_mangle]
 pub extern "C" fn sys_abort() {}

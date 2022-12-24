@@ -148,6 +148,9 @@ impl Thread {
         addr_space.remove(&addr);
     }
 
+    /// Get thread local storage region's start address.
+    /// We currently store the tls pointer in tpidr_el0 as aarch64 normally does.
+    /// See src/arch/tls.rs for more details.
     pub fn get_tls_ptr(&self) -> *const u8 {
         self.0.inner.tls.get_tls_start().as_ptr::<u8>()
     }

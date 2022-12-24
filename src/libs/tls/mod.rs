@@ -1,3 +1,6 @@
+/// Simple thread local key implementation.
+/// Refer to implementation in https://github.com/rust-lang/rust/tree/master/library/std/src/sys/sgx/abi/tls
+
 mod sync_bitset;
 
 use self::sync_bitset::*;
@@ -107,7 +110,6 @@ impl Drop for ThreadTls {
         while any_non_null_dtor {
             any_non_null_dtor = false;
             for (value, dtor) in TLS_KEY_IN_USE.iter().filter_map(&value_with_destructor) {
-                // let value = value.replace(ptr::null_mut());
                 let value = value.replace(ptr::null_mut());
                 if !value.is_null() {
                     any_non_null_dtor = true;
@@ -134,17 +136,7 @@ impl Tls {
     }
 
     unsafe fn current<'a>() -> &'a Tls {
-        // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
-        // debug!("current Tls size {:x}", mem::size_of::<Tls>());
-        match crate::libs::thread::current_thread() {
-            Ok(t) => {
-                unsafe { &*(t.get_tls_ptr() as *const Tls) }
-            }
-            Err(_) => {
-                panic!("failed to get current_thread");
-            }
-        }
-        // unsafe { &*(get_tls_ptr() as *const Tls) }
+        unsafe { &*(crate::arch::tls::get_tls_ptr() as *const Tls) }
     }
 
     pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
@@ -155,13 +147,13 @@ impl Tls {
         };
         TLS_DESTRUCTOR[index].store(dtor.map_or(0, |f| f as usize), Ordering::Relaxed);
         unsafe { Self::current() }.data[index].set(ptr::null_mut());
-        let key = Key::from_index(index);
-        debug!(
-            "tls key create, index {}, key: {:?} usize {}",
-            index,
-            key,
-            key.as_usize()
-        );
+        // let key = Key::from_index(index);
+        // debug!(
+        //     "tls key create, index {}, key: {:?} usize {}",
+        //     index,
+        //     key,
+        //     key.as_usize()
+        // );
         Key::from_index(index)
     }
 
@@ -169,37 +161,37 @@ impl Tls {
         let index = key.to_index();
         assert!(TLS_KEY_IN_USE.get(index));
 
-        debug!(
-            "tls key set to value {:x} , index {}, key: {:?} usize {}",
-            value as usize,
-            index,
-            key,
-            key.as_usize()
-        );
+        // debug!(
+        //     "tls key set to value {:x} , index {}, key: {:?} usize {}",
+        //     value as usize,
+        //     index,
+        //     key,
+        //     key.as_usize()
+        // );
         unsafe { Self::current() }.data[index].set(value);
     }
 
     pub fn get(key: Key) -> *mut u8 {
         let index = key.to_index();
         assert!(TLS_KEY_IN_USE.get(index));
-        let value = unsafe { Self::current() }.data[index].get();
-        debug!(
-            "tls key get the value {:x} , index {}, key: {:?} usize {}",
-            value as usize,
-            index,
-            key,
-            key.as_usize()
-        );
+        // let value = unsafe { Self::current() }.data[index].get();
+        // debug!(
+        //     "tls key get the value {:x} , index {}, key: {:?} usize {}",
+        //     value as usize,
+        //     index,
+        //     key,
+        //     key.as_usize()
+        // );
         unsafe { Self::current() }.data[index].get()
     }
 
     pub fn destroy(key: Key) {
-        debug!(
-            "tls key destroy, index {}, key: {:?} usize {}",
-            key.to_index(),
-            key,
-            key.as_usize()
-        );
+        // debug!(
+        //     "tls key destroy, index {}, key: {:?} usize {}",
+        //     key.to_index(),
+        //     key,
+        //     key.as_usize()
+        // );
         TLS_KEY_IN_USE.clear(key.to_index());
     }
 }

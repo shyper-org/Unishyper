@@ -13,3 +13,5 @@ mod mmu;
 pub mod page_table;
 pub mod registers;
 pub mod smc;
+
+pub mod tls;

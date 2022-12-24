@@ -145,13 +145,12 @@ pub extern "C" fn loader_main(core_id: usize) {
         fn pop_context_first(ctx: usize) -> !;
     }
 
-    // debug!("entering first thread...");
-    match libs::cpu::cpu().running_thread() {
+    let sp = match libs::cpu::cpu().running_thread() {
         None => panic!("no running thread"),
         Some(t) => {
-            let sp = t.last_stack_pointer();
-            debug!("entering first thread on sp {:x}...", sp);
-            unsafe { pop_context_first(sp) }
+            t.last_stack_pointer()
         }
-    }
+    };
+    debug!("entering first thread on sp {:x}...", sp);
+    unsafe { pop_context_first(sp) }
 }

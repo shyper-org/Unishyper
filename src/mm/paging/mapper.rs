@@ -75,6 +75,7 @@ impl MappedRegion {
 
 impl Drop for MappedRegion {
     fn drop(&mut self) {
+        debug!("Drop Mapped Region at {}", self.start_address());
         self.unmap();
     }
 }

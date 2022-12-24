@@ -53,10 +53,10 @@ impl fmt::Display for Status {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 struct Inner {
     uuid: usize,
     level: PrivilegedLevel,
+    #[allow(unused)]
     stack: Stack,
     tls: crate::libs::tls::ThreadTls,
 }
@@ -77,12 +77,18 @@ struct ControlBlock {
 
 impl Drop for ControlBlock {
     fn drop(&mut self) {
-        debug!("Drop t{}", self.inner.uuid);
+        debug!("Drop Thread [{}]'s ControlBlock", self.inner.uuid);
     }
 }
 
 #[derive(Clone)]
 pub struct Thread(Arc<ControlBlock>);
+
+// impl Drop for Thread {
+//     fn drop(&mut self) {
+//         debug!("Drop Thread [{}]'s struct, TCB Arc stong count {}", self.tid(), Arc::strong_count(&self.0));
+//     }
+// }
 
 impl Thread {
     /// Get thread tid, which is globally unique.

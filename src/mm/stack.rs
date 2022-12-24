@@ -36,11 +36,21 @@ impl DerefMut for Stack {
     }
 }
 
+impl Drop for Stack {
+    fn drop(&mut self) {
+        debug!(
+            "Drop stack at region [{} to {}]",
+            self.region.start_address(),
+            self.region.start_address() + self.region.size_in_bytes()
+        );
+    }
+}
+
 /// Allocates a new stack and maps it to the active page table.
 ///
 /// This also reserves an unmapped guard page beneath the bottom of the stack
 /// in order to catch stack overflows.
-/// 
+///
 /// |-----------------------------------|
 /// |-                                 -|
 /// |-           stack range           -|
@@ -52,7 +62,6 @@ impl DerefMut for Stack {
 ///
 /// Returns the newly-allocated stack and a VMA to represent its mapping.
 pub fn alloc_stack(size_in_pages: usize) -> Option<Stack> {
-
     // Get suggested VAddr for stack.
     let pages: AllocatedPages;
     loop {
@@ -60,13 +69,15 @@ pub fn alloc_stack(size_in_pages: usize) -> Option<Stack> {
         let count = COUNT.fetch_add(2, Ordering::AcqRel);
         let stack_addr = VAddr::new_canonical(count * STACK_SIZE);
         trace!("alloc stack loop: count {} saddr {}", count, stack_addr);
-         // Allocate enough pages for an additional guard page.
-        if let Some(aps) =  page_allocator::allocate_pages_at(stack_addr - PAGE_SIZE, size_in_pages + 1) {
+        // Allocate enough pages for an additional guard page.
+        if let Some(aps) =
+            page_allocator::allocate_pages_at(stack_addr - PAGE_SIZE, size_in_pages + 1)
+        {
             pages = aps;
             trace!("alloc stack loop: get count {} saddr {}", count, stack_addr);
             break;
         }
-    };
+    }
     // Get physical address for stack, no need to alloc space for guarded page.
     let frames = frame_allocator::allocate_frames_alignment(
         size_in_pages,
@@ -85,7 +96,11 @@ fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames) -> Option<S
     let start_of_stack_pages = *pages.start() + 1;
     let (guard_page, stack_pages) = pages.split(start_of_stack_pages).ok()?;
 
-    trace!("guard_page {:?} stack_pages {:?}", &guard_page, &stack_pages);
+    trace!(
+        "guard_page {:?} stack_pages {:?}",
+        &guard_page,
+        &stack_pages
+    );
 
     let attr = EntryAttribute::user_default();
     // Map stack pages to physical frames, leave the guard page unmapped.

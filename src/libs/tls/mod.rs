@@ -135,7 +135,7 @@ impl Tls {
 
     unsafe fn current<'a>() -> &'a Tls {
         // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
-        debug!("current Tls size {:x}", mem::size_of::<Tls>());
+        // debug!("current Tls size {:x}", mem::size_of::<Tls>());
         match crate::libs::thread::current_thread() {
             Ok(t) => {
                 unsafe { &*(t.get_tls_ptr() as *const Tls) }
@@ -170,7 +170,7 @@ impl Tls {
         assert!(TLS_KEY_IN_USE.get(index));
 
         debug!(
-            "tls key set to value {} , index {}, key: {:?} usize {}",
+            "tls key set to value {:x} , index {}, key: {:?} usize {}",
             value as usize,
             index,
             key,
@@ -184,7 +184,7 @@ impl Tls {
         assert!(TLS_KEY_IN_USE.get(index));
         let value = unsafe { Self::current() }.data[index].get();
         debug!(
-            "tls key set the value {} , index {}, key: {:?} usize {}",
+            "tls key get the value {:x} , index {}, key: {:?} usize {}",
             value as usize,
             index,
             key,

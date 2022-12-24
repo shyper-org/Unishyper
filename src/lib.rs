@@ -124,10 +124,12 @@ pub extern "C" fn loader_main(core_id: usize) {
         // logger::print_logo();
         // Init user main thread on core 0 by default.
         extern "C" {
+            #[allow(unused)]
             fn main(arg: usize) -> !;
+            fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
         }
         let t =
-            libs::thread::thread_alloc(None, Some(core_id), main as usize, 123 as usize, 0, true);
+            libs::thread::thread_alloc(None, Some(core_id), runtime_entry as usize, 123 as usize, 0, true);
         libs::thread::thread_wake(&t);
         // Init fs if configured.
         #[cfg(feature = "fs")]

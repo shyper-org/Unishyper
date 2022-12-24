@@ -123,17 +123,15 @@ pub fn open(path: &str, flags: i32, mode: i32) -> i32 {
 }
 
 pub fn close(fd: i32) -> i32 {
-    // we don't have to close standard descriptors
-    if fd < 3 {
-        return 0;
-    }
-
+    assert!(fd <= 2);
     let mut fs = fs::FILESYSTEM.lock();
     fs.close(fd as u64);
     0
 }
 
 pub fn read(fd: i32, buf: *mut u8, len: usize) -> isize {
+    assert!(len <= isize::MAX as usize);
+    assert!(fd <= 2);
     debug!("Read! {}, {}", fd, len);
 
     let mut fs = fs::FILESYSTEM.lock();
@@ -151,20 +149,17 @@ pub fn read(fd: i32, buf: *mut u8, len: usize) -> isize {
 
 pub fn write(fd: i32, buf: *const u8, len: usize) -> isize {
     assert!(len <= isize::MAX as usize);
+    assert!(fd <= 2);
     let buf = unsafe { core::slice::from_raw_parts(buf, len) };
 
-    if fd > 2 {
-        // Normal file
-        let mut written_bytes = 0;
-        let mut fs = fs::FILESYSTEM.lock();
-        fs.fd_op(fd as u64, |file: &mut Box<dyn PosixFile + Send>| {
-            written_bytes = file.write(buf).unwrap(); // TODO: might fail
-        });
-        debug!("Write done! {}", written_bytes);
-        written_bytes as isize
-    } else {
-        unimplemented!("try to write to stdin/err/out");
-    }
+    // Normal file
+    let mut written_bytes = 0;
+    let mut fs = fs::FILESYSTEM.lock();
+    fs.fd_op(fd as u64, |file: &mut Box<dyn PosixFile + Send>| {
+        written_bytes = file.write(buf).unwrap(); // TODO: might fail
+    });
+    debug!("Write done! {}", written_bytes);
+    written_bytes as isize
 }
 
 pub fn lseek(fd: i32, offset: isize, whence: i32) -> isize {
@@ -180,7 +175,7 @@ pub fn lseek(fd: i32, offset: isize, whence: i32) -> isize {
 }
 
 #[allow(unused)]
-fn stat(_file: *const u8, _st: usize) -> i32 {
+pub fn stat(file: *const u8, st: usize) -> i32 {
     unimplemented!("stat is unimplemented");
 }
 

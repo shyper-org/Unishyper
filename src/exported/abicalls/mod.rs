@@ -10,14 +10,18 @@ pub use tls::*;
 mod fs;
 pub use fs::*;
 
-use core::ffi::c_void;
-
 use crate::libs::thread::Tid;
 use crate::libs::thread::thread_exit;
 
 #[no_mangle]
-pub extern "C" fn shyper_malloc(_size: usize, _align: usize) -> *mut u8 {
-    0 as *mut u8
+pub extern "C" fn shyper_malloc(size: usize, align: usize) -> *mut u8 {
+    if true {
+        crate::mm::heap::malloc(size, align)
+    } else {
+        crate::mm::allocate(size).map_or(core::ptr::null_mut() as *mut u8, |vaddr| {
+            vaddr.as_mut_ptr::<u8>()
+        })
+    }
 }
 
 #[no_mangle]
@@ -27,35 +31,17 @@ pub extern "C" fn shyper_realloc(
     _align: usize,
     _new_size: usize,
 ) -> *mut u8 {
-    0 as *mut u8
+    unimplemented!("shyper realloc unimplemented");
 }
 
+use crate::mm::address::VAddr;
 #[no_mangle]
-pub extern "C" fn shyper_free(_ptr: *mut u8, _size: usize, _align: usize) {}
-
-#[no_mangle]
-pub extern "C" fn shyper_init_queue(_ptr: usize) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_notify(_id: usize, _count: i32) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_add_queue(_id: usize, _timeout_ns: i64) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_wait(_id: usize) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_destroy_queue(_id: usize) -> i32 {
-    0
+pub extern "C" fn shyper_free(ptr: *mut u8, size: usize, align: usize) {
+    if true {
+        crate::mm::heap::free(ptr, size, align)
+    } else {
+        crate::mm::deallocate(VAddr::new_canonical(ptr as usize))
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -79,51 +65,6 @@ pub extern "C" fn shyper_futex_wait(
 
 #[no_mangle]
 pub extern "C" fn shyper_futex_wake(_address: *mut u32, _count: i32) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_sem_init(_sem: *mut *const c_void, _value: u32) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_sem_destroy(_sem: *const c_void) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_sem_post(_sem: *const c_void) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_sem_trywait(_sem: *const c_void) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_sem_timedwait(_sem: *const c_void, _ms: u32) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_recmutex_init(_recmutex: *mut *const c_void) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_recmutex_destroy(_recmutex: *const c_void) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_recmutex_lock(_recmutex: *const c_void) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_recmutex_unlock(_recmutex: *const c_void) -> i32 {
     0
 }
 
@@ -182,18 +123,8 @@ pub extern "C" fn shyper_clock_gettime(_clock_id: u64, _tp: *mut timespec) -> i3
     0
 }
 
-
 #[no_mangle]
 pub extern "C" fn shyper_network_init() -> i32 {
     debug!("Unishyper network init");
     0
 }
-
-#[no_mangle]
-pub extern "C" fn shyper_block_current_task() {}
-
-#[no_mangle]
-pub extern "C" fn shyper_block_current_task_with_timeout(_timeout: u64) {}
-
-#[no_mangle]
-pub extern "C" fn shyper_wakeup_task(_tid: Tid) {}

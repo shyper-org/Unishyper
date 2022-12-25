@@ -411,6 +411,22 @@ pub fn thread_block_current() {
     }
 }
 
+/// Block current thread with specific timeout us.
+/// Set its status as Blocked and it can not scheduled until blocked time exhausted.
+pub fn thread_block_current_with_timeout_us(timeout_us: usize) {
+    if timeout_us >= crate::drivers::timer::TIMER_TICK_US as usize {
+        // Enough time to set a wakeup timer and block the current task.
+        thread_block_current_with_timeout(timeout_us / 1000)
+    } else if timeout_us > 0 {
+        // Not enough time to set a wakeup timer, so just do busy-waiting.
+        use crate::libs::timer::current_us;
+        let end = current_us() + timeout_us;
+        while current_us() < end {
+            thread_yield()
+        }
+    }
+}
+
 /// Block current thread with specific timeout ms.
 /// Set its status as Blocked and it can not scheduled until blocked time exhausted.
 pub fn thread_block_current_with_timeout(timeout_ms: usize) {

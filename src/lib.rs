@@ -81,6 +81,7 @@ pub extern "C" fn loader_main(core_id: usize) {
     libs::scheduler::init();
 
     if core_id == 0 {
+        libs::timer::init();
         board::init();
         info!("board init ok");
         // logger::print_logo();

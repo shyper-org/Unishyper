@@ -3,6 +3,9 @@ use tock_registers::interfaces::{Readable, Writeable};
 
 const TIMER_TICK_MS: u64 = 100;
 
+#[allow(dead_code)]
+pub const TIMER_TICK_US: u64 = TIMER_TICK_MS * 1000;
+
 pub fn next() {
     let freq = CNTFRQ_EL0.get();
     let count = TIMER_TICK_MS * freq / 1000;

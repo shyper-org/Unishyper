@@ -65,7 +65,7 @@ static HEAP_ALLOCATOR: LockedHeap<32> = LockedHeap::empty();
 //     panic!("alloc_error_handler: heap panic");
 // }
 
-/// Interface to allocate memory from system heap
+/// Interface to allocate memory from system heap.
 ///
 /// # Errors
 /// Returning a null pointer indicates that either memory is exhausted or

@@ -7,33 +7,13 @@ pub use tcp::*;
 mod tls;
 pub use tls::*;
 
+mod fs;
+pub use fs::*;
+
 use core::ffi::c_void;
 
 use crate::libs::thread::Tid;
 use crate::libs::thread::thread_exit;
-
-#[no_mangle]
-pub extern "C" fn shyper_rand() -> u32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_srand(_seed: u32) {}
-
-#[no_mangle]
-pub extern "C" fn shyper_secure_rand32(_value: *mut u32) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_secure_rand64(_value: *mut u64) -> i32 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_get_processor_count() -> usize {
-    0
-}
 
 #[no_mangle]
 pub extern "C" fn shyper_malloc(_size: usize, _align: usize) -> *mut u8 {
@@ -76,102 +56,6 @@ pub extern "C" fn shyper_wait(_id: usize) -> i32 {
 #[no_mangle]
 pub extern "C" fn shyper_destroy_queue(_id: usize) -> i32 {
     0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_open(name: *const u8, flags: i32, mode: i32) -> i32 {
-    let path = unsafe { core::ffi::CStr::from_ptr(name as _) }.to_str().unwrap();
-	crate::libs::fs::open(path, flags, mode)
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_read(fd: i32, buf: *mut u8, len: usize) -> isize {
-    if fd > 2 {
-        // Normal file
-        if cfg!(feature = "fs") {
-            crate::libs::fs::read(fd, buf, len)
-        } else {
-            warn!(
-                "\"fs\" feature is not enabled for shyper, read from fd {} failed",
-                fd
-            );
-            0 as isize
-        }
-    } else {
-        warn!("read from stdin/err/out is unimplemented, returning -1");
-        -1 as isize
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_write(fd: i32, buf: *const u8, len: usize) -> isize {
-    if fd > 2 {
-        // Normal file
-        if cfg!(feature = "fs") {
-            crate::libs::fs::write(fd, buf, len)
-        } else {
-            warn!(
-                "\"fs\" feature is not enabled for shyper, write to fd {} failed",
-                fd
-            );
-            0 as isize
-        }
-    } else {
-        // stdin/err/out all go to console
-        let buf = unsafe { core::slice::from_raw_parts(buf, len) };
-        crate::libs::print::print_byte(buf);
-        len as isize
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_lseek(fd: i32, offset: isize, whence: i32) -> isize {
-    if fd > 2 {
-        // Normal file
-        if cfg!(feature = "fs") {
-            crate::libs::fs::lseek(fd, offset, whence)
-        } else {
-            warn!(
-                "\"fs\" feature is not enabled for shyper, seek fd {} failed",
-                fd
-            );
-            0 as isize
-        }
-    } else {
-        warn!("seek stdin/err/out is unimplemented, returning -1");
-        -1 as isize
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_close(fd: i32) -> i32 {
-    if fd > 2 {
-        // Normal file
-        if cfg!(feature = "fs") {
-            crate::libs::fs::close(fd)
-        } else {
-            warn!(
-                "\"fs\" feature is not enabled for shyper, close fd {} failed",
-                fd
-            );
-            0 as i32
-        }
-    } else {
-        // we don't have to close standard descriptors
-        0 as i32
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_unlink(name: *const i8) -> i32 {
-    let path = unsafe { core::ffi::CStr::from_ptr(name as _) }.to_str().unwrap();
-    crate::libs::fs::unlink(path)
-}
-
-
-#[no_mangle]
-pub extern "C" fn shyper_stat(file: *const u8, st: usize) -> i32 {
-    crate::libs::fs::stat(file, st)
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -255,7 +139,10 @@ pub extern "C" fn shyper_exit(arg: i32) {
 }
 
 #[no_mangle]
-pub extern "C" fn shyper_abort() {}
+pub extern "C" fn shyper_abort() {
+    info!("shyper system shutdown, currently not supported, just exit currently thread");
+    thread_exit();
+}
 
 #[no_mangle]
 pub extern "C" fn shyper_usleep(_usecs: u64) {}
@@ -310,11 +197,3 @@ pub extern "C" fn shyper_block_current_task_with_timeout(_timeout: u64) {}
 
 #[no_mangle]
 pub extern "C" fn shyper_wakeup_task(_tid: Tid) {}
-
-#[no_mangle]
-pub extern "C" fn shyper_get_priority() -> u8 {
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn shyper_set_priority(_tid: Tid, _prio: u8) {}

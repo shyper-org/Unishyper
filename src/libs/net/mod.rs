@@ -7,7 +7,7 @@ mod device;
 mod executor;
 
 pub use smoltcp::wire::IpAddress;
-pub use interface::Handle;
+pub use interface::*;
 
 pub fn init() -> i32 {
     interface::network_init();

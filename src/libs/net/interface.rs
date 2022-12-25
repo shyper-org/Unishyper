@@ -411,32 +411,32 @@ pub fn network_init() {
     info!("network_init() lib init finished");
 }
 
-#[no_mangle]
+#[inline(always)]
 pub fn tcp_stream_connect(ip: &[u8], port: u16, timeout: Option<u64>) -> Result<Handle, ()> {
     let socket = AsyncSocket::new();
     block_on(socket.connect(ip, port), timeout.map(Duration::from_millis))?.map_err(|_| ())
 }
 
-#[no_mangle]
+#[inline(always)]
 pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ()> {
     let socket = AsyncSocket::from(handle);
     block_on(socket.read(buffer), None)?.map_err(|_| ())
 }
 
-#[no_mangle]
+#[inline(always)]
 pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ()> {
     let socket = AsyncSocket::from(handle);
     block_on(socket.write(buffer), None)?.map_err(|_| ())
 }
 
-#[no_mangle]
+#[inline(always)]
 pub fn tcp_stream_close(handle: Handle) -> Result<(), ()> {
     let socket = AsyncSocket::from(handle);
     block_on(socket.close(), None)?.map_err(|_| ())
 }
 
 //ToDo: an enum, or at least constants would be better
-#[no_mangle]
+#[inline(always)]
 pub fn tcp_stream_shutdown(handle: Handle, how: i32) -> Result<(), ()> {
     match how {
 		0 /* Read */ => {
@@ -455,73 +455,7 @@ pub fn tcp_stream_shutdown(handle: Handle, how: i32) -> Result<(), ()> {
 	}
 }
 
-#[no_mangle]
-pub fn tcp_stream_set_read_timeout(_handle: Handle, _timeout: Option<u64>) -> Result<(), ()> {
-    Err(())
-}
-
-#[no_mangle]
-pub fn tcp_stream_get_read_timeout(_handle: Handle) -> Result<Option<u64>, ()> {
-    Err(())
-}
-
-#[no_mangle]
-pub fn tcp_stream_set_write_timeout(_handle: Handle, _timeout: Option<u64>) -> Result<(), ()> {
-    Err(())
-}
-
-#[no_mangle]
-pub fn tcp_stream_get_write_timeout(_handle: Handle) -> Result<Option<u64>, ()> {
-    Err(())
-}
-
-#[deprecated(since = "0.1.14", note = "Please don't use this function")]
-#[no_mangle]
-pub fn tcp_stream_duplicate(_handle: Handle) -> Result<Handle, ()> {
-    Err(())
-}
-
-#[no_mangle]
-pub fn tcp_stream_peek(_handle: Handle, _buf: &mut [u8]) -> Result<usize, ()> {
-    Err(())
-}
-
-/// If set, this option disables the Nagle algorithm. This means that segments are
-/// always sent as soon as possible, even if there is only a small amount of data.
-/// When not set, data is buffered until there is a sufficient amount to send out,
-/// thereby avoiding the frequent sending of small packets.
-#[no_mangle]
-pub fn tcp_set_no_delay(handle: Handle, mode: bool) -> Result<(), ()> {
-    let mut guard = NIC.lock();
-    let nic = guard.as_nic_mut().map_err(drop)?;
-    let socket = nic.iface.get_socket::<TcpSocket<'_>>(handle);
-    socket.set_nagle_enabled(!mode);
-
-    Ok(())
-}
-
-#[no_mangle]
-pub fn tcp_stream_set_nonblocking(_handle: Handle, mode: bool) -> Result<(), ()> {
-    // non-blocking mode is currently not support
-    // => return only an error, if `mode` is defined as `true`
-    if mode {
-        Err(())
-    } else {
-        Ok(())
-    }
-}
-
-#[no_mangle]
-pub fn tcp_stream_set_tll(_handle: Handle, _ttl: u32) -> Result<(), ()> {
-    Err(())
-}
-
-#[no_mangle]
-pub fn tcp_stream_get_tll(_handle: Handle) -> Result<u32, ()> {
-    Err(())
-}
-
-#[no_mangle]
+#[inline(always)]
 pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
     let mut guard = NIC.lock();
     let nic = guard.as_nic_mut().map_err(drop)?;
@@ -532,11 +466,77 @@ pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
     Ok((endpoint.addr, endpoint.port))
 }
 
-#[no_mangle]
+#[inline(always)]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
     debug!("tcp_listener_accept");
     let socket = AsyncSocket::new();
     let (addr, port) = block_on(socket.accept(port), None)?.map_err(|_| ())?;
 
     Ok((socket.inner(), addr, port))
+}
+
+/// If set, this option disables the Nagle algorithm. This means that segments are
+/// always sent as soon as possible, even if there is only a small amount of data.
+/// When not set, data is buffered until there is a sufficient amount to send out,
+/// thereby avoiding the frequent sending of small packets.
+#[inline(always)]
+pub fn tcp_set_no_delay(handle: Handle, mode: bool) -> Result<(), ()> {
+    let mut guard = NIC.lock();
+    let nic = guard.as_nic_mut().map_err(drop)?;
+    let socket = nic.iface.get_socket::<TcpSocket<'_>>(handle);
+    socket.set_nagle_enabled(!mode);
+
+    Ok(())
+}
+
+#[inline(always)]
+pub fn tcp_stream_set_nonblocking(_handle: Handle, mode: bool) -> Result<(), ()> {
+    // non-blocking mode is currently not support
+    // => return only an error, if `mode` is defined as `true`
+    if mode {
+        Err(())
+    } else {
+        Ok(())
+    }
+}
+
+#[inline(always)]
+pub fn tcp_stream_set_read_timeout(_handle: Handle, _timeout: Option<u64>) -> Result<(), ()> {
+    Err(())
+}
+
+#[inline(always)]
+pub fn tcp_stream_get_read_timeout(_handle: Handle) -> Result<Option<u64>, ()> {
+    Err(())
+}
+
+#[inline(always)]
+pub fn tcp_stream_set_write_timeout(_handle: Handle, _timeout: Option<u64>) -> Result<(), ()> {
+    Err(())
+}
+
+#[inline(always)]
+pub fn tcp_stream_get_write_timeout(_handle: Handle) -> Result<Option<u64>, ()> {
+    Err(())
+}
+
+#[deprecated(since = "0.1.14", note = "Please don't use this function")]
+#[inline(always)]
+pub fn tcp_stream_duplicate(_handle: Handle) -> Result<Handle, ()> {
+    Err(())
+}
+
+#[inline(always)]
+pub fn tcp_stream_peek(_handle: Handle, _buf: &mut [u8]) -> Result<usize, ()> {
+    Err(())
+}
+
+#[inline(always)]
+pub fn tcp_stream_set_tll(_handle: Handle, _ttl: u32) -> Result<(), ()> {
+    Err(())
+}
+
+#[inline(always)]
+pub fn tcp_stream_get_tll(_handle: Handle) -> Result<u32, ()> {
+    Err(())
 }

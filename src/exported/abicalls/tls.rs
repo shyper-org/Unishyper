@@ -1,3 +1,6 @@
+/// Shyper unikernel abi for tls operations.
+/// See src/libs/tls for more details.
+
 use crate::libs::tls::{Key as TlsKey, Tls};
 
 pub type Key = usize;

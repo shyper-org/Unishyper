@@ -1,5 +1,5 @@
 use log::{Level, Metadata, Record};
-use log::{LevelFilter, SetLoggerError};
+use log::LevelFilter;
 // use spin::Mutex;
 
 // use crate::util::irqsave;
@@ -52,8 +52,10 @@ impl log::Log for SimpleLogger {
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
-pub fn init() -> Result<(), SetLoggerError> {
-    log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Trace))
+pub fn init() {
+    log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(LevelFilter::Trace))
+        .expect("Panic on logger init failed")
 }
 
 pub fn print_logo() {

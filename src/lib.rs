@@ -62,13 +62,13 @@ pub extern "C" fn loader_main(core_id: usize) {
         #[cfg(feature = "serial")]
         drivers::uart::init();
         logger::print_logo();
+        libs::timer::init();
         mm::heap::init();
-        let _ = logger::init();
-        info!("heap init ok!!");
+        logger::init();
         mm::allocator_init();
         // After Page allocator and Frame allocator init finished, init user page table.
         arch::Arch::page_table_init();
-        info!("page table init ok");
+        debug!("page table init ok");
 
         #[cfg(feature = "smp")]
         board::launch_other_cores();
@@ -81,7 +81,6 @@ pub extern "C" fn loader_main(core_id: usize) {
     libs::scheduler::init();
 
     if core_id == 0 {
-        libs::timer::init();
         board::init();
         info!("board init ok");
         // logger::print_logo();

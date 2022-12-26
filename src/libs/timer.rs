@@ -50,19 +50,20 @@ use core::num::NonZeroUsize;
 static mut BOOT_TIME: Option<NonZeroUsize> = None;
 
 /// Get shyper system boot time in microsecond(10 ^ -6 second).
+/// Todo: RTC only has a second level precision, see init fn below.
 pub fn boot_time() -> usize {
     unsafe { BOOT_TIME.unwrap().get() }
 }
 
 pub fn init() {
-    info!(
-        "Unishyper start at {} , {},",
-        timestamp(),
-        rtc_time64_to_tm(timestamp() as u64)
+    println!(
+        "Unishyper starts at [{}]",
+        rtc_time64_to_tm(timestamp_sec() as u64)
     );
-    // unsafe {
-	// 	BOOT_TIME = Some(0.try_into().unwrap());
-	// }
+    let boot_time = timestamp_sec() as usize * 1000_000 - current_us();
+    unsafe {
+        BOOT_TIME = Some(boot_time.try_into().unwrap());
+    }
 }
 
 pub mod time {
@@ -102,14 +103,14 @@ use time::RtcTime;
 
 #[cfg(target_arch = "aarch64")]
 #[cfg(not(feature = "tx2"))]
-pub fn timestamp() -> u64 {
+pub fn timestamp_sec() -> u64 {
     const PL031_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x9010000;
     unsafe { (PL031_MMIO_BASE as *mut u32).read() as u64 }
 }
 
 #[cfg(target_arch = "aarch64")]
 #[cfg(feature = "tx2")]
-pub fn timestamp() -> u64 {
+pub fn timestamp_sec() -> u64 {
     0
 }
 

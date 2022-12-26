@@ -124,8 +124,9 @@ pub extern "C" fn shyper_spawn2(
 }
 
 #[no_mangle]
-pub extern "C" fn shyper_join(_id: Tid) -> i32 {
-    0
+pub extern "C" fn shyper_join(id: Tid) -> i32 {
+    crate::libs::thread::thread_join(id);
+    0 as i32
 }
 
 #[no_mangle]

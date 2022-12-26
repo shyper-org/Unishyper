@@ -1,4 +1,5 @@
 use alloc::collections::BTreeMap;
+use alloc::collections::VecDeque;
 use alloc::string::String;
 use alloc::sync::Arc;
 use core::fmt;
@@ -13,6 +14,7 @@ use crate::libs::traits::ContextFrameTrait;
 use crate::libs::cpu::{CoreId, cpu, get_cpu};
 use crate::libs::scheduler::Scheduler;
 use crate::libs::error::*;
+use crate::libs::synch::spinlock::SpinlockIrqSave;
 use crate::mm::address::VAddr;
 use crate::mm::stack::Stack;
 use crate::mm::paging::MappedRegion;
@@ -171,6 +173,10 @@ static THREAD_MAP: Mutex<BTreeMap<Tid, Thread>> = Mutex::new(BTreeMap::new());
 /// Generally only threads on the background may exist here.
 static THREAD_NAME_MAP: Mutex<BTreeMap<Tid, String>> = Mutex::new(BTreeMap::new());
 
+/// Store thread IDs and its corresponding waiting threads' queue.
+static THREAD_WAITING_QUEUE: SpinlockIrqSave<BTreeMap<Tid, VecDeque<Thread>>> =
+    SpinlockIrqSave::new(BTreeMap::new());
+
 /// List background threads' ids and names infornation.
 pub fn list_threads() {
     let name_map = THREAD_NAME_MAP.lock();
@@ -274,6 +280,8 @@ pub fn thread_alloc(
     let mut map = THREAD_MAP.lock();
     map.insert(id, t.clone());
 
+    THREAD_WAITING_QUEUE.lock().insert(id, VecDeque::with_capacity(1));
+
     debug!(
         "thread_alloc success id [{}]\n\t\t\t\t\t\tsp [{} to 0x{:016x}]",
         id, stack_start, sp
@@ -290,6 +298,7 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 
 /// Destory target thread.
 /// Remove it from THREAD_NAME_MAP and THREAD_MAP.
+#[inline(always)]
 pub fn thread_destroy(t: &Thread) {
     debug!("Destroy t{}", t.tid());
     if let Some(current_thread) = cpu().running_thread() {
@@ -301,6 +310,7 @@ pub fn thread_destroy(t: &Thread) {
     name_map.remove(&t.tid());
     let mut map = THREAD_MAP.lock();
     map.remove(&t.tid());
+    THREAD_WAITING_QUEUE.lock().remove(&t.tid());
 }
 
 /// Destory target thread by thread id.
@@ -330,12 +340,8 @@ pub fn thread_wake(t: &Thread) {
     *status = Status::Runnable;
 
     let affinity_core_id = match t.affinity_core() {
-        Some(affinity_core_id) => {
-            affinity_core_id
-        }
-        None => {
-            CORE_COUNTER.fetch_add(1, Ordering::SeqCst) % crate::board::BOARD_CORE_NUMBER
-        }
+        Some(affinity_core_id) => affinity_core_id,
+        None => CORE_COUNTER.fetch_add(1, Ordering::SeqCst) % crate::board::BOARD_CORE_NUMBER,
     };
 
     let target_cpu = get_cpu(affinity_core_id);
@@ -368,12 +374,8 @@ pub fn thread_wake_to_front(t: &Thread) {
     let mut status = t.0.inner_mut.status.lock();
     *status = Status::Runnable;
     let affinity_core_id = match t.affinity_core() {
-        Some(affinity_core_id) => {
-            affinity_core_id
-        }
-        None => {
-            CORE_COUNTER.fetch_add(1, Ordering::SeqCst) % crate::board::BOARD_CORE_NUMBER
-        }
+        Some(affinity_core_id) => affinity_core_id,
+        None => CORE_COUNTER.fetch_add(1, Ordering::SeqCst) % crate::board::BOARD_CORE_NUMBER,
     };
     let target_cpu = get_cpu(affinity_core_id);
     target_cpu.scheduler().add(t.clone());
@@ -450,6 +452,46 @@ pub fn thread_block_current_with_timeout(timeout_ms: usize) {
     }
 }
 
+#[inline(always)]
+/// Waits for the associated thread to finish.
+pub fn thread_join(id: Tid) {
+    if let Some(current_thread) = cpu().running_thread() {
+        debug!(
+            "Thread [{}] is waiting for thread [{}]",
+            current_thread.tid(),
+            id
+        );
+        {
+            match THREAD_WAITING_QUEUE.lock().get_mut(&id) {
+                Some(queue) => {
+                    let t = &current_thread;
+                    let reason = Status::Blocked;
+                    assert_ne!(reason, Status::Runnable);
+                    let mut status = t.0.inner_mut.status.lock();
+                    *status = reason;
+                    queue.push_back(t.clone());
+                }
+                None => {
+                    return;
+                }
+            }
+        }
+        thread_yield();
+    } else {
+        warn!("No Running Thread!");
+    }
+}
+
+#[inline(always)]
+fn handle_waiting_threads(id: Tid) {
+    // wakeup threads which are waiting for thread with the identifier id.
+    if let Some(mut queue) = THREAD_WAITING_QUEUE.lock().remove(&id) {
+        while let Some(t) = queue.pop_front() {
+            thread_wake(&t);
+        }
+    }
+}
+
 /// Regularly wake up blocked threads according to blocked time.
 /// This function is called during the process of timer interrupt.
 pub fn handle_blocked_threads() {
@@ -507,17 +549,20 @@ pub fn thread_exit() {
     let result = current_thread();
     match result {
         Ok(t) => {
-            debug!("thread_exit on Thread [{}]", &t.tid());
+            debug!("thread_exit on Thread [{}]", t.tid());
+            handle_waiting_threads(t.tid());
             crate::libs::thread::thread_destroy(&t);
 
             // Drop thread resource, including mapped region.
             // Note:
             // We know that this thread owns its stask, which is alse a mapped memory region,
             // During the resource releasing process, the stack region is automically unmapped,
-            // But during fuction process, current sp space is still used.
+            // But during function process, current sp space is still used.
             // So we need to operate the SPSel register to change the sp to SP_EL1.
             // It's strange, but its necessary.
 
+            // FIXME: his is dangerious, we manually change the sp register here!!!
+            // We need to come through a better solution.
             use cortex_a::registers::SPSel;
             use tock_registers::interfaces::Writeable;
             SPSel.set(1);

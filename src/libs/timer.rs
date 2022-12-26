@@ -52,17 +52,24 @@ static mut BOOT_TIME: Option<NonZeroUsize> = None;
 /// Get shyper system boot time in microsecond(10 ^ -6 second).
 /// Todo: RTC only has a second level precision, see init fn below.
 pub fn boot_time() -> usize {
-    unsafe { BOOT_TIME.unwrap().get() }
+    unsafe {
+        match BOOT_TIME {
+            Some(t) => t.get(),
+            None => 0,
+        }
+    }
 }
 
 pub fn init() {
     println!(
-        "Unishyper starts at [{}]",
+        "Unishyper starts at [{} (UTC)]",
         rtc_time64_to_tm(timestamp_sec() as u64)
     );
     let boot_time = timestamp_sec() as usize * 1000_000 - current_us();
-    unsafe {
-        BOOT_TIME = Some(boot_time.try_into().unwrap());
+    if boot_time > 0 {
+        unsafe {
+            BOOT_TIME = Some(boot_time.try_into().unwrap());
+        }
     }
 }
 

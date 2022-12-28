@@ -25,6 +25,19 @@
 // note: see issue #63291 <https://github.com/rust-lang/rust/issues/63291> for more information
 // help: add `#![feature(new_uninit)]` to the crate attributes to enable
 #![feature(new_uninit)]
+// error[E0658]: use of unstable library feature 'atomic_mut_ptr': recently added
+// note: see issue #66893 <https://github.com/rust-lang/rust/issues/66893> for more information
+// help: add `#![feature(atomic_mut_ptr)]` to the crate attributes to enable
+#![feature(atomic_mut_ptr)]
+// error[E0658]: use of unstable library feature 'strict_provenance'
+// note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
+// help: add `#![feature(strict_provenance)]` to the crate attributes to enable
+#![feature(strict_provenance)]
+// error[E0658]: use of unstable library feature 'is_some_and'
+// note: see issue #93050 <https://github.com/rust-lang/rust/issues/93050> for more information
+// help: add `#![feature(is_some_and)]` to the crate attributes to enable
+#![feature(is_some_and)]
+
 #[macro_use]
 extern crate log;
 // #[macro_use]

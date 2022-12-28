@@ -58,19 +58,46 @@ pub struct timespec {
     pub tv_nsec: i64,
 }
 
-#[no_mangle]
-pub extern "C" fn shyper_futex_wait(
-    _address: *mut u32,
-    _expected: u32,
-    _timeout: *const timespec,
-    _flags: u32,
-) -> i32 {
-    0
+use core::sync::atomic::AtomicU32;
+
+pub(crate) fn timespec_to_microseconds(time: timespec) -> Option<usize> {
+    usize::try_from(time.tv_sec)
+        .ok()
+        .and_then(|secs| secs.checked_mul(1_000_000))
+        .and_then(|millions| millions.checked_add(usize::try_from(time.tv_nsec).ok()? / 1000))
 }
 
 #[no_mangle]
-pub extern "C" fn shyper_futex_wake(_address: *mut u32, _count: i32) -> i32 {
-    0
+pub extern "C" fn shyper_futex_wait(
+    address: *mut u32,
+    expected: u32,
+    timeout: *const timespec,
+    flags: u32,
+) -> i32 {
+    let address = unsafe { &*(address as *const AtomicU32) };
+    let timeout = if timeout.is_null() {
+        None
+    } else {
+        match timespec_to_microseconds(unsafe { timeout.read() }) {
+            t @ Some(_) => t,
+            None => return -1,
+        }
+    };
+    let flags = match crate::libs::synch::futex::Flags::from_bits(flags) {
+		Some(flags) => flags,
+		None => return -1,
+	};
+    crate::libs::synch::futex::futex_wait(address, expected, timeout, flags)
+}
+
+#[no_mangle]
+pub extern "C" fn shyper_futex_wake(address: *mut u32, count: i32) -> i32 {
+    if address.is_null() {
+        return -1;
+    }
+
+    let address = unsafe { &*(address as *const AtomicU32) };
+    crate::libs::synch::futex::futex_wake(address, count)
 }
 
 #[no_mangle]
@@ -135,37 +162,37 @@ pub extern "C" fn shyper_yield() {
 }
 
 fn microseconds_to_timespec(microseconds: usize, result: &mut timespec) {
-	result.tv_sec = (microseconds / 1_000_000) as i64;
-	result.tv_nsec = ((microseconds % 1_000_000) * 1000) as i64;
+    result.tv_sec = (microseconds / 1_000_000) as i64;
+    result.tv_nsec = ((microseconds % 1_000_000) * 1000) as i64;
 }
 
 #[no_mangle]
 pub extern "C" fn shyper_clock_gettime(clock_id: u64, tp: *mut timespec) -> i32 {
     use crate::libs::timer::{CLOCK_REALTIME, CLOCK_MONOTONIC, current_us, boot_time};
     assert!(
-		!tp.is_null(),
-		"shyper_clock_gettime called with a zero tp parameter"
-	);
+        !tp.is_null(),
+        "shyper_clock_gettime called with a zero tp parameter"
+    );
     let result = unsafe { &mut *tp };
     match clock_id {
-		CLOCK_REALTIME | CLOCK_MONOTONIC => {
-			let mut microseconds = current_us();
+        CLOCK_REALTIME | CLOCK_MONOTONIC => {
+            let mut microseconds = current_us();
 
-			if clock_id == CLOCK_REALTIME {
-				microseconds += boot_time();
-			}
+            if clock_id == CLOCK_REALTIME {
+                microseconds += boot_time();
+            }
 
-			microseconds_to_timespec(microseconds, result);
-			0
-		}
-		_ => {
-			debug!(
-				"Called shyper_clock_gettime for unsupported clock {}",
-				clock_id
-			);
-			-1 as i32
-		}
-	}
+            microseconds_to_timespec(microseconds, result);
+            0
+        }
+        _ => {
+            debug!(
+                "Called shyper_clock_gettime for unsupported clock {}",
+                clock_id
+            );
+            -1 as i32
+        }
+    }
 }
 
 #[no_mangle]

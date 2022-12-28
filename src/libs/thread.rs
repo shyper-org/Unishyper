@@ -86,6 +86,25 @@ impl Drop for ControlBlock {
 #[derive(Clone)]
 pub struct Thread(Arc<ControlBlock>);
 
+impl Ord for Thread {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+		self.0.inner.uuid.cmp(&other.0.inner.uuid)
+	}
+}
+
+impl PartialOrd for Thread {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl PartialEq for Thread {
+	fn eq(&self, other: &Self) -> bool {
+		self.0.inner.uuid == other.0.inner.uuid
+	}
+}
+
+impl Eq for Thread {}
 // impl Drop for Thread {
 //     fn drop(&mut self) {
 //         debug!("Drop Thread [{}]'s struct, TCB Arc stong count {}", self.tid(), Arc::strong_count(&self.0));

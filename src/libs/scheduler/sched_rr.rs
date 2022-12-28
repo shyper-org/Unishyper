@@ -49,6 +49,7 @@ impl Scheduler for RoundRobinScheduler {
         self.running_queue.lock().pop_front()
     }
 
+    // Todo: replace timeout with wakeup time.
     fn blocked(&self, thread: Thread, timeout: Option<usize>) {
         let wakeup_time = timeout.map(|t| current_ms() + t);
         debug!(

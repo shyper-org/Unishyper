@@ -123,7 +123,7 @@ pub fn open(path: &str, flags: i32, mode: i32) -> i32 {
 }
 
 pub fn close(fd: i32) -> i32 {
-    assert!(fd <= 2);
+    assert!(fd > 2);
     let mut fs = fs::FILESYSTEM.lock();
     fs.close(fd as u64);
     0
@@ -131,7 +131,7 @@ pub fn close(fd: i32) -> i32 {
 
 pub fn read(fd: i32, buf: *mut u8, len: usize) -> isize {
     assert!(len <= isize::MAX as usize);
-    assert!(fd <= 2);
+    assert!(fd > 2);
     debug!("Read! {}, {}", fd, len);
 
     let mut fs = fs::FILESYSTEM.lock();
@@ -149,7 +149,7 @@ pub fn read(fd: i32, buf: *mut u8, len: usize) -> isize {
 
 pub fn write(fd: i32, buf: *const u8, len: usize) -> isize {
     assert!(len <= isize::MAX as usize);
-    assert!(fd <= 2);
+    assert!(fd > 2);
     let buf = unsafe { core::slice::from_raw_parts(buf, len) };
 
     // Normal file

@@ -6,6 +6,11 @@ mod mm;
 pub use mm::*;
 
 #[cfg(feature = "std")]
+mod cmath;
+#[cfg(feature = "std")]
+pub use cmath::*;
+
+#[cfg(feature = "std")]
 mod abicalls;
 #[cfg(feature = "std")]
 pub use abicalls::*;

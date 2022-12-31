@@ -89,9 +89,9 @@ pub extern "C" fn shyper_futex_wait(
         }
     };
     let flags = match crate::libs::synch::futex::Flags::from_bits(flags) {
-		Some(flags) => flags,
-		None => return -1,
-	};
+        Some(flags) => flags,
+        None => return -1,
+    };
     crate::libs::synch::futex::futex_wait(address, expected, timeout, flags)
 }
 

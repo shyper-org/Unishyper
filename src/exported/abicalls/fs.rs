@@ -1,14 +1,15 @@
 /// Shyper unikernel abi for fs operations.
-/// Stdin/out/err operations may use some functions with fd < 3. 
+/// Stdin/out/err operations may use some functions with fd < 3.
 use alloc::format;
 
 use crate::libs::fs;
 
-
 #[no_mangle]
 pub extern "C" fn shyper_open(name: *const u8, flags: i32, mode: i32) -> i32 {
-    let path = unsafe { core::ffi::CStr::from_ptr(name as _) }.to_str().unwrap();
-	fs::open(format!("{}{}", fs::FS_ROOT, path).as_str(), flags, mode)
+    let path = unsafe { core::ffi::CStr::from_ptr(name as _) }
+        .to_str()
+        .unwrap();
+    fs::open(format!("{}{}", fs::FS_ROOT, path).as_str(), flags, mode)
 }
 
 #[no_mangle]
@@ -91,10 +92,11 @@ pub extern "C" fn shyper_close(fd: i32) -> i32 {
 
 #[no_mangle]
 pub extern "C" fn shyper_unlink(name: *const i8) -> i32 {
-    let path = unsafe { core::ffi::CStr::from_ptr(name as _) }.to_str().unwrap();
+    let path = unsafe { core::ffi::CStr::from_ptr(name as _) }
+        .to_str()
+        .unwrap();
     fs::unlink(format!("{}{}", fs::FS_ROOT, path).as_str())
 }
-
 
 #[no_mangle]
 pub extern "C" fn shyper_stat(file: *const u8, st: usize) -> i32 {

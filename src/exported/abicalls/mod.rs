@@ -10,6 +10,11 @@ pub use tls::*;
 mod fs;
 pub use fs::*;
 
+mod cmath;
+pub use cmath::*;
+
+pub use crate::libs::string::{memcmp, memmove, memcpy, memset, strlen};
+
 use crate::libs::thread::Tid;
 use crate::libs::thread::thread_exit;
 
@@ -198,5 +203,7 @@ pub extern "C" fn shyper_clock_gettime(clock_id: u64, tp: *mut timespec) -> i32 
 #[no_mangle]
 pub extern "C" fn shyper_network_init() -> i32 {
     debug!("Unishyper network init");
+    #[cfg(feature = "tcp")]
+    crate::libs::net::network_init();
     0
 }

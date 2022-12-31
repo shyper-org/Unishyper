@@ -77,7 +77,7 @@ scheduler-percore = ["smp"]
 serial = []
 shyper = []
 smp = []
-std = ["serial", "ahash", "hashbrown", "bitflags", "libm"]
+std = ["serial", "fs", "fat", "ahash", "hashbrown", "bitflags", "libm"]
 tcp = [
   "async-task",
   "futures-lite",

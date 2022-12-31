@@ -60,17 +60,18 @@ pub fn dump_heap_allocator_state() {
 #[global_allocator]
 static HEAP_ALLOCATOR: LockedHeap<32> = LockedHeap::empty();
 
-// #[alloc_error_handler]
-// fn alloc_error_handler(_: Layout) -> ! {
-//     panic!("alloc_error_handler: heap panic");
-// }
+#[cfg(not(feature = "std"))]
+#[alloc_error_handler]
+fn alloc_error_handler(_: Layout) -> ! {
+    panic!("alloc_error_handler: heap panic");
+}
 
 /// Interface to allocate memory from system heap.
 ///
 /// # Errors
 /// Returning a null pointer indicates that either memory is exhausted or
 /// `size` and `align` do not meet this allocator's size or alignment constraints.
-///
+#[cfg(feature = "std")]
 pub fn malloc(size: usize, align: usize) -> *mut u8 {
     let layout_res = Layout::from_size_align(size, align);
     if layout_res.is_err() || size == 0 {
@@ -109,6 +110,7 @@ pub fn malloc(size: usize, align: usize) -> *mut u8 {
 ///
 /// # Errors
 /// May panic if debug assertions are enabled and invalid parameters `size` or `align` where passed.
+#[cfg(feature = "std")]
 pub fn free(ptr: *mut u8, size: usize, align: usize) {
     let layout_res = Layout::from_size_align(size, align);
     if layout_res.is_err() || size == 0 {

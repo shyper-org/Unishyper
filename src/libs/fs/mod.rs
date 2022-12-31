@@ -52,8 +52,8 @@ pub fn init() {
     // This is just for uni-lib test during development.
     if false {
         use alloc::vec;
-        use alloc::string::String;
-        use alloc::format;
+        #[cfg(not(feature = "std"))]
+        use alloc::{format, string::String};
         // Test open.
         debug!("This is just for uni-lib test during development");
         let fd = open(format!("{}{}", FS_ROOT, "test_path").as_str(), 111, 222);

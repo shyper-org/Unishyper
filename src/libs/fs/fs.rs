@@ -71,6 +71,7 @@ impl Filesystem {
         mntpath: &str,
         mntobj: Box<dyn PosixFileSystem + Send>,
     ) -> Result<(), ()> {
+        #[cfg(not(feature = "std"))]
         use alloc::borrow::ToOwned;
 
         info!("Mounting {}", mntpath);

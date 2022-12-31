@@ -19,7 +19,9 @@ pub fn current_cycle() -> usize {
     r
 }
 
+#[cfg(feature = "std")]
 pub(crate) const CLOCK_REALTIME: u64 = 1;
+#[cfg(feature = "std")]
 pub(crate) const CLOCK_MONOTONIC: u64 = 4;
 
 #[allow(dead_code)]

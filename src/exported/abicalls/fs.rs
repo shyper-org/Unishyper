@@ -14,7 +14,6 @@ pub extern "C" fn shyper_open(_name: *const u8, _flags: i32, _mode: i32) -> i32 
 #[cfg(feature = "fs")]
 #[no_mangle]
 pub extern "C" fn shyper_open(name: *const u8, flags: i32, mode: i32) -> i32 {
-    use alloc::format;
     let path = unsafe { core::ffi::CStr::from_ptr(name as _) }
         .to_str()
         .unwrap();
@@ -143,7 +142,6 @@ pub extern "C" fn shyper_unlink(_name: *const i8) -> i32 {
 #[cfg(feature = "fs")]
 #[no_mangle]
 pub extern "C" fn shyper_unlink(name: *const i8) -> i32 {
-    use alloc::format;
     let path = unsafe { core::ffi::CStr::from_ptr(name as _) }
         .to_str()
         .unwrap();

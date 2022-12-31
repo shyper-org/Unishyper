@@ -1,18 +1,18 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 // Drop the #![no_main] attribute as it has no effect on library crates.
 // #![no_main]
 #![feature(alloc_error_handler)]
-// #![feature(panic_info_message)]
+#![cfg_attr(not(feature = "std"), feature(panic_info_message))]
 #![feature(format_args_nl)]
 #![feature(lang_items)]
 // warning: the feature `const_btree_new` has been stable since 1.66.0 and no longer requires an attribute to enable
-// #![feature(const_btree_new)]
+#![cfg_attr(not(feature = "std"), feature(const_btree_new))]
 #![feature(allocator_api)]
 #![feature(never_type)]
 #![feature(asm_const)]
 #![feature(drain_filter)]
 // warning: the feature `map_first_last` has been stable since 1.66.0 and no longer requires an attribute to enable
-// #![feature(map_first_last)]
+#![cfg_attr(not(feature = "std"), feature(map_first_last))]
 // use of unstable library feature 'step_trait': recently redesigned
 // see issue #42168 <https://github.com/rust-lang/rust/issues/42168> for more information
 // add `#![feature(step_trait)]` to the crate attributes to enable
@@ -24,19 +24,19 @@
 // error[E0658]: use of unstable library feature 'new_uninit'
 // note: see issue #63291 <https://github.com/rust-lang/rust/issues/63291> for more information
 // help: add `#![feature(new_uninit)]` to the crate attributes to enable
-#![feature(new_uninit)]
+#![cfg_attr(feature = "std", feature(new_uninit))]
 // error[E0658]: use of unstable library feature 'atomic_mut_ptr': recently added
 // note: see issue #66893 <https://github.com/rust-lang/rust/issues/66893> for more information
 // help: add `#![feature(atomic_mut_ptr)]` to the crate attributes to enable
-#![feature(atomic_mut_ptr)]
+#![cfg_attr(feature = "std", feature(atomic_mut_ptr))]
 // error[E0658]: use of unstable library feature 'strict_provenance'
 // note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
 // help: add `#![feature(strict_provenance)]` to the crate attributes to enable
-#![feature(strict_provenance)]
+#![cfg_attr(feature = "std", feature(strict_provenance))]
 // error[E0658]: use of unstable library feature 'is_some_and'
 // note: see issue #93050 <https://github.com/rust-lang/rust/issues/93050> for more information
 // help: add `#![feature(is_some_and)]` to the crate attributes to enable
-#![feature(is_some_and)]
+#![cfg_attr(feature = "std", feature(is_some_and))]
 
 #[macro_use]
 extern crate log;
@@ -96,15 +96,18 @@ pub extern "C" fn loader_main(core_id: usize) {
     if core_id == 0 {
         board::init();
         info!("board init ok");
-        // logger::print_logo();
-        // Init user main thread on core 0 by default.
+        // Init user first thread on core 0 by default.
         extern "C" {
-            #[allow(unused)]
+            #[cfg(not(feature = "std"))]
             fn main(arg: usize) -> !;
+            #[cfg(feature = "std")]
             fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
         }
-        let t =
-            libs::thread::thread_alloc(None, Some(core_id), runtime_entry as usize, 123 as usize, 0, true);
+        #[cfg(not(feature = "std"))]
+        let start = main as usize;
+        #[cfg(feature = "std")]
+        let start = runtime_entry as usize;
+        let t = libs::thread::thread_alloc(None, Some(core_id), start, 123 as usize, 0, true);
         libs::thread::thread_wake(&t);
         // Init fs if configured.
         #[cfg(feature = "fs")]
@@ -122,9 +125,7 @@ pub extern "C" fn loader_main(core_id: usize) {
 
     let sp = match libs::cpu::cpu().running_thread() {
         None => panic!("no running thread"),
-        Some(t) => {
-            t.last_stack_pointer()
-        }
+        Some(t) => t.last_stack_pointer(),
     };
     debug!("entering first thread on sp {:x}...", sp);
     unsafe { pop_context_first(sp) }

@@ -633,7 +633,10 @@ fn _inner_spawn(
             {
                 const RETRY_MAX: usize = 5;
                 let mut i = 0;
+                #[cfg(not(feature = "std"))]
                 use crate::libs::unwind::catch::catch_unwind;
+                #[cfg(feature = "std")]
+                use std::panic::catch_unwind;
                 loop {
                     i += 1;
                     let r = catch_unwind(|| {

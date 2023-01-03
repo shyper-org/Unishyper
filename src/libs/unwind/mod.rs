@@ -47,9 +47,9 @@ use arch::*;
 #[path = "arch/aarch64.rs"]
 pub mod arch;
 
+pub mod catch;
 pub mod elf;
 pub mod lsda;
-pub mod catch;
 
 pub struct UnwindingContext {
     skip: usize,
@@ -370,7 +370,14 @@ fn unwind(ctx: *mut UnwindingContext) {
                             }
                             info!("land at {:016x}", landing_pad);
                             let mut regs = stack_frame_iter.registers.clone();
-                            regs[REG_ARGUMENT] = Some(ctx as u64);
+                            #[cfg(not(feature = "std"))]
+                            {
+                                regs[REG_ARGUMENT] = Some(ctx as u64);
+                            }
+                            #[cfg(feature = "std")]
+                            {
+                                regs[REG_ARGUMENT] = Some(crate::exported::get_global_payload());
+                            }
                             unsafe {
                                 land(&regs, landing_pad);
                             }

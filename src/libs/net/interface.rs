@@ -101,7 +101,11 @@ fn remove_local_endpoint(local_endpoint: u16) {
     let mut lock = LOCAL_ENDPOINT_MAP.lock();
     let remote_endpoint = lock.remove(&local_endpoint).unwrap();
     if remote_endpoint.is_some() {
-        debug!("connect to remote {} is closed", remote_endpoint.unwrap());
+        debug!(
+            "connect to remote {} is closed, release port {}",
+            remote_endpoint.unwrap(),
+            local_endpoint
+        );
     }
 }
 
@@ -482,8 +486,7 @@ pub fn network_init() {
 pub fn tcp_stream_connect(ip: &[u8], port: u16, timeout: Option<u64>) -> Result<Handle, ()> {
     let socket = AsyncSocket::new();
     let local_endpoint = get_local_endpoint();
-    let address = IpAddress::from_str(str::from_utf8(ip).map_err(|_| ())?)
-        .map_err(|_|())?;
+    let address = IpAddress::from_str(str::from_utf8(ip).map_err(|_| ())?).map_err(|_| ())?;
     let res = block_on(
         socket.connect(address, port, local_endpoint),
         timeout.map(Duration::from_millis),
@@ -596,6 +599,7 @@ pub fn tcp_stream_set_nonblocking(_handle: Handle, mode: bool) -> Result<(), ()>
     // non-blocking mode is currently not support
     // => return only an error, if `mode` is defined as `true`
     if mode {
+        warn!("tcp_stream_set_nonblocking is not supported");
         Err(())
     } else {
         Ok(())
@@ -603,42 +607,56 @@ pub fn tcp_stream_set_nonblocking(_handle: Handle, mode: bool) -> Result<(), ()>
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_read_timeout(_handle: Handle, _timeout: Option<u64>) -> Result<(), ()> {
+pub fn tcp_stream_set_read_timeout(_handle: Handle, timeout: Option<u64>) -> Result<(), ()> {
+    if timeout.is_none() {
+        return Ok(());
+    }
+    warn!("tcp_stream_set_read_timeout is not supported");
     Err(())
 }
 
 #[inline(always)]
 pub fn tcp_stream_get_read_timeout(_handle: Handle) -> Result<Option<u64>, ()> {
-    Err(())
+    warn!("tcp_stream_get_read_timeout is not supported");
+    Ok(None)
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_write_timeout(_handle: Handle, _timeout: Option<u64>) -> Result<(), ()> {
+pub fn tcp_stream_set_write_timeout(_handle: Handle, timeout: Option<u64>) -> Result<(), ()> {
+    if timeout.is_none() {
+        return Ok(());
+    }
+    warn!("tcp_stream_set_write_timeout is not supported");
     Err(())
 }
 
 #[inline(always)]
 pub fn tcp_stream_get_write_timeout(_handle: Handle) -> Result<Option<u64>, ()> {
-    Err(())
+    warn!("tcp_stream_get_write_timeout is not supported");
+    Ok(None)
 }
 
 #[deprecated(since = "0.1.14", note = "Please don't use this function")]
 #[inline(always)]
 pub fn tcp_stream_duplicate(_handle: Handle) -> Result<Handle, ()> {
+    warn!("tcp_stream_duplicate is not supported");
     Err(())
 }
 
 #[inline(always)]
 pub fn tcp_stream_peek(_handle: Handle, _buf: &mut [u8]) -> Result<usize, ()> {
+    warn!("tcp_stream_peek is not supported");
     Err(())
 }
 
 #[inline(always)]
 pub fn tcp_stream_set_tll(_handle: Handle, _ttl: u32) -> Result<(), ()> {
+    warn!("tcp_stream_set_tll is not supported");
     Err(())
 }
 
 #[inline(always)]
 pub fn tcp_stream_get_tll(_handle: Handle) -> Result<u32, ()> {
+    warn!("tcp_stream_get_tll is not supported");
     Err(())
 }

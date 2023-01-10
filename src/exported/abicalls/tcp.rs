@@ -61,48 +61,42 @@ pub fn shyper_tcp_stream_set_nonblocking(handle: Handle, mode: bool) -> Result<(
 }
 
 #[no_mangle]
-pub fn shyper_tcp_stream_set_read_timeout(
-    _handle: Handle,
-    _timeout: Option<u64>,
-) -> Result<(), ()> {
-    Err(())
+pub fn shyper_tcp_stream_set_read_timeout(handle: Handle, timeout: Option<u64>) -> Result<(), ()> {
+    net::tcp_stream_set_read_timeout(handle, timeout)
 }
 
 #[no_mangle]
-pub fn shyper_tcp_stream_get_read_timeout(_handle: Handle) -> Result<Option<u64>, ()> {
-    Err(())
+pub fn shyper_tcp_stream_get_read_timeout(handle: Handle) -> Result<Option<u64>, ()> {
+    net::tcp_stream_get_read_timeout(handle)
 }
 
 #[no_mangle]
-pub fn shyper_tcp_stream_set_write_timeout(
-    _handle: Handle,
-    _timeout: Option<u64>,
-) -> Result<(), ()> {
-    Err(())
+pub fn shyper_tcp_stream_set_write_timeout(handle: Handle, timeout: Option<u64>) -> Result<(), ()> {
+    net::tcp_stream_set_write_timeout(handle, timeout)
 }
 
 #[no_mangle]
-pub fn shyper_tcp_stream_get_write_timeout(_handle: Handle) -> Result<Option<u64>, ()> {
-    Err(())
+pub fn shyper_tcp_stream_get_write_timeout(handle: Handle) -> Result<Option<u64>, ()> {
+    net::tcp_stream_get_write_timeout(handle)
 }
 
 #[deprecated(since = "0.1.14", note = "Please don't use this function")]
 #[no_mangle]
-pub fn shyper_tcp_stream_duplicate(_handle: Handle) -> Result<Handle, ()> {
-    Err(())
+pub fn shyper_tcp_stream_duplicate(handle: Handle) -> Result<Handle, ()> {
+    net::tcp_stream_duplicate(handle)
 }
 
 #[no_mangle]
-pub fn shyper_tcp_stream_peek(_handle: Handle, _buf: &mut [u8]) -> Result<usize, ()> {
-    Err(())
+pub fn shyper_tcp_stream_peek(handle: Handle, buf: &mut [u8]) -> Result<usize, ()> {
+    net::tcp_stream_peek(handle, buf)
 }
 
 #[no_mangle]
-pub fn shyper_tcp_stream_set_tll(_handle: Handle, _ttl: u32) -> Result<(), ()> {
-    Err(())
+pub fn shyper_tcp_stream_set_tll(handle: Handle, ttl: u32) -> Result<(), ()> {
+    net::tcp_stream_set_tll(handle, ttl)
 }
 
 #[no_mangle]
-pub fn shyper_tcp_stream_get_tll(_handle: Handle) -> Result<u32, ()> {
-    Err(())
+pub fn shyper_tcp_stream_get_tll(handle: Handle) -> Result<u32, ()> {
+    net::tcp_stream_get_tll(handle)
 }

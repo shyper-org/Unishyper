@@ -10,8 +10,14 @@ fn main() {
 		String::from_utf8(heart).unwrap_or_default()
 	);
 
-	let server = tiny_http::Server::http("0.0.0.0:4444").unwrap();
-	println!("Now listening on port 4444");
+	let listener = std::net::TcpListener::bind("0.0.0.0:0").unwrap();
+    // let stream = listener.incoming().next().unwrap().unwrap();
+    // println!("Connection established with {:?}!", stream.peer_addr().unwrap());
+	let addr = listener.local_addr().unwrap();
+	println!("test bind on {}", addr);
+
+	let server = tiny_http::Server::http("0.0.0.0:0").unwrap();
+	println!("Now listening on {}", server.server_addr());
 
 	for request in server.incoming_requests() {
 		println!(

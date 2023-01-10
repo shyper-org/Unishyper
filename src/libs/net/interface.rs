@@ -1,6 +1,7 @@
 use alloc::str::FromStr;
 use alloc::{str, vec};
 use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
 use core::ops::DerefMut;
 use core::sync::atomic::{AtomicU16, Ordering};
 use core::task::Poll;
@@ -42,6 +43,68 @@ pub type Handle = SocketHandle;
 const DEFAULT_KEEP_ALIVE_INTERVAL: u64 = 75000;
 
 static LOCAL_ENDPOINT: AtomicU16 = AtomicU16::new(0);
+
+use smoltcp::wire::IpEndpoint;
+
+static LOCAL_ENDPOINT_MAP: SpinlockIrqSave<BTreeMap<u16, Option<IpEndpoint>>> =
+    SpinlockIrqSave::new(BTreeMap::new());
+
+fn start_endpoint() -> u16 {
+    // use cortex_a::registers::CNTPCT_EL0;
+    // use tock_registers::interfaces::Readable;
+    // let start_endpoint: u16= (CNTPCT_EL0.get() % (u16::MAX as u64)).try_into().unwrap();
+    // if start_endpoint < 1024 {
+    //     start_endpoint += 1024;
+    // }
+    let start_endpoint = 4444;
+    debug!("get start endpoint {}", start_endpoint);
+    start_endpoint
+}
+
+fn get_local_endpoint() -> u16 {
+    let mut lock = LOCAL_ENDPOINT_MAP.lock();
+    let mut local_endpoint;
+    loop {
+        local_endpoint = LOCAL_ENDPOINT.fetch_add(1, Ordering::SeqCst);
+        if lock.contains_key(&local_endpoint) {
+            continue;
+        }
+        if local_endpoint > u16::MAX {
+            warn!("get_local_endpoint failed, port exceeds u16 max");
+            // Let's just start over.
+            LOCAL_ENDPOINT.store(start_endpoint(), Ordering::Relaxed);
+        }
+        lock.insert(local_endpoint, None);
+        break;
+    }
+    local_endpoint
+}
+
+fn check_local_endpoint(endpoint: u16) -> bool {
+    let lock = LOCAL_ENDPOINT_MAP.lock();
+    lock.contains_key(&endpoint)
+}
+
+fn set_local_endpoint_link(local_endpoint: u16, remote_endpoint: IpEndpoint) {
+    let mut lock = LOCAL_ENDPOINT_MAP.lock();
+    if !lock.contains_key(&local_endpoint) {
+        warn!("local endpoint not exists");
+        return;
+    }
+    if lock.get(&local_endpoint).unwrap().is_some() {
+        warn!("local endpoint has been occupied");
+    }
+    lock.insert(local_endpoint, Some(remote_endpoint));
+}
+
+fn remove_local_endpoint(local_endpoint: u16) {
+    let mut lock = LOCAL_ENDPOINT_MAP.lock();
+    let remote_endpoint = lock.remove(&local_endpoint).unwrap();
+    if remote_endpoint.is_some() {
+        debug!("connect to remote {} is closed", remote_endpoint.unwrap());
+    }
+}
+
 pub(crate) static NIC: SpinlockIrqSave<NetworkState> = SpinlockIrqSave::new(NetworkState::Missing);
 
 pub struct NetworkInterface<T: for<'a> Device<'a>> {
@@ -148,15 +211,25 @@ impl AsyncSocket {
         res
     }
 
-    pub async fn connect(&self, ip: &[u8], port: u16) -> Result<Handle, Error> {
-        let address = IpAddress::from_str(str::from_utf8(ip).map_err(|_| Error::Illegal)?)
-            .map_err(|_| Error::Illegal)?;
-
+    pub async fn connect(
+        &self,
+        address: IpAddress,
+        port: u16,
+        local_endpoint: u16,
+    ) -> Result<Handle, Error> {
+        debug!(
+            "tcp_stream_connect T[{}] to ip {}:{}, local_endpoint {}",
+            crate::libs::thread::current_thread_id(),
+            address,
+            port,
+            local_endpoint
+        );
         self.with_context(|socket, cx| {
             socket.connect(
                 cx,
                 (address, port),
-                LOCAL_ENDPOINT.fetch_add(1, Ordering::SeqCst),
+                local_endpoint,
+                // LOCAL_ENDPOINT.fetch_add(1, Ordering::SeqCst),
             )
         })
         .map_err(|_| Error::Illegal)?;
@@ -292,6 +365,7 @@ impl AsyncSocket {
                         Poll::Pending
                     } else {
                         socket.close();
+                        remove_local_endpoint(socket.local_endpoint().port);
                         Poll::Ready(Ok(()))
                     }
                 }
@@ -320,13 +394,6 @@ impl From<Handle> for AsyncSocket {
     fn from(handle: Handle) -> Self {
         AsyncSocket(handle)
     }
-}
-
-fn start_endpoint() -> u16 {
-    use cortex_a::registers::CNTPCT_EL0;
-    use tock_registers::interfaces::Readable;
-    debug!("get start endpoint {}", CNTPCT_EL0.get());
-    (CNTPCT_EL0.get() % (u16::MAX as u64)).try_into().unwrap()
 }
 
 #[inline]
@@ -414,7 +481,16 @@ pub fn network_init() {
 #[inline(always)]
 pub fn tcp_stream_connect(ip: &[u8], port: u16, timeout: Option<u64>) -> Result<Handle, ()> {
     let socket = AsyncSocket::new();
-    block_on(socket.connect(ip, port), timeout.map(Duration::from_millis))?.map_err(|_| ())
+    let local_endpoint = get_local_endpoint();
+    let address = IpAddress::from_str(str::from_utf8(ip).map_err(|_| ())?)
+        .map_err(|_|())?;
+    let res = block_on(
+        socket.connect(address, port, local_endpoint),
+        timeout.map(Duration::from_millis),
+    )?
+    .map_err(|_| ());
+    set_local_endpoint_link(local_endpoint, IpEndpoint::new(address, port));
+    res
 }
 
 #[inline(always)]
@@ -467,11 +543,37 @@ pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
 }
 
 #[inline(always)]
+pub fn tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ()> {
+    let ip = str::from_utf8(ip).map_err(|_| ())?;
+    let port = if port == 0 {
+        get_local_endpoint()
+    } else if !check_local_endpoint(port) {
+        port
+    } else {
+        warn!("tcp_listener_bind failed, port has been occupied");
+        return Err(());
+    };
+    debug!(
+        "tcp_listener_bind T[{}] success on ip {:?} port {}",
+        crate::libs::thread::current_thread_id(),
+        ip,
+        port
+    );
+    Ok(port)
+}
+
+#[inline(always)]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
-    debug!("tcp_listener_accept");
+    let local_endpoint = port;
+    debug!("tcp_listener_accept on local endpoint {}", local_endpoint);
     let socket = AsyncSocket::new();
     let (addr, port) = block_on(socket.accept(port), None)?.map_err(|_| ())?;
 
+    set_local_endpoint_link(local_endpoint, IpEndpoint::new(addr, port));
+    debug!(
+        "tcp_listener_accept success on ip {} port {}, local_endpoint {}",
+        addr, port, local_endpoint
+    );
     Ok((socket.inner(), addr, port))
 }
 

@@ -49,7 +49,7 @@ pub fn kallocate(size: usize) -> Option<VAddr> {
 }
 
 pub fn allocate_region(size: usize) -> Result<MappedRegion, &'static str> {
-    debug!("user allocate region size {:x}", size);
+    trace!("user allocate region size {:x}", size);
     assert!(size > 0);
     assert_eq!(
         size % PAGE_SIZE,

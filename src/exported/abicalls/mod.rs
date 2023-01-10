@@ -119,7 +119,9 @@ pub extern "C" fn shyper_exit(arg: i32) {
 #[no_mangle]
 pub extern "C" fn shyper_abort() {
     info!("shyper_abort: currently not supported, just exit currently thread");
-    thread_exit();
+    crate::arch::irq::disable();
+    loop{}
+    // thread_exit();
 }
 
 #[no_mangle]
@@ -208,10 +210,12 @@ pub extern "C" fn shyper_network_init() -> i32 {
     0
 }
 
+#[cfg(feature = "unwind")]
 static mut GLOBAL_PAYLOAD: u64 = 0;
 
 /// Store payload addr during std panic unwind process.
 /// Todo: it's not thread safe.
+#[cfg(feature = "unwind")]
 pub(crate) fn get_global_payload() -> u64 {
     unsafe {
         debug!("get_global_payload, payload {:x}", GLOBAL_PAYLOAD);

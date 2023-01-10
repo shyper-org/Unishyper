@@ -276,7 +276,7 @@ pub fn thread_alloc(
 
     // Init thread local storage region.
     let tls = crate::libs::tls::alloc_thread_local_storage_region();
-    debug!("tls_region alloc at {}", tls.get_tls_start());
+    // debug!("tls_region alloc at {}", tls.get_tls_start());
 
     let t = Thread(Arc::new(ControlBlock {
         inner: Inner {
@@ -365,7 +365,7 @@ pub fn thread_wake(t: &Thread) {
 
     let target_cpu = get_cpu(affinity_core_id);
     target_cpu.scheduler().add(t.clone());
-    debug!(
+    trace!(
         "thread_wake set thread [{}] Runnable on core [{}]",
         t.tid(),
         affinity_core_id
@@ -622,7 +622,7 @@ fn _inner_spawn(
 ) -> Tid {
     let mut tid = 0 as Tid;
     irqsave(|| {
-        debug!(
+        trace!(
             "thread_spawn func: {:x} arg: {} selector [{}]",
             func as usize, arg, selector
         );

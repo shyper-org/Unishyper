@@ -628,7 +628,7 @@ fn allocate_pages_by_bytes_deferred(
 /// with no constraints on the starting virtual address,
 /// with no constraints on the virtual address alignment.
 pub fn allocate_pages(num_pages: usize) -> Option<AllocatedPages> {
-    debug!("allocate_pages num_pages {:?}", num_pages);
+    trace!("allocate_pages num_pages {:?}", num_pages);
     inner_allocate_pages(None, None, num_pages)
 }
 
@@ -637,7 +637,7 @@ pub fn allocate_pages(num_pages: usize) -> Option<AllocatedPages> {
 /// with constraints on the virtual address alignment.
 #[allow(unused)]
 pub fn allocate_pages_alignment(num_pages: usize, alignment: usize) -> Option<AllocatedPages> {
-    debug!("allocate_pages_alignment num_pages {:?}", num_pages);
+    trace!("allocate_pages_alignment num_pages {:?}", num_pages);
 
     inner_allocate_pages(None, Some(alignment), num_pages)
 }

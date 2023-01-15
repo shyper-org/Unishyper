@@ -85,6 +85,7 @@ fn check_local_endpoint(endpoint: u16) -> bool {
     lock.contains_key(&endpoint)
 }
 
+// Todo: can one port be connected to multiple remote endpoint?
 fn set_local_endpoint_link(local_endpoint: u16, remote_endpoint: IpEndpoint) {
     let mut lock = LOCAL_ENDPOINT_MAP.lock();
     if !lock.contains_key(&local_endpoint) {
@@ -541,6 +542,17 @@ pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
     let socket = nic.iface.get_socket::<TcpSocket<'_>>(handle);
     socket.set_keep_alive(Some(Duration::from_millis(DEFAULT_KEEP_ALIVE_INTERVAL)));
     let endpoint = socket.remote_endpoint();
+
+    Ok((endpoint.addr, endpoint.port))
+}
+
+#[inline(always)]
+pub fn tcp_stream_socket_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
+    let mut guard = NIC.lock();
+    let nic = guard.as_nic_mut().map_err(drop)?;
+    let socket = nic.iface.get_socket::<TcpSocket<'_>>(handle);
+    // socket.set_keep_alive(Some(Duration::from_millis(DEFAULT_KEEP_ALIVE_INTERVAL)));
+    let endpoint = socket.local_endpoint();
 
     Ok((endpoint.addr, endpoint.port))
 }

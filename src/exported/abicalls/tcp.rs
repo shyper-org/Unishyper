@@ -37,6 +37,11 @@ pub fn shyper_tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), (
 }
 
 #[no_mangle]
+pub fn shyper_tcp_stream_socket_addr(handle: Handle) -> Result<(IpAddress, u16), ()> {
+    net::tcp_stream_socket_addr(handle)
+}
+
+#[no_mangle]
 pub fn shyper_tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ()> {
     net::tcp_listener_bind(ip, port)
 }

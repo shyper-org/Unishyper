@@ -10,11 +10,11 @@ fn main() {
 		String::from_utf8(heart).unwrap_or_default()
 	);
 
-	let listener = std::net::TcpListener::bind("0.0.0.0:0").unwrap();
-    // let stream = listener.incoming().next().unwrap().unwrap();
-    // println!("Connection established with {:?}!", stream.peer_addr().unwrap());
-	let addr = listener.local_addr().unwrap();
-	println!("test bind on {}", addr);
+	// let listener = std::net::TcpListener::bind("0.0.0.0:0").unwrap();
+    // // let stream = listener.incoming().next().unwrap().unwrap();
+    // // println!("Connection established with {:?}!", stream.peer_addr().unwrap());
+	// let addr = listener.local_addr().unwrap();
+	// println!("test bind on {}", addr);
 
 	let server = tiny_http::Server::http("0.0.0.0:0").unwrap();
 	println!("Now listening on {}", server.server_addr());

@@ -1,9 +1,11 @@
 use core::alloc::Layout;
-
+use core::alloc::GlobalAlloc;
+use core::ptr::NonNull;
 // rCore buddy system allocator
-use buddy_system_allocator::LockedHeap;
+use buddy_system_allocator::Heap;
 
 use crate::libs::traits::*;
+use crate::libs::synch::spinlock::SpinlockIrqSave;
 
 pub fn init() {
     println!("Booting, memory layout:");
@@ -37,16 +39,12 @@ pub fn init() {
     );
 
     let range = super::config::heap_range();
-    unsafe {
-        HEAP_ALLOCATOR
-            .lock()
-            .init(range.start.pa2kva(), range.end - range.start)
-    }
+    unsafe { HEAP_ALLOCATOR.init(range.start.pa2kva(), range.end - range.start) }
 }
 
 #[cfg(feature = "terminal")]
 pub fn dump_heap_allocator_state() {
-    let lock = HEAP_ALLOCATOR.lock();
+    let lock = HEAP_ALLOCATOR.0.lock();
     let alloc_actual = lock.stats_alloc_actual();
     let alloc_user = lock.stats_alloc_user();
     let alloc_total = lock.stats_total_bytes();
@@ -57,8 +55,38 @@ pub fn dump_heap_allocator_state() {
     );
 }
 
+struct SpinlockIrqSaveHeapAllocator(SpinlockIrqSave<Heap<32>>);
+
 #[global_allocator]
-static HEAP_ALLOCATOR: LockedHeap<32> = LockedHeap::empty();
+static HEAP_ALLOCATOR: SpinlockIrqSaveHeapAllocator = SpinlockIrqSaveHeapAllocator::empty();
+
+impl SpinlockIrqSaveHeapAllocator {
+    /// Create an empty heap.
+    pub const fn empty() -> SpinlockIrqSaveHeapAllocator {
+        SpinlockIrqSaveHeapAllocator(SpinlockIrqSave::new(Heap::empty()))
+    }
+
+    /// Add a range of memory [start, end) to the heap.
+    pub unsafe fn init(&self, start: usize, size: usize) {
+        unsafe {
+            self.0.lock().init(start, size);
+        }
+    }
+}
+
+unsafe impl GlobalAlloc for SpinlockIrqSaveHeapAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        self.0
+            .lock()
+            .alloc(layout)
+            .ok()
+            .map_or(0 as *mut u8, |allocation| allocation.as_ptr())
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        self.0.lock().dealloc(NonNull::new_unchecked(ptr), layout)
+    }
+}
 
 #[cfg(not(feature = "std"))]
 #[alloc_error_handler]
@@ -83,6 +111,7 @@ pub fn malloc(size: usize, align: usize) -> *mut u8 {
     }
     let layout = layout_res.unwrap();
     let ptr = HEAP_ALLOCATOR
+        .0
         .lock()
         .alloc(layout)
         .ok()
@@ -129,6 +158,7 @@ pub fn free(ptr: *mut u8, size: usize, align: usize) {
     }
     let layout = layout_res.unwrap();
     HEAP_ALLOCATOR
+        .0
         .lock()
         .dealloc(unsafe { core::ptr::NonNull::new_unchecked(ptr) }, layout);
 }

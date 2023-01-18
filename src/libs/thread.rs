@@ -87,21 +87,21 @@ impl Drop for ControlBlock {
 pub struct Thread(Arc<ControlBlock>);
 
 impl Ord for Thread {
-	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-		self.0.inner.uuid.cmp(&other.0.inner.uuid)
-	}
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.0.inner.uuid.cmp(&other.0.inner.uuid)
+    }
 }
 
 impl PartialOrd for Thread {
-	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-		Some(self.cmp(other))
-	}
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl PartialEq for Thread {
-	fn eq(&self, other: &Self) -> bool {
-		self.0.inner.uuid == other.0.inner.uuid
-	}
+    fn eq(&self, other: &Self) -> bool {
+        self.0.inner.uuid == other.0.inner.uuid
+    }
 }
 
 impl Eq for Thread {}
@@ -299,7 +299,9 @@ pub fn thread_alloc(
     let mut map = THREAD_MAP.lock();
     map.insert(id, t.clone());
 
-    THREAD_WAITING_QUEUE.lock().insert(id, VecDeque::with_capacity(1));
+    THREAD_WAITING_QUEUE
+        .lock()
+        .insert(id, VecDeque::with_capacity(1));
 
     debug!(
         "thread_alloc success id [{}]\n\t\t\t\t\t\tsp [{} to 0x{:016x}]",
@@ -419,7 +421,7 @@ pub fn thread_wake_to_front_by_tid(tid: Tid) {
 pub fn thread_block_current() {
     if let Some(current_thread) = cpu().running_thread() {
         irqsave(|| {
-            debug!("Thread[{}]  thread_block_current", current_thread.tid());
+            warn!("Thread[{}]  thread_block_current", current_thread.tid());
             let t = &current_thread;
             let reason = Status::Blocked;
             assert_ne!(reason, Status::Runnable);
@@ -435,6 +437,11 @@ pub fn thread_block_current() {
 /// Block current thread with specific timeout us.
 /// Set its status as Blocked and it can not scheduled until blocked time exhausted.
 pub fn thread_block_current_with_timeout_us(timeout_us: usize) {
+    debug!(
+        "Thread[{}]  thread_block_current_with_timeout_us {} microseconds",
+        current_thread_id(),
+        timeout_us
+    );
     if timeout_us >= crate::drivers::timer::TIMER_TICK_US as usize {
         // Enough time to set a wakeup timer and block the current task.
         thread_block_current_with_timeout(timeout_us / 1000)
@@ -453,7 +460,7 @@ pub fn thread_block_current_with_timeout_us(timeout_us: usize) {
 pub fn thread_block_current_with_timeout(timeout_ms: usize) {
     if let Some(current_thread) = cpu().running_thread() {
         irqsave(|| {
-            debug!(
+            warn!(
                 "Thread[{}] thread_block_current_with_timeout {} milliseconds",
                 current_thread.tid(),
                 timeout_ms
@@ -624,7 +631,9 @@ fn _inner_spawn(
     irqsave(|| {
         trace!(
             "thread_spawn func: {:x} arg: {} selector [{}]",
-            func as usize, arg, selector
+            func as usize,
+            arg,
+            selector
         );
 
         // Use "thread_start" as a wrapper, which automatically calls thread_exit when thread is finished.

@@ -488,11 +488,24 @@ pub fn tcp_stream_connect(ip: &[u8], port: u16, timeout: Option<u64>) -> Result<
     let socket = AsyncSocket::new();
     let local_endpoint = get_local_endpoint();
     let address = IpAddress::from_str(str::from_utf8(ip).map_err(|_| ())?).map_err(|_| ())?;
+    debug!(
+        "tcp_stream_connect T[{}] to {}:{}",
+        crate::libs::thread::current_thread_id(),
+        address,
+        port
+    );
     let res = block_on(
         socket.connect(address, port, local_endpoint),
         timeout.map(Duration::from_millis),
     )?
     .map_err(|_| ());
+    debug!(
+        "tcp_stream_connect T[{}] to {}:{} success local_endpoint {}",
+        crate::libs::thread::current_thread_id(),
+        address,
+        port,
+        local_endpoint
+    );
     set_local_endpoint_link(local_endpoint, IpEndpoint::new(address, port));
     res
 }
@@ -506,6 +519,13 @@ pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ()> {
 #[inline(always)]
 pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ()> {
     let socket = AsyncSocket::from(handle);
+    // let peer_addr = tcp_stream_peer_addr(handle)?;
+    // warn!(
+    //     "tcp_stream_write T[{}] to {}:{}",
+    //     crate::libs::thread::current_thread_id(),
+    //     peer_addr.0,
+    //     peer_addr.1
+    // );
     block_on(socket.write(buffer), None)?.map_err(|_| ())
 }
 
@@ -580,15 +600,22 @@ pub fn tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ()> {
 #[inline(always)]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
     let local_endpoint = port;
-    debug!("tcp_listener_accept on local endpoint {}", local_endpoint);
+    trace!(
+        "tcp_listener_accept T[{}] on local endpoint {}",
+        crate::libs::thread::current_thread_id(),
+        local_endpoint
+    );
     let socket = AsyncSocket::new();
     let (addr, port) = block_on(socket.accept(port), None)?.map_err(|_| ())?;
 
-    set_local_endpoint_link(local_endpoint, IpEndpoint::new(addr, port));
-    debug!(
-        "tcp_listener_accept success on ip {} port {}, local_endpoint {}",
-        addr, port, local_endpoint
+    trace!(
+        "tcp_listener_accept T[{}] success on ip {} port {}, local_endpoint {}",
+        crate::libs::thread::current_thread_id(),
+        addr,
+        port,
+        local_endpoint
     );
+    set_local_endpoint_link(local_endpoint, IpEndpoint::new(addr, port));
     Ok((socket.inner(), addr, port))
 }
 

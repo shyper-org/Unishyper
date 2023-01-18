@@ -27,7 +27,7 @@ impl log::Log for SimpleLogger {
 
             match record.level() {
                 Level::Error => print!("[E]"),
-                Level::Warn => print!("[W]"),
+                Level::Warn => print!("[WARN]"),
                 Level::Info => print!("[I]"),
                 Level::Debug => print!("[D]"),
                 Level::Trace => print!("[T]"),

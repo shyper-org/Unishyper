@@ -5,7 +5,6 @@ use alloc::string::ToString;
 use crate::drivers::Interrupt;
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 
-// Todo: maybe try SpinlockIrqSave.
 static IRQ_NAMES: SpinlockIrqSave<BTreeMap<u32, String>> =SpinlockIrqSave::new(BTreeMap::new());
 static IRQ_HANDLERS: SpinlockIrqSave<BTreeMap<u32, fn()>> = SpinlockIrqSave::new(BTreeMap::new());
 

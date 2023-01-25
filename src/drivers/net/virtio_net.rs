@@ -608,8 +608,8 @@ impl NetworkInterface for VirtioNetDriver {
         let result = if self.isr_stat.is_interrupt() {
             true
         } else if self.isr_stat.is_cfg_change() {
-            info!("Configuration changes are not possible! Aborting");
-            todo!("Implement possibiity to change config on the fly...")
+            unimplemented!("Configuration changes are not possible! Aborting");
+            // PENDING: Implement possibiity to change config on the fly...
         } else {
             false
         };
@@ -883,7 +883,7 @@ impl VirtioNetDriver {
 
         // If device does not take care of MAC address, the driver has to create one
         if !self.dev_cfg.features.is_feature(Features::VIRTIO_NET_F_MAC) {
-            todo!("Driver created MAC address should be passed to device here.")
+            unimplemented!("Driver created MAC address should be passed to device here.")
         }
 
         Ok(())

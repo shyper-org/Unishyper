@@ -52,7 +52,7 @@ use core::num::NonZeroUsize;
 static mut BOOT_TIME: Option<NonZeroUsize> = None;
 
 /// Get shyper system boot time in microsecond(10 ^ -6 second).
-/// Todo: RTC only has a second level precision, see init fn below.
+/// PENDING: RTC only has a second level precision, see init fn below.
 pub fn boot_time() -> usize {
     unsafe {
         match BOOT_TIME {

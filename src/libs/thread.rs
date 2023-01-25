@@ -421,7 +421,7 @@ pub fn thread_wake_to_front_by_tid(tid: Tid) {
 pub fn thread_block_current() {
     if let Some(current_thread) = cpu().running_thread() {
         irqsave(|| {
-            warn!("Thread[{}]  thread_block_current", current_thread.tid());
+            debug!("Thread[{}]  thread_block_current", current_thread.tid());
             let t = &current_thread;
             let reason = Status::Blocked;
             assert_ne!(reason, Status::Runnable);

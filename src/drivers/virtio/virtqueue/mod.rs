@@ -107,7 +107,7 @@ struct Descriptor {
 /// might not provide the complete feature set of each queue. Drivers who
 /// do need these features should refrain from providing support for both
 /// Virtqueue types and use the structs directly instead.
-/// Todo: May support Packed Vq in the future.
+/// PENDING: May support Packed Vq in the future.
 pub enum Virtq {
     Split(SplitVq),
     // Packed(PackedVq),

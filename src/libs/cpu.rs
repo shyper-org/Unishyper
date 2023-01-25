@@ -88,9 +88,7 @@ impl Core {
         match &self.sched {
             ScheduerType::None => panic!("scheduler is None"),
             ScheduerType::PerCoreSchedRoundRobin(rr) => rr,
-            ScheduerType::GlobalSchedRoundRobin => {
-                crate::libs::scheduler::global_scheduler()
-            },
+            ScheduerType::GlobalSchedRoundRobin => crate::libs::scheduler::global_scheduler(),
         }
     }
 
@@ -111,11 +109,7 @@ impl Core {
     // }
 
     fn run(&mut self, t: Thread) {
-        // Todo: refactor this, it's ugly.
-        use cortex_a::registers::TPIDRRO_EL0;
-        use tock_registers::interfaces::Writeable;
-        TPIDRRO_EL0.set(t.tid() as u64);
-
+        crate::arch::tls::set_thread_id(t.tid() as u64);
         crate::arch::tls::set_tls_ptr(t.get_tls_ptr() as u64);
 
         if let Some(prev) = self.running_thread() {

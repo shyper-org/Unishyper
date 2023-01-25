@@ -266,8 +266,8 @@ impl BlkInterface for VirtioBlkDriver {
             // handle incoming interrupts
             true
         } else if self.isr_stat.is_cfg_change() {
-            info!("Configuration changes are not possible! Aborting");
-            todo!("Implement possibiity to change config on the fly...")
+            unimplemented!("Configuration changes are not possible! Aborting");
+            // PENDING: Implement possibiity to change config on the fly...
         } else {
             false
         };
@@ -304,7 +304,7 @@ impl VirtioBlkDriver {
         // Indicate device, that driver is able to handle it
         self.com_cfg.set_drv();
 
-        //Todo: add negotiate_features like network do.
+        //PENDING: Add negotiate_features like network do.
         let feature = u64::from(Features::VIRTIO_F_VERSION_1)
         | u64::from(constants::Features::VIRTIO_BLK_F_SEG_MAX)
         | u64::from(constants::Features::VIRTIO_BLK_F_GEOMETRY)

@@ -299,7 +299,7 @@ impl SplitVq {
         let (pin_tkn, next_off, next_wrap) = self.ring.borrow_mut().push(tkn);
 
         if notif {
-            // TODO: Check wheter the splitvirtquue has notifications for specific descriptors
+            // PENDING: Check wheter the splitvirtquue has notifications for specific descriptors
             // I believe it does not.
             unimplemented!();
         }

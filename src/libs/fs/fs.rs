@@ -109,7 +109,9 @@ impl Filesystem {
     pub fn close(&mut self, fd: u64) {
         debug!("Closing fd {}", fd);
         if let Some(file) = self.files.borrow_mut().get_mut(&fd) {
-            file.close().unwrap(); // TODO: handle error
+            if file.close().is_err() {
+                warn!("closing file of fd {} failed", fd);
+            }
         }
         self.files.borrow_mut().remove(&fd);
     }

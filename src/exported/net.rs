@@ -13,6 +13,8 @@ use crate::libs::net::{
     IpAddress::{Ipv4, Ipv6},
 };
 
+pub use crate::libs::net::Shutdown;
+
 fn unsupported() -> ! {
     panic!("unsupported function!!\n")
 }
@@ -119,7 +121,7 @@ impl TcpStream {
         // self.read_vectored(&mut [IoSliceMut::new(buffer)])
         let ret = tcpstream::read(*self.0.as_inner(), &mut buffer[0..])
             .map_err(|_| "Unable to read on socket")?;
-            Ok(ret)
+        Ok(ret)
     }
 
     pub fn read_exact(&mut self, buf: &mut [u8]) -> IoResult<()> {
@@ -190,8 +192,8 @@ impl TcpStream {
         unsupported()
     }
 
-    pub fn shutdown(&self, how: i32) -> IoResult<()> {
-        tcpstream::shutdown(*self.0.as_inner(), how as i32).map_err(|_| "unable to shutdown socket")
+    pub fn shutdown(&self, how: Shutdown) -> IoResult<()> {
+        tcpstream::shutdown(*self.0.as_inner(), how).map_err(|_| "unable to shutdown socket")
     }
 
     pub fn duplicate(&self) -> IoResult<TcpStream> {

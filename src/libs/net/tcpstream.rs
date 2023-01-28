@@ -87,6 +87,6 @@ pub fn get_tll(handle: Handle) -> Result<u32, ()> {
 }
 
 #[inline(always)]
-pub fn shutdown(handle: Handle, how: i32) -> Result<(), ()> {
+pub fn shutdown(handle: Handle, how: Shutdown) -> Result<(), ()> {
 	tcp_stream_shutdown(handle, how)
 }

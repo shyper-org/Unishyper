@@ -25,10 +25,9 @@ pub fn shyper_tcp_stream_close(handle: Handle) -> Result<(), ()> {
     net::tcp_stream_close(handle)
 }
 
-//ToDo: an enum, or at least constants would be better
 #[no_mangle]
 pub fn shyper_tcp_stream_shutdown(handle: Handle, how: i32) -> Result<(), ()> {
-    net::tcp_stream_shutdown(handle, how)
+    net::tcp_stream_shutdown(handle, net::Shutdown::from_i32(how))
 }
 
 #[no_mangle]

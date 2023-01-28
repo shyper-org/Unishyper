@@ -50,7 +50,9 @@ extern "C" fn netdemo_client(_arg: usize) {
             }
         }
 
-        stream.shutdown(2).expect("shutdown call failed");
+        stream
+            .shutdown(net::Shutdown::Both)
+            .expect("shutdown call failed");
 
         println!("Sent everything!");
     } else {

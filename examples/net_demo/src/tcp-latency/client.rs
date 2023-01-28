@@ -88,7 +88,9 @@ extern "C" fn latency_client(_arg: usize) {
                         );
                     }
                 }
-                stream.shutdown(2).expect("shutdown call failed");
+                stream
+                    .shutdown(net::Shutdown::Both)
+                    .expect("shutdown call failed");
                 println!("latency max: {}us, min: {}us", max, min);
                 println!("results: {:?}", results);
             }

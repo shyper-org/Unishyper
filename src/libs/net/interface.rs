@@ -92,9 +92,9 @@ fn set_local_endpoint_link(local_endpoint: u16, remote_endpoint: IpEndpoint) {
         warn!("local endpoint not exists");
         return;
     }
-    if lock.get(&local_endpoint).unwrap().is_some() {
-        warn!("local endpoint has been occupied");
-    }
+    // if lock.get(&local_endpoint).unwrap().is_some() {
+    //     warn!("local endpoint has been occupied");
+    // }
     lock.insert(local_endpoint, Some(remote_endpoint));
 }
 
@@ -535,24 +535,48 @@ pub fn tcp_stream_close(handle: Handle) -> Result<(), ()> {
     block_on(socket.close(), None)?.map_err(|_| ())
 }
 
-//ToDo: an enum, or at least constants would be better
+/// Possible values which can be passed to the [`TcpStream::shutdown`] method.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum Shutdown {
+    /// The reading portion of the [`TcpStream`] should be shut down.
+    ///
+    /// All currently blocked and future [reads] will return <code>[Ok]\(0)</code>.
+    ///
+    /// [reads]: crate::io::Read "io::Read"
+    Read,
+    /// The writing portion of the [`TcpStream`] should be shut down.
+    ///
+    /// All currently blocked and future [writes] will return an error.
+    ///
+    /// [writes]: crate::io::Write "io::Write"
+    Write,
+    /// Both the reading and the writing portions of the [`TcpStream`] should be shut down.
+    ///
+    /// See [`Shutdown::Read`] and [`Shutdown::Write`] for more information.
+    Both,
+}
+
+impl Shutdown {
+    pub fn from_i32(value: i32) -> Shutdown {
+        match value {
+            0 => Shutdown::Read,
+            1 => Shutdown::Write,
+            2 => Shutdown::Both,
+            _ => panic!("Unknown value: {}", value),
+        }
+    }
+}
+
 #[inline(always)]
-pub fn tcp_stream_shutdown(handle: Handle, how: i32) -> Result<(), ()> {
+pub fn tcp_stream_shutdown(handle: Handle, how: Shutdown) -> Result<(), ()> {
     match how {
-		0 /* Read */ => {
-			trace!("Shutdown::Read is not implemented");
-			Ok(())
-		},
-		1 /* Write */ => {
-			tcp_stream_close(handle)
-		},
-		2 /* Both */ => {
-			tcp_stream_close(handle)
-		},
-		_ => {
-			panic!("Invalid shutdown argument {}", how);
-		},
-	}
+        Shutdown::Read => {
+            warn!("Shutdown::Read is not implemented");
+            Ok(())
+        }
+        Shutdown::Write => tcp_stream_close(handle),
+        Shutdown::Both => tcp_stream_close(handle),
+    }
 }
 
 #[inline(always)]
@@ -675,7 +699,6 @@ pub fn tcp_stream_get_write_timeout(_handle: Handle) -> Result<Option<u64>, ()> 
     Ok(None)
 }
 
-#[deprecated(since = "0.1.14", note = "Please don't use this function")]
 #[inline(always)]
 pub fn tcp_stream_duplicate(_handle: Handle) -> Result<Handle, ()> {
     warn!("tcp_stream_duplicate is not supported");

@@ -9,7 +9,6 @@ pub mod paging;
 pub mod stack;
 
 pub use allocator::*;
-// Todo: improve the file structure.
 pub use self::page_allocator::Page;
 pub use self::frame_allocator::Frame;
 

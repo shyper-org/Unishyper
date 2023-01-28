@@ -19,7 +19,7 @@ pub const O_APPEND: i32 = 0o2000;
 pub const O_DIRECT: i32 = 0o40000;
 
 #[allow(dead_code)]
-// TODO: raw is partially redundant, create nicer interface
+// Pending: raw is partially redundant, create nicer interface
 #[derive(Clone, Copy, Debug, Default)]
 pub struct FilePerms {
     pub write: bool,

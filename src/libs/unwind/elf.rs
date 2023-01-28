@@ -5,7 +5,7 @@ use spin::Once;
 use xmas_elf::*;
 use xmas_elf::sections::SectionData;
 
-//Todo: currently we have no independent elf image.
+// Store kernel's elf image.
 extern "C" {
     static ELF_IMAGE: [u8; 0x40000000];
 }

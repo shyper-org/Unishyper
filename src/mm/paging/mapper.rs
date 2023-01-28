@@ -104,7 +104,6 @@ pub fn map_allocated_pages(
         .into_iter()
         .zip(frames.deref().clone().into_iter())
     {
-        // Todo: unhandled error
         match page_table.map(
             page.start_address().value(),
             frame.start_address().value(),

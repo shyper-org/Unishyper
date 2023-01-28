@@ -348,7 +348,7 @@ fn find_specific_chunk(
                                         Some(next_chunk.clone())
                                     } else {
                                         todo!("Frame allocator: found chunk containing requested address, but it was too small. \
-                                            Theseus does not yet support merging more than two chunks during an allocation request. \
+                                            Shyper does not yet support merging more than two chunks during an allocation request. \
                                             Requested address: {:?}, num_frames: {}, chunk: {:?}, next_chunk {:?}",
                                             requested_frame, num_frames, chunk, next_chunk
                                         );

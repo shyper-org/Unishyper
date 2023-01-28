@@ -135,7 +135,7 @@ pub fn malloc(size: usize, align: usize) -> *mut u8 {
 /// This function is unsafe because undefined behavior can result if the caller does not ensure all of the following:
 /// - ptr must denote a block of memory currently allocated via this allocator,
 /// - `size` and `align` must be the same values that were used to allocate that block of memory
-/// ToDO: verify if the same values for size and align always lead to the same layout
+/// TODO: verify if the same values for size and align always lead to the same layout
 ///
 /// # Errors
 /// May panic if debug assertions are enabled and invalid parameters `size` or `align` where passed.

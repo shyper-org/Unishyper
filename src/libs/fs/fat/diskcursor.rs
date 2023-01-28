@@ -84,7 +84,9 @@ impl Read for DiskCursor {
 
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), DiskCursorIoError> {
         let n = self.read(buf)?;
-        assert!(n == buf.len(), "TODO: Error");
+        if n != buf.len() {
+            return Err(DiskCursorIoError::UnexpectedEof);
+        }
         Ok(())
     }
 }

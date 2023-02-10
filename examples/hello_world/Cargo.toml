@@ -1,0 +1,12 @@
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2021"
+authors = ["hukeyang <hky1999@buaa.edu.cn>"]
+
+[target.'cfg(target_os = "shyper")'.dependencies]
+unishyper = {path = "../../", default-features = false, features = ["qemu", "std"]} 
+
+[profile.release]
+opt-level = 's'  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
+lto = true

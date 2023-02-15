@@ -2,7 +2,7 @@ use tock_registers::interfaces::{ReadWriteable, Writeable};
 
 use crate::board::{BOARD_DEVICE_MEMORY_RANGE, BOARD_NORMAL_MEMORY_RANGE};
 use super::interface::{PAGE_SHIFT, PAGE_SIZE};
-use super::mm::vm_descriptor::*;
+use super::vm_descriptor::*;
 
 const ENTRY_PER_PAGE: usize = PAGE_SIZE / 8;
 

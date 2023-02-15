@@ -33,5 +33,11 @@ emu: build
 		${QEMU_COMMON_OPTIONS} \
 		-kernel ${KERNEL}.bin -s
 
+debug: build
+	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
+		-device loader,file=${KERNEL},addr=0x80000000,force-raw=on \
+		${QEMU_COMMON_OPTIONS} \
+		-kernel ${KERNEL}.bin -s -S
+
 clean:
 	-cargo clean

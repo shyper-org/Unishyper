@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use spin::{Once, Mutex};
 
 use crate::arch::*;
-use crate::arch::mm::vm_descriptor::*;
+use super::vm_descriptor::*;
 use crate::libs::error::{ERROR_INVARG, ERROR_OOM};
 use crate::libs::traits::*;
 use crate::mm::frame_allocator;

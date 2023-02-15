@@ -14,6 +14,7 @@ default-features = false
 default = ["qemu"]
 qemu = [
     # "alloc",
+    "unishyper/aarch64",
     "unishyper/alloc",
     # "unishyper/smp",
     "unishyper/scheduler-percore",

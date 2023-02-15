@@ -5,7 +5,7 @@ use crate::drivers::INTERRUPT_CONTROLLER;
 use crate::libs::traits::ArchTrait;
 use crate::libs::interrupt::*;
 
-use crate::arch::ContextFrame;
+use super::ContextFrame;
 
 core::arch::global_asm!(include_str!("exception.S"));
 

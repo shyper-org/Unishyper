@@ -147,7 +147,7 @@ pub fn yield_to() {
     // Enable interrupt after return to this thread.
 }
 
-use crate::arch::interface::ContextFrame;
+use super::interface::ContextFrame;
 #[no_mangle]
 extern "C" fn switch_to_next_stack(ctx: *mut ContextFrame) -> usize {
     // use tock_registers::interfaces::Readable;

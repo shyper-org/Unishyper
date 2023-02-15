@@ -1,12 +1,11 @@
 [package]
-name = "httpd"
-authors = ["Stefan Lankes <slankes@eonerc.rwth-aachen.de>"]
-version = "0.1.0"
+authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 edition = "2021"
-publish = false
+name = "httpd"
+version = "0.1.0"
 
 [dependencies]
 tiny_http = "0.12"
 
 [target.'cfg(target_os = "shyper")'.dependencies]
-unishyper = {path = "../../", default-features = false, features = ["qemu", "std", "tcp"]} 
+unishyper = {path = "../../", default-features = false, features = ["qemu", "aarch64", "std", "tcp"]}

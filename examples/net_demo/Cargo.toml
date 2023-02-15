@@ -17,13 +17,15 @@ path = "../../"
 default = ["qemu"]
 qemu = [
     "alloc",
+    "unishyper/aarch64",
     "unishyper/alloc",
     "unishyper/tcp", 
     "unishyper/qemu",
     "unishyper/serial",
     ]
 shyper = [
-    "alloc", 
+    "alloc",
+    "unishyper/aarch64",
     "unishyper/alloc", 
     "unishyper/tcp", 
     "unishyper/shyper",

@@ -34,7 +34,6 @@ pub fn allocator_init() {
         }
     }
     info!("page_allocator init ok");
-    
 }
 
 #[cfg(feature = "terminal")]

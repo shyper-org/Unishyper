@@ -4,3 +4,4 @@
 Cargo.lock
 disk.img
 examples/linux_test/*
+disk.qcow2

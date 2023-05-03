@@ -8,11 +8,13 @@ use crate::libs::scheduler::{Scheduler, ScheduerType};
 pub type CoreId = usize;
 
 pub struct Core {
+    // Stack pointer of user mode.
     current_stack_pointer: usize,
-    // pointer points at stack
     running_thread: Option<Thread>,
     idle_thread: Once<Thread>,
     sched: ScheduerType,
+    #[cfg(target_arch = "x86_64")]
+    arch_specific_data: crate::arch::Cpu,
 }
 
 // Note: only the core itself can be allowed to access its `Core`
@@ -25,12 +27,18 @@ const CORE: Core = Core {
     current_stack_pointer: 0xDEAD_BEEF,
     idle_thread: Once::new(),
     sched: ScheduerType::None,
+    #[cfg(target_arch = "x86_64")]
+    arch_specific_data: crate::arch::Cpu::new(),
 };
 
 static mut CORES: [Core; BOARD_CORE_NUMBER] = [CORE; BOARD_CORE_NUMBER];
-// static mut schedule_count: usize =  0;
 
 impl Core {
+    #[cfg(target_arch = "x86_64")]
+    pub fn get_cpu_data(&'static mut self) -> &'static mut crate::arch::Cpu {
+        &mut self.arch_specific_data
+    }
+
     pub fn set_current_sp(&mut self, sp: usize) {
         self.current_stack_pointer = sp
     }
@@ -109,8 +117,8 @@ impl Core {
     // }
 
     fn run(&mut self, t: Thread) {
-        crate::arch::tls::set_thread_id(t.tid() as u64);
-        crate::arch::tls::set_tls_ptr(t.get_tls_ptr() as u64);
+        crate::arch::set_thread_id(t.tid() as u64);
+        crate::arch::set_tls_ptr(t.get_tls_ptr() as u64);
 
         if let Some(prev) = self.running_thread() {
             // Note: normal switch
@@ -125,7 +133,7 @@ impl Core {
             // debug!(
             //     "prev sp {:x}, next sp {:x}",
             //     self.current_sp(),
-            //     t.stack_pointer()
+            //     t.last_stack_pointer()
             // );
         }
         self.set_running_thread(Some(t.clone()));

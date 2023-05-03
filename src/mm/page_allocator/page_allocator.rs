@@ -6,7 +6,7 @@ use core::ops::{Deref, DerefMut};
 use spin::Mutex;
 use intrusive_collections::Bound;
 
-use crate::arch::{PAGE_SIZE, MAX_VIRTUAL_ADDRESS, MAX_USER_VIRTUAL_ADDRESS};
+use crate::arch::{PAGE_SIZE, MAX_VIRTUAL_ADDRESS, MIN_USER_VIRTUAL_ADDRESS, MAX_USER_VIRTUAL_ADDRESS};
 use crate::mm::address::VAddr;
 use crate::mm::page_allocator::page::Page;
 use crate::mm::page_allocator::page_range::PageRange;
@@ -14,6 +14,9 @@ use crate::util::static_array_rb_tree::{StaticArrayRBTree, Inner, ValueRefMut, W
 
 const MIN_PAGE: Page = Page::containing_address(VAddr::zero());
 const MAX_PAGE: Page = Page::containing_address(VAddr::new_canonical(MAX_VIRTUAL_ADDRESS));
+
+static PAGES_LOWER_BOUND: Page =
+    Page::containing_address(VAddr::new_canonical(MIN_USER_VIRTUAL_ADDRESS));
 
 static PAGES_UPPER_BOUND: Page =
     Page::containing_address(VAddr::new_canonical(MAX_USER_VIRTUAL_ADDRESS));
@@ -36,10 +39,7 @@ static FREE_PAGE_LIST: Mutex<StaticArrayRBTree<Chunk>> = Mutex::new(StaticArrayR
 pub fn init() -> Result<(), &'static str> {
     let mut initial_free_chunks: [Option<Chunk>; 32] = Default::default();
     initial_free_chunks[0] = Some(Chunk {
-        pages: PageRange::new(
-            Page::containing_address(VAddr::zero()),
-            PAGES_UPPER_BOUND - 1,
-        ),
+        pages: PageRange::new(PAGES_LOWER_BOUND, PAGES_UPPER_BOUND - 1),
     });
 
     *FREE_PAGE_LIST.lock() = StaticArrayRBTree::new(initial_free_chunks);

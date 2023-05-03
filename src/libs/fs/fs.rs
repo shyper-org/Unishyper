@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeMap, string::String, boxed::Box};
 use core::{ops::Deref, cell::RefCell};
 
-use crate::spinlock::Spinlock;
+use crate::libs::synch::spinlock::Spinlock;
 
 use super::interface::{PosixFileSystem, PosixFile, FilePerms, FileError};
 

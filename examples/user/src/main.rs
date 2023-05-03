@@ -9,13 +9,13 @@ use unishyper::*;
 #[macro_use]
 extern crate alloc;
 
-mod test;
+// mod test;
 
 #[allow(dead_code)]
-extern "C" fn test_thread(arg: usize) {
-    println!("test thread arg {}", arg);
+extern "C" fn test_thread(_: usize) {
+    // irq_disable();
     loop {
-        thread_yield();
+        // thread_yield();
     }
 }
 
@@ -26,13 +26,13 @@ fn main() {
     // thread_spawn(test_thread, 123);
     // println!("spawn thread, prepare to yield");
     // thread_yield();
-    test::run_tests();
+    // test::run_tests();
 	// for i in 0..5 {
     //     println!("round [{}], yield to", i);
     //     thread_yield();
     //     println!("round [{}], yield back", i);
     // }
-    println!("enter loop on main!!!");
-    loop{}
+    // println!("enter loop on main!!!");
+    // loop{}
     exit();
 }

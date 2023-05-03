@@ -18,7 +18,7 @@ pub fn init() {
 
 fn send(c: u8) {
     let uart = &NS16550_MMIO;
-    while !uart.LSR.is_set(LSR::THRE) {
+    while uart.LSR.get() & 0x20 == 0 {
         // Wait until it is possible to write data.
     }
     uart.RHR_THR_DLL.set(c);
@@ -37,7 +37,7 @@ pub fn putc(c: u8) {
 #[cfg(feature = "terminal")]
 pub fn getc() -> Option<u8> {
     let uart = &NS16550_MMIO;
-    if uart.LSR.is_set(LSR::RDR) {
+    if uart.LSR.get() & 0x1 != 0 {
         Some(uart.RHR_THR_DLL.get() as u8)
     } else {
         None

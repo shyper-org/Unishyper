@@ -9,6 +9,8 @@ use crate::mm::page_allocator::AllocatedPages;
 use crate::mm::paging::{MappedRegion, map_allocated_pages_to, EntryAttribute};
 use crate::mm::address::VAddr;
 use crate::mm::interface::{PageTableEntryAttrTrait, MapGranularity};
+#[cfg(target_arch = "x86_64")]
+use crate::mm::interface::PageTableEntryAttrZoneTrait;
 
 static COUNT: AtomicUsize = AtomicUsize::new(1);
 
@@ -61,13 +63,14 @@ impl Drop for Stack {
 /// |-----------------------------------|
 ///
 /// Returns the newly-allocated stack and a VMA to represent its mapping.
-pub fn alloc_stack(size_in_pages: usize) -> Option<Stack> {
+pub fn alloc_stack(size_in_pages: usize, tid: usize) -> Option<Stack> {
     // Get suggested VAddr for stack.
     let pages: AllocatedPages;
     loop {
         // Search for appropriate stack region.
         let count = COUNT.fetch_add(2, Ordering::AcqRel);
-        let stack_addr = VAddr::new_canonical(count * STACK_SIZE);
+        let stack_addr =
+            VAddr::new_canonical(count * STACK_SIZE + crate::arch::MIN_USER_VIRTUAL_ADDRESS);
         trace!("alloc stack loop: count {} saddr {}", count, stack_addr);
         // Allocate enough pages for an additional guard page.
         if let Some(aps) =
@@ -85,24 +88,20 @@ pub fn alloc_stack(size_in_pages: usize) -> Option<Stack> {
     )?;
     trace!("alloc_stack pages {:?}", &pages);
     trace!("alloc_stack frames {:?}", &frames);
-    inner_alloc_stack(pages, frames)
+    inner_alloc_stack(pages, frames, tid)
 }
 
 /// The inner implementation of stack allocation.
 ///
 /// `pages` is the combined `AllocatedPages` object that holds
 ///  the guard page followed by the actual stack pages to be mapped.
-fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames) -> Option<Stack> {
+fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames, _tid: usize) -> Option<Stack> {
     let start_of_stack_pages = *pages.start() + 1;
     let (guard_page, stack_pages) = pages.split(start_of_stack_pages).ok()?;
 
-    trace!(
-        "guard_page {:?} stack_pages {:?}",
-        &guard_page,
-        &stack_pages
-    );
-
     let attr = EntryAttribute::user_default();
+    #[cfg(target_arch = "x86_64")]
+    let attr = attr.set_zone(crate::arch::mpk::thread_id_to_zone_id(_tid) as u16);
     // Map stack pages to physical frames, leave the guard page unmapped.
     let stack_region = match map_allocated_pages_to(stack_pages, frames, attr) {
         Ok(stack_region) => stack_region,
@@ -114,7 +113,9 @@ fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames) -> Option<S
             return None;
         }
     };
-    // debug!("alloc stack stack_region {:?}", &stack_region);
+    // trace!("guard_page {:?}", &stack_pages);
+    // trace!("stack_pages {:?}", &stack_pages);
+    trace!("stack_region {:#?} mapped success", &stack_region);
     Some(Stack {
         guard_page,
         region: stack_region,

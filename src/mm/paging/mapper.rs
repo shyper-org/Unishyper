@@ -56,7 +56,7 @@ impl MappedRegion {
         if self.size_in_pages() == 0 {
             return;
         }
-        let page_table = crate::arch::page_table::page_table().lock();
+        let mut page_table = crate::arch::page_table::page_table().lock();
 
         if self.attribute().block() {
             // Unmap by 2mb.
@@ -97,7 +97,7 @@ pub fn map_allocated_pages(
         frames.start().start_address()
     );
 
-    let page_table = crate::arch::page_table::page_table().lock();
+    let mut page_table = crate::arch::page_table::page_table().lock();
     for (page, frame) in pages
         .deref()
         .clone()
@@ -140,7 +140,7 @@ pub fn map_allocated_pages_to(
         return Err("map_allocated_pages_to(): page count must equal frame count");
     }
     // Get global page table.
-    let page_table = crate::arch::page_table::page_table().lock();
+    let mut page_table = crate::arch::page_table::page_table().lock();
 
     // Judge if can be map as 2MB.
     if pages.size_in_bytes() % MapGranularity::Page2MB as usize == 0 {
@@ -153,7 +153,6 @@ pub fn map_allocated_pages_to(
             .zip(frames.deref().clone().into_iter())
             .step_by(step)
         {
-            // Todo: unhandled error
             match page_table.map_2mb(
                 page.start_address().value(),
                 frame.start_address().value(),

@@ -8,38 +8,45 @@ use crate::libs::traits::*;
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 
 pub fn init() {
+    // We need to init the global heap allocator here.
+    // Because during the process of paged_ranges, a vector is required.
+    // See config.rs for more details.
+    let range = super::config::heap_range();
+    unsafe { HEAP_ALLOCATOR.init(range.start.pa2kva(), range.end - range.start) }
+
+    // We dump the current memory layout here.
     println!("Booting, memory layout:");
     println!(
-        "Kernel range:\tpa [{:x} - {:x}] kva [{:x} - {:x}]",
+        "Kernel range:\tpa [{:#x} - {:#x}] kva [{:#x} - {:#x}]",
         super::config::kernel_range().start,
         super::config::kernel_range().end,
         super::config::kernel_range().start.pa2kva(),
         super::config::kernel_range().end.pa2kva()
     );
     println!(
-        "Heap range:\tpa [{:x} - {:x}] kva [{:x} - {:x}]",
+        "Heap range:\tpa [{:#x} - {:#x}] kva [{:#x} - {:#x}]",
         super::config::heap_range().start,
         super::config::heap_range().end,
         super::config::heap_range().start.pa2kva(),
         super::config::heap_range().end.pa2kva()
     );
     println!(
-        "ELF range:\tpa [{:x} - {:x}] kva [{:x} - {:x}]",
+        "ELF range:\tpa [{:#x} - {:#x}] kva [{:#x} - {:#x}]",
         super::config::elf_range().start,
         super::config::elf_range().end,
         super::config::elf_range().start.pa2kva(),
         super::config::elf_range().end.pa2kva()
     );
-    println!(
-        "Paged range:\tpa [{:x} - {:x}] kva [{:x} - {:x}]",
-        super::config::paged_range().start,
-        super::config::paged_range().end,
-        super::config::paged_range().start.pa2kva(),
-        super::config::paged_range().end.pa2kva()
-    );
 
-    let range = super::config::heap_range();
-    unsafe { HEAP_ALLOCATOR.init(range.start.pa2kva(), range.end - range.start) }
+    for range in super::config::paged_ranges() {
+        println!(
+            "Paged range:\tpa [{:#x} - {:#x}] kva [{:#x} - {:#x}]",
+            range.start,
+            range.end,
+            range.start.pa2kva(),
+            range.end.pa2kva()
+        );
+    }
 }
 
 #[cfg(feature = "terminal")]

@@ -1,5 +1,5 @@
 mod mm;
-mod sem;
+// mod sem;
 mod thread;
 mod recover;
 mod schedule;
@@ -15,8 +15,8 @@ pub fn run_tests() {
     // thread_spawn(thread::test_thread_switch, 1);
     // thread_spawn_bg(sem::semaphore_test, 1, "semaphore_test");
     // thread_spawn(thread::test_thread_getid, 1);
-    // thread_spawn(schedule::test_thread_schedule, 4);
+    thread_spawn(schedule::test_thread_schedule, 4);
     // #[cfg(feature = "unwind")]
-    thread_spawn(recover::test_recover_thread, 1);
+    // thread_spawn(recover::test_recover_thread, 1);
     // thread_spawn_bg(recover::test_recover_thread, 1, "recover_test");
 }

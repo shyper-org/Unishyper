@@ -38,7 +38,7 @@ save_context_on_current_stack:
     // If x0 is not zero, the next thread is scheduled from timer interrupt.
     // Pop whole context from stack.
     // Note: "first run" thread is yield from irq by default.
-    cbnz x1, pop_context_first
+    cbnz x1, _pop_context_first
 
     // If x1 is zero, the next thread is scheduled from thread_yield.
     mov sp, x0

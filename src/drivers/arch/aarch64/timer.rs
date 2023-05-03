@@ -25,3 +25,31 @@ pub fn counter() -> usize {
 pub fn init() {
     next();
 }
+
+pub fn current_cycle() -> usize {
+    let r;
+    unsafe {
+        core::arch::asm!("mrs {}, pmccntr_el0", out(reg) r);
+    }
+    r
+}
+
+#[allow(dead_code)]
+const TIMER_SEC_TO_MS: u64 = 1000;
+#[allow(dead_code)]
+const TIMER_SEC_TO_US: u64 = 1000_000;
+
+#[cfg(not(feature = "tx2"))]
+pub fn timestamp_sec() -> u64 {
+    const PL031_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x9010000;
+    unsafe { (PL031_MMIO_BASE as *mut u32).read() as u64 }
+}
+
+#[cfg(feature = "tx2")]
+pub fn timestamp_sec() -> u64 {
+    0
+}
+
+pub fn timestamp_us() -> u64 {
+    timestamp_sec() * TIMER_SEC_TO_US
+}

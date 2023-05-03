@@ -48,8 +48,8 @@
 .endm
 
 .text
-.global pop_context_first
-pop_context_first:
+.global _pop_context_first
+_pop_context_first:
     msr spsel, #0x01
     sub	sp, sp, #SIZE_OF_CONTEXT_FRAME
 .global pop_context

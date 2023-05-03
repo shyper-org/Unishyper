@@ -1,22 +1,34 @@
 #[allow(dead_code)]
-const TIMER_SEC_TO_MS: usize = 1000;
+pub const TIMER_SEC_TO_MS: usize = 1000;
 #[allow(dead_code)]
-const TIMER_SEC_TO_US: usize = 1000_000;
+pub const TIMER_SEC_TO_US: usize = 1000_000;
 
+//Todo: refactor these methods into different architectures.
+
+#[cfg(target_arch = "aarch64")]
 pub fn interrupt() {
     crate::drivers::timer::next();
-    //   debug!("timer interrupt");
+    // debug!("timer interrupt");
     crate::libs::thread::handle_blocked_threads();
+    crate::libs::thread::handle_exit_threads();
     crate::libs::cpu::cpu().schedule();
+}
+
+
+/// Todo: currently `x86` and `aarch64` use different exception handler logic.
+/// Maybe we need to refactor exception stack in `aarch64`.
+#[cfg(target_arch = "x86_64")]
+pub fn interrupt() {
+    // debug!("timer interrupt");
+    crate::drivers::timer::next();
+    crate::libs::thread::handle_blocked_threads();
+    crate::libs::thread::handle_exit_threads();
+    crate::libs::thread::thread_yield();
 }
 
 #[allow(dead_code)]
 pub fn current_cycle() -> usize {
-    let r;
-    unsafe {
-        core::arch::asm!("mrs {}, pmccntr_el0", out(reg) r);
-    }
-    r
+    crate::drivers::timer::current_cycle()
 }
 
 #[cfg(feature = "std")]
@@ -65,9 +77,9 @@ pub fn boot_time() -> usize {
 pub fn init() {
     println!(
         "Unishyper starts at [{} (UTC)]",
-        rtc_time64_to_tm(timestamp_sec() as u64)
+        rtc_time64_to_tm(crate::drivers::timer::timestamp_sec() as u64)
     );
-    let boot_time = timestamp_sec() as usize * 1000_000 - current_us();
+    let boot_time = crate::drivers::timer::timestamp_us() as usize - current_us();
     if boot_time > 0 {
         unsafe {
             BOOT_TIME = Some(boot_time.try_into().unwrap());
@@ -109,19 +121,6 @@ pub mod time {
 }
 
 use time::RtcTime;
-
-#[cfg(target_arch = "aarch64")]
-#[cfg(not(feature = "tx2"))]
-pub fn timestamp_sec() -> u64 {
-    const PL031_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x9010000;
-    unsafe { (PL031_MMIO_BASE as *mut u32).read() as u64 }
-}
-
-#[cfg(target_arch = "aarch64")]
-#[cfg(feature = "tx2")]
-pub fn timestamp_sec() -> u64 {
-    0
-}
 
 fn rtc_time64_to_tm(time: u64) -> RtcTime {
     let leaps_thru_end_of = |y: i32| (y) / 4 - (y) / 100 + (y) / 400;

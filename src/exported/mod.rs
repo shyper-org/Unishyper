@@ -1,4 +1,4 @@
-pub use crate::libs::synch::{spinlock, semaphore};
+// pub use crate::libs::synch::{spinlock, semaphore};
 pub use crate::libs::thread::*;
 pub use crate::libs::timer::*;
 

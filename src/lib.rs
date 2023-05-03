@@ -37,6 +37,9 @@
 // note: see issue #93050 <https://github.com/rust-lang/rust/issues/93050> for more information
 // help: add `#![feature(is_some_and)]` to the crate attributes to enable
 #![cfg_attr(feature = "std", feature(is_some_and))]
+#![cfg_attr(target_arch = "x86_64", feature(abi_x86_interrupt))]
+#![feature(asm_sym)]
+#![feature(naked_functions)]
 
 #[macro_use]
 extern crate log;
@@ -68,29 +71,28 @@ pub use arch::irq::disable as irq_disable;
 
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
-    arch::Arch::exception_init();
-
     if core_id == 0 {
         // Init serial output.
         #[cfg(feature = "serial")]
         drivers::uart::init();
-        logger::print_logo();
+        logger::init();
         libs::timer::init();
         mm::heap::init();
-        logger::init();
         mm::allocator_init();
         // After Page allocator and Frame allocator init finished, init user page table.
         arch::Arch::page_table_init();
-        debug!("page table init ok");
+        // debug!("page table init ok");
 
         #[cfg(feature = "smp")]
         board::launch_other_cores();
     }
 
+    arch::Arch::exception_init();
+
     board::init_per_core();
     info!("per core init ok on core [{}]", core_id);
 
-    // Init schedule for per core.
+    // // Init schedule for per core.
     libs::scheduler::init();
 
     if core_id == 0 {
@@ -119,14 +121,10 @@ pub extern "C" fn loader_main(core_id: usize) {
 
     libs::cpu::cpu().schedule();
 
-    extern "C" {
-        fn pop_context_first(ctx: usize) -> !;
-    }
-
     let sp = match libs::cpu::cpu().running_thread() {
         None => panic!("no running thread"),
         Some(t) => t.last_stack_pointer(),
     };
     debug!("entering first thread on sp {:x}...", sp);
-    unsafe { pop_context_first(sp) }
+    unsafe { crate::arch::pop_context_first(sp) }
 }

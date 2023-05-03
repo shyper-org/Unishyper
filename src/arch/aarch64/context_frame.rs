@@ -1,11 +1,14 @@
 use core::fmt::Formatter;
 
+use cortex_a::registers::{TPIDRRO_EL0, TPIDR_EL0};
+use tock_registers::interfaces::{Writeable, Readable};
+
 use super::registers::Aarch64;
 use super::registers::Registers;
 
 use crate::libs::traits::ContextFrameTrait;
 
-#[repr(C)]
+#[repr(C, align(16))]
 #[derive(Copy, Clone, Debug)]
 pub struct Aarch64ContextFrame {
     /// General purpose registers, x0 to x30.
@@ -90,6 +93,8 @@ impl core::fmt::Display for Aarch64ContextFrame {
 }
 
 impl ContextFrameTrait for Aarch64ContextFrame {
+    fn init(&mut self, _tid: usize) {}
+
     fn exception_pc(&self) -> usize {
         self.elr as usize
     }
@@ -170,4 +175,24 @@ extern "C" fn switch_to_next_stack(ctx: *mut ContextFrame) -> usize {
     core.schedule();
 
     core.current_sp()
+}
+
+pub fn set_thread_id(tid: u64) {
+    TPIDRRO_EL0.set(tid);
+}
+
+pub fn get_tls_ptr() -> *const u8 {
+    TPIDR_EL0.get() as *const u8
+}
+
+pub fn set_tls_ptr(tls_ptr: u64) {
+    TPIDR_EL0.set(tls_ptr);
+}
+
+#[inline(always)]
+pub unsafe extern "C" fn pop_context_first(ctx: usize) -> ! {
+    extern "C" {
+        fn _pop_context_first(ctx: usize) -> !;
+    }
+    _pop_context_first(ctx)
 }

@@ -136,7 +136,7 @@ impl Tls {
     }
 
     unsafe fn current<'a>() -> &'a Tls {
-        unsafe { &*(crate::arch::tls::get_tls_ptr() as *const Tls) }
+        unsafe { &*(crate::arch::get_tls_ptr() as *const Tls) }
     }
 
     pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {

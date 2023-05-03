@@ -37,13 +37,15 @@ pub fn init() -> Result<(), &'static str> {
     }
 
     let mut free_list: [Option<Chunk>; 32] = Default::default();
-    use crate::mm::config::paged_range;
-    free_list[0] = Some(Chunk {
-        frames: FrameRange::from_phys_addr(
-            PAddr::new(paged_range().start).unwrap(),
-            paged_range().end - paged_range().start,
-        ),
-    });
+
+    for (idx, frame_range) in crate::mm::config::paged_ranges().iter().enumerate() {
+        free_list[idx] = Some(Chunk {
+            frames: FrameRange::from_phys_addr(
+                PAddr::new(frame_range.start).unwrap(),
+                frame_range.end - frame_range.start,
+            ),
+        });
+    }
 
     *FREE_GENERAL_FRAMES_LIST.lock() = StaticArrayRBTree::new(free_list.clone());
     convert_to_heap_allocated();

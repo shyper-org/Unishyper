@@ -14,7 +14,6 @@ default-features = false
 default = ["qemu"]
 qemu = [
     "alloc",
-    "unishyper/aarch64",
     "unishyper/alloc",
     # "unishyper/smp",
     "unishyper/fs",
@@ -24,7 +23,6 @@ qemu = [
     ]
 shyper = [
     "alloc",
-    "unishyper/aarch64",
     "unishyper/alloc",
     # "unishyper/smp",
     "unishyper/fs",

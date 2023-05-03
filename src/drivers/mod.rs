@@ -1,9 +1,18 @@
-pub mod gic;
-pub mod psci;
-pub mod timer;
+#[cfg(target_arch = "aarch64")]
+#[path = "arch/aarch64/mod.rs"]
+mod arch;
 
-#[cfg(feature = "serial")]
-pub mod uart;
+#[cfg(target_arch = "x86_64")]
+#[path = "arch/x86_64/mod.rs"]
+mod arch;
+
+/// Pending:
+/// Currently we use different serial driver implementations
+/// for different architectures and platforms.
+/// They need to be refactor in the future.
+/// see arch/{target_arch}/uart for details.
+pub use arch::*;
+pub use arch::{Interrupt, INTERRUPT_CONTROLLER};
 
 #[cfg(feature = "fat")]
 pub mod blk;
@@ -11,8 +20,6 @@ pub mod blk;
 pub mod net;
 #[cfg(any(feature = "tcp", feature = "fat"))]
 pub mod virtio;
-
-pub use gic::{Interrupt, INTERRUPT_CONTROLLER};
 
 pub mod error {
     #[cfg(any(feature = "tcp", feature = "fat"))]

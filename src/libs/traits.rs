@@ -22,6 +22,7 @@ pub trait ArchTrait {
 }
 
 pub trait ContextFrameTrait {
+    fn init(&mut self, tid: usize);
     /// Get context frame's execption return address.
     fn exception_pc(&self) -> usize;
     /// Set context frame's execption return address.
@@ -60,4 +61,4 @@ pub trait ArchPageTableEntryTrait {
     fn entry(&self, index: usize) -> Self;
     fn set_entry(&self, index: usize, value: Self);
     fn make_table(frame_pa: usize) -> Self;
-  }
+}

@@ -13,6 +13,7 @@ pub const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
 pub const MACHINE_SIZE: usize = size_of::<usize>();
 
 pub const MAX_VIRTUAL_ADDRESS: usize = usize::MAX;
+pub const MIN_USER_VIRTUAL_ADDRESS: usize = 0x0000_0000_0000_0000;
 pub const MAX_USER_VIRTUAL_ADDRESS: usize = 0x0000_007F_FFFF_FFFF;
 
 pub const MAX_PAGE_NUMBER: usize = MAX_VIRTUAL_ADDRESS / PAGE_SIZE;
@@ -37,7 +38,8 @@ impl Address for usize {
 
 pub type ContextFrame = super::context_frame::Aarch64ContextFrame;
 
-pub type PageTable = super::page_table::Aarch64PageTable;
+// #[allow(unused)]
+// pub type PageTable = super::page_table::Aarch64PageTable;
 
 pub struct Arch;
 

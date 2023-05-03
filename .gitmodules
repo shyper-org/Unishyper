@@ -1,3 +1,6 @@
 [submodule "examples/rust-tcp-io-perf"]
 	path = examples/rust-tcp-io-perf
 	url = https://github.com/hky1999/rust-tcp-io-perf.git
+[submodule "rboot"]
+	path = rboot
+	url = https://github.com/hky1999/rboot.git

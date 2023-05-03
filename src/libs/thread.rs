@@ -7,7 +7,7 @@ use core::mem;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
 
-use spin::Mutex;
+use spin::{Mutex, Once};
 
 use crate::arch::{ContextFrame, PAGE_SIZE, STACK_SIZE};
 use crate::libs::traits::ContextFrameTrait;
@@ -196,6 +196,15 @@ static THREAD_NAME_MAP: Mutex<BTreeMap<Tid, String>> = Mutex::new(BTreeMap::new(
 static THREAD_WAITING_QUEUE: SpinlockIrqSave<BTreeMap<Tid, VecDeque<Thread>>> =
     SpinlockIrqSave::new(BTreeMap::new());
 
+static THREAD_EXIT_QUEUE: Once<Mutex<VecDeque<Thread>>> = Once::new();
+
+fn thread_exit_queue() -> &'static Mutex<VecDeque<Thread>> {
+    match THREAD_EXIT_QUEUE.get() {
+        None => THREAD_EXIT_QUEUE.call_once(|| Mutex::new(VecDeque::new())),
+        Some(x) => x,
+    }
+}
+
 /// List background threads' ids and names infornation.
 pub fn list_threads() {
     let name_map = THREAD_NAME_MAP.lock();
@@ -248,7 +257,7 @@ pub fn thread_alloc(
     // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
 
-    let stack_region = crate::mm::stack::alloc_stack(stack_size / PAGE_SIZE)
+    let stack_region = crate::mm::stack::alloc_stack(stack_size / PAGE_SIZE, id)
         .expect("fail to allocate user thread stack");
     let stack_start = stack_region.start_address();
 
@@ -257,6 +266,9 @@ pub fn thread_alloc(
     let last_stack_pointer = sp - mem::size_of::<ContextFrame>();
     // Init thread context in stack region.
     unsafe {
+        #[cfg(target_arch = "x86_64")]
+        let ori_pkru = crate::arch::mpk::swicth_to_kernel_pkru();
+
         core::ptr::write_bytes(
             last_stack_pointer.as_mut_ptr::<u8>(),
             0,
@@ -266,17 +278,24 @@ pub fn thread_alloc(
             .as_mut_ptr::<ContextFrame>()
             .as_mut()
             .unwrap();
+        context_frame.init(id);
         context_frame.set_exception_pc(start);
         context_frame.set_gpr(0, entry);
         context_frame.set_gpr(1, arg);
         context_frame.set_stack_pointer(sp.value());
         context_frame.set_from_irq();
-        // debug!("NEW context_frame:\n{}", context_frame);
+        trace!(
+            "NEW context_frame: on {:#p} \n{}",
+            context_frame,
+            context_frame
+        );
+        #[cfg(target_arch = "x86_64")]
+        crate::arch::mpk::switch_from_kernel_pkru(ori_pkru);
     }
 
     // Init thread local storage region.
     let tls = crate::libs::tls::alloc_thread_local_storage_region();
-    // debug!("tls_region alloc at {}", tls.get_tls_start());
+    debug!("tls_region alloc at {}", tls.get_tls_start());
 
     let t = Thread(Arc::new(ControlBlock {
         inner: Inner {
@@ -528,9 +547,18 @@ pub fn handle_blocked_threads() {
     }
 }
 
+/// Regularly clean up exited threads.
+/// This function is called during the process of timer interrupt.
+pub fn handle_exit_threads() {
+    let mut exited_thread_queue = thread_exit_queue().lock();
+    while let Some(t) = exited_thread_queue.pop_front() {
+        thread_destroy(&t);
+    }
+}
+
 /// Actively give up CPU clock cycles.
 /// Todo: make thread yield more efficient.
-#[inline(always)]
+// #[inline(always)]
 pub fn thread_yield() {
     // debug!("thread_yield is called on Thread [{}]", current_thread_id());
     // let icntr = crate::libs::timer::current_cycle();
@@ -566,49 +594,22 @@ pub fn current_thread() -> Result<Thread, Error> {
 }
 
 /// Actively destroy current running thread.
-/// After thread_exit is called, current thread's resource will be dropped automatically.
-/// This function will call `thread_schedule` to schedule to next active thread.
-#[allow(unreachable_code)]
+/// After thread_exit is called, current thread's will be inserted into THREAD_EXIT_QUEUE and be dropped in the future.
+/// This function will call `thread_yield` to schedule to next active thread.
 pub fn thread_exit() {
     crate::arch::irq::disable();
+    let t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
+    debug!("thread_exit on Thread [{}]", t.tid());
 
-    let result = current_thread();
-    match result {
-        Ok(t) => {
-            debug!("thread_exit on Thread [{}]", t.tid());
-            handle_waiting_threads(t.tid());
-            crate::libs::thread::thread_destroy(&t);
+    handle_waiting_threads(t.tid());
 
-            // Drop thread resource, including mapped region.
-            // Note:
-            // We know that this thread owns its stask, which is alse a mapped memory region,
-            // During the resource releasing process, the stack region is automically unmapped,
-            // But during function process, current sp space is still used.
-            // So we need to operate the SPSel register to change the sp to SP_EL1.
-            // It's strange, but its necessary.
-
-            // FIXME: his is dangerious, we manually change the sp register here!!!
-            // We need to come through a better solution.
-            use cortex_a::registers::SPSel;
-            use tock_registers::interfaces::Writeable;
-            SPSel.set(1);
-            drop(t);
-            let core = cpu();
-            // core.set_current_sp(0);
-
-            crate::libs::thread::thread_schedule();
-            extern "C" {
-                fn pop_context_first(ctx: usize) -> !;
-            }
-            unsafe {
-                // pop_context(&ctx as *const _ as usize, core_id);
-                pop_context_first(core.current_sp())
-            }
-        }
-        Err(_) => {
-            panic!("failed to get current_thread");
+    if let Some(current_thread) = cpu().running_thread() {
+        if t.tid() == current_thread.tid() {
+            cpu().set_running_thread(None);
         }
     }
+    thread_exit_queue().lock().push_back(t);
+    thread_yield();
     warn!("thread_exit, should not reach here!!!");
     // crate::arch::irq::enable();
     loop {}
@@ -677,7 +678,16 @@ fn _inner_spawn(
         let affinity_core = if selector < 0 {
             None
         } else {
-            Some(selector as usize)
+            if selector > (crate::board::BOARD_CORE_NUMBER - 1).try_into().unwrap() {
+                warn!(
+                    "try to spawn on nonexistent core {}, board has only {} cores",
+                    selector,
+                    crate::board::BOARD_CORE_NUMBER
+                );
+                Some(0)
+            } else {
+                Some(selector as usize)
+            }
         };
 
         let child_thread = thread_alloc(

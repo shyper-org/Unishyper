@@ -1,7 +1,7 @@
 use crate::mm::interface::*;
 use core::fmt::{Display, Formatter};
 
-use crate::arch::{PAGE_SHIFT};
+use crate::arch::PAGE_SHIFT;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct EntryAttribute {
@@ -13,6 +13,8 @@ pub struct EntryAttribute {
     copy_on_write: bool,
     shared: bool,
     block: bool,
+    #[cfg(target_arch = "x86_64")]
+    zone_key: u16,
 }
 
 impl PageTableEntryAttrTrait for EntryAttribute {
@@ -57,6 +59,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: self.u_executable,
             copy_on_write: self.copy_on_write,
             shared: self.shared,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: self.zone_key,
             block: true
         }
     }
@@ -83,6 +87,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable,
             copy_on_write,
             shared,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block
         }
     }
@@ -96,6 +102,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block: false,
         }
     }
@@ -109,6 +117,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block: false,
         }
     }
@@ -122,6 +132,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block: true,
         }
     }
@@ -135,6 +147,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block: false,
         }
     }
@@ -148,6 +162,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block: false,
         }
     }
@@ -161,6 +177,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block: false,
         }
     }
@@ -174,6 +192,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block: false,
         }
     }
@@ -187,8 +207,30 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: self.u_executable,
             copy_on_write: self.copy_on_write,
             shared: self.shared,
+            #[cfg(target_arch = "x86_64")]
+            zone_key: 0,
             block: false,
         }
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+impl PageTableEntryAttrZoneTrait for EntryAttribute {
+    fn set_zone(&self, zone_id: u16) -> Self{
+        EntryAttribute {
+            writable: self.writable,
+            user: self.user,
+            device: self.device,
+            k_executable: self.k_executable,
+            u_executable: self.u_executable,
+            copy_on_write: self.copy_on_write,
+            shared: self.shared,
+            zone_key: zone_id,
+            block: self.block
+        }
+    }
+    fn get_zone_key(&self) -> u16 {
+        self.zone_key & 15 as u16
     }
 }
 
@@ -198,6 +240,7 @@ pub struct Entry {
     pa: usize,
 }
 
+#[allow(unused)]
 impl Entry {
     pub fn new(attribute: EntryAttribute, pa: usize) -> Self {
         Entry { attribute, pa }

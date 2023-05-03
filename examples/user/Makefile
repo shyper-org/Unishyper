@@ -37,7 +37,7 @@ ifeq ($(ARCH), x86_64)
 	cd ${RBOOT_DIR} && make build
 endif
 
-build: # bootloader
+build: bootloader
 	cargo build --target ${TARGET_CFG} -Z build-std=core,alloc ${CARGO_FLAGS} 
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm

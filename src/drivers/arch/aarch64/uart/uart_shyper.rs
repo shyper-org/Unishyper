@@ -7,7 +7,7 @@ const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x3100000;
 
 // The ipa provided by the hypervisor is 0x9000000.
 #[cfg(feature = "shyper")]
-const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x900_0000;
+const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0xc280000;
 
 static NS16550_MMIO: Ns16550Mmio32 = Ns16550Mmio32::new(NS16550_MMIO_BASE);
 

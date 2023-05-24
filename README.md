@@ -34,10 +34,26 @@ Unishyper  now supports following platforms:
 1. Nightly Rust (`nightly-2022-09-14` tested)
 2. `rust-src` component (use `make dependencies` to install)
 3. QEMU emulator version 5.0.0.
+4. mkfs from util-linux 2.31.1 (for making disk.img, see Makefile for details)
 
 ## Applications
 
 The examples directory contains example demos.
+
+For build preparation:
+
+Install [cargo-binutils](https://github.com/rust-embedded/cargo-binutils) to use `rust-objcopy` and `rust-objdump` tools:
+
+```bash
+cargo install cargo-binutils
+```
+
+For bootloader on x86_64, [rboot](https://github.com/hky1999/rboot.git) is required.
+
+```
+# See .gitmodules for details
+git submodule update --init --recursive
+```
 
 use this lines to build and emulate:
 

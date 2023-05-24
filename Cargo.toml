@@ -49,8 +49,7 @@ pic8259 = "0.10.1"
 raw-cpuid = "10.6.1"
 rboot = {path = "./rboot", default-features = false}
 bitflags = {version = "1.3.2", default-features = false}
-x86_64 = {path = "../x86_64"}
-# x86_64 = "0.14.2"
+x86_64 = "0.14.2"
 
 [dependencies.smoltcp]
 default-features = false

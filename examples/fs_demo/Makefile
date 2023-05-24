@@ -20,8 +20,8 @@ TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
 KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/fs_demo
 
 # Arch-specific tools
-OBJCOPY := aarch64-elf-objcopy
-OBJDUMP := aarch64-elf-objdump
+OBJCOPY := rust-objcopy
+OBJDUMP := rust-objdump
 
 .PHONY: build clean
 

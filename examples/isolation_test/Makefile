@@ -23,8 +23,8 @@ OVMF := ${RBOOT_DIR}/OVMF.fd
 
 # Arch-specific tools
 ifeq ($(ARCH), aarch64)
-OBJCOPY := aarch64-elf-objcopy
-OBJDUMP := aarch64-elf-objdump
+OBJCOPY := rust-objcopy
+OBJDUMP := rust-objdump
 else ifeq ($(ARCH), x86_64)
 OBJCOPY := objcopy
 OBJDUMP := objdump

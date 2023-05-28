@@ -43,7 +43,7 @@ pub fn network_irqhandler() {
 
     if check_scheduler {
         crate::libs::net::interface::network_poll();
-        crate::libs::thread::thread_schedule();
+        crate::libs::thread::thread_yield();
     }
 }
 

@@ -111,8 +111,11 @@ extern "x86-interrupt" fn page_fault_handler(
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    // debug!("timer interrupt {:#?}", _stack_frame);
+    trace!("timer interrupt");
+    trace!("stack frame:\n{:#?}", _stack_frame);
+    crate::libs::timer::interrupt();
     // Finished interrupt before switching
     apic::INTERRUPT_CONTROLLER.finish(apic::INT_TIMER);
-    crate::libs::timer::interrupt();
+    // Give up CPU actively.
+    crate::libs::thread::thread_yield();
 }

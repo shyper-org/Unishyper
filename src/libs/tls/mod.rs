@@ -1,6 +1,5 @@
 /// Simple thread local key implementation.
 /// Refer to implementation in https://github.com/rust-lang/rust/tree/master/library/std/src/sys/sgx/abi/tls
-
 mod sync_bitset;
 
 use self::sync_bitset::*;
@@ -17,12 +16,8 @@ const TLS_KEYS: usize = 128; // Same as POSIX minimum
 const TLS_KEYS_BITSET_SIZE: usize = (TLS_KEYS + (USIZE_BITS - 1)) / USIZE_BITS;
 
 static TLS_KEY_IN_USE: SyncBitset = SYNC_BITSET_INIT;
-macro_rules! dup {
-    ((* $($exp:tt)*) $($val:tt)*) => (dup!( ($($exp)*) $($val)* $($val)* ));
-    (() $($val:tt)*) => ([$($val),*])
-}
 
-static TLS_DESTRUCTOR: [AtomicUsize; TLS_KEYS] = dup!((* * * * * * *) (AtomicUsize::new(0)));
+static TLS_DESTRUCTOR: [AtomicUsize; TLS_KEYS] = [const { AtomicUsize::new(0) }; TLS_KEYS];
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -129,14 +124,15 @@ pub fn alloc_thread_local_storage_region() -> ThreadTls {
 impl Tls {
     pub fn new() -> Tls {
         let tls = Tls {
-            data: dup!((* * * * * * *) (Cell::new(ptr::null_mut()))),
+            data: [const { Cell::new(ptr::null_mut()) }; TLS_KEYS],
         };
         debug!("tls alloc at {:p}", &tls);
         return tls;
     }
 
     unsafe fn current<'a>() -> &'a Tls {
-        unsafe { &*(crate::arch::get_tls_ptr() as *const Tls) }
+        use crate::libs::traits::ArchTrait;
+        unsafe { &*(crate::arch::Arch::get_tls_ptr() as *const Tls) }
     }
 
     pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {

@@ -10,7 +10,7 @@ use super::ContextFrame;
 core::arch::global_asm!(include_str!("exception.S"));
 
 #[no_mangle]
-unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
+unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
     let tid = TPIDRRO_EL0.get();
     panic!(
@@ -22,10 +22,10 @@ unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) -> usize {
+unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
     let irq = INTERRUPT_CONTROLLER.fetch();
     // debug!(
-    //     "current_el_sp0_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on user_sp {:p}\n",
+    //     "current_el_spx_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on sp {:p}\n",
     //     TPIDRRO_EL0.get(),
     //     crate::arch::Arch::curent_privilege(),
     //     irq.unwrap(),
@@ -43,10 +43,14 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) -> usize {
     match irq {
         Some(INT_TIMER) => {
             crate::libs::timer::interrupt();
+            INTERRUPT_CONTROLLER.finish(INT_TIMER);
+            // Give up CPU actively.
+            crate::libs::thread::thread_yield();
         }
         Some(i) => {
             if i >= 32 {
                 crate::libs::interrupt::interrupt(i);
+                INTERRUPT_CONTROLLER.finish(irq.unwrap());
             } else {
                 panic!("GIC unhandled SGI PPI")
             }
@@ -55,22 +59,19 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) -> usize {
             panic!("GIC unknown irq")
         }
     }
-    if irq.is_some() {
-        INTERRUPT_CONTROLLER.finish(irq.unwrap());
-    }
+    if irq.is_some() {}
     // debug!(
-    //     "current_el_sp0_irq call pop_context, cur_sp {:x}",
+    //     "current_el_spx_irq call pop_context, cur_sp {:x}",
     //     core.current_sp()
     // );
-    core.current_sp()
 }
 
 #[no_mangle]
-unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
+unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
     let tid = TPIDRRO_EL0.get();
     panic!(
-        "current_el_spx_synchronous on Thread {}\nEC {:#X} \n{}",
+        "current_el_sp0_synchronous on Thread {}\nEC {:#X} \n{}",
         tid,
         ec,
         ctx.read()
@@ -78,9 +79,9 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
+unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
     warn!(
-        "current_el_spx_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on user_sp {:p}\n",
+        "current_el_sp0_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on user_sp {:p}\n",
         TPIDRRO_EL0.get(),
         crate::arch::Arch::curent_privilege(),
         INTERRUPT_CONTROLLER.fetch().unwrap(),

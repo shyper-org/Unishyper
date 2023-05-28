@@ -38,8 +38,12 @@
 // help: add `#![feature(is_some_and)]` to the crate attributes to enable
 #![cfg_attr(feature = "std", feature(is_some_and))]
 #![cfg_attr(target_arch = "x86_64", feature(abi_x86_interrupt))]
+// error: `MaybeUninit::<T>::zeroed` is not yet stable as a const fn
+#![feature(const_maybe_uninit_zeroed)]
 #![feature(asm_sym)]
 #![feature(naked_functions)]
+// note: see issue #76001 <https://github.com/rust-lang/rust/issues/76001> for more information
+#![feature(inline_const)]
 
 #[macro_use]
 extern crate log;
@@ -111,6 +115,9 @@ pub extern "C" fn loader_main(core_id: usize) {
         let start = runtime_entry as usize;
         let t = libs::thread::thread_alloc(None, Some(core_id), start, 123 as usize, 0, true);
         libs::thread::thread_wake(&t);
+        t.set_in_yield_context();
+        arch::Arch::set_thread_id(t.tid() as u64);
+        libs::cpu::cpu().set_running_thread(Some(t));
         // Init fs if configured.
         #[cfg(feature = "fs")]
         libs::fs::init();
@@ -119,12 +126,12 @@ pub extern "C" fn loader_main(core_id: usize) {
         libs::terminal::init();
     }
 
-    libs::cpu::cpu().schedule();
+    // Enter first thread.
+    // On core 0, this should be user's main thread.
+    // On other cores, this may be idle thread.
+    let t = libs::cpu::cpu().get_next_thread();
 
-    let sp = match libs::cpu::cpu().running_thread() {
-        None => panic!("no running thread"),
-        Some(t) => t.last_stack_pointer(),
-    };
-    debug!("entering first thread on sp {:x}...", sp);
-    unsafe { crate::arch::pop_context_first(sp) }
+    let sp = t.last_stack_pointer();
+    debug!("entering first thread on sp {:#x}...", sp);
+    crate::arch::Arch::pop_context_first(sp)
 }

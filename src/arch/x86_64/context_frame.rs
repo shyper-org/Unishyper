@@ -1,4 +1,5 @@
 use core::fmt::Formatter;
+use core::arch::asm;
 
 use crate::libs::traits::ContextFrameTrait;
 
@@ -6,7 +7,7 @@ use super::mpk::pkru_of_thread_id;
 
 #[repr(C, align(16))]
 #[derive(Copy, Clone, Debug)]
-pub struct X86_64ContextFrame {
+pub struct X86_64TrapContextFrame {
     gpr: GeneralRegs,
 }
 
@@ -56,7 +57,7 @@ pub struct GeneralRegs {
     pub rsp: usize,
 }
 
-impl core::fmt::Display for X86_64ContextFrame {
+impl core::fmt::Display for X86_64TrapContextFrame {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
         write!(f, "pkru: {:016x} ", self.gpr.pkru)?;
         writeln!(f, "fsbase:{:016x}", self.gpr.fsbase)?;
@@ -82,7 +83,7 @@ impl core::fmt::Display for X86_64ContextFrame {
     }
 }
 
-impl ContextFrameTrait for X86_64ContextFrame {
+impl ContextFrameTrait for X86_64TrapContextFrame {
     fn init(&mut self, tid: usize) {
         self.gpr.rflags = 0x1202;
         self.gpr.pkru = pkru_of_thread_id(tid) as usize;
@@ -114,7 +115,7 @@ impl ContextFrameTrait for X86_64ContextFrame {
             5 => self.gpr.r9,
             _ => {
                 warn!(
-                    "X86_64ContextFrame get register value of invalid index {}",
+                    "X86_64TrapContextFrame get register value of invalid index {}",
                     index
                 );
                 0
@@ -132,76 +133,101 @@ impl ContextFrameTrait for X86_64ContextFrame {
             5 => self.gpr.r9 = value,
             _ => {
                 warn!(
-                    "X86_64ContextFrame set register to value {:#x} of invalid index {}",
+                    "X86_64TrapContextFrame set register to value {:#x} of invalid index {}",
                     value, index
                 );
             }
         }
     }
-
-    fn set_from_irq(&mut self) {}
-
-    fn set_from_yield(&mut self) {}
 }
 
-macro_rules! save_context {
+/// Callee-saved registers
+#[repr(C)]
+#[derive(Debug, Default)]
+struct YieldContextFrame {
+    pkru: u64,
+    r15: u64,
+    r14: u64,
+    r13: u64,
+    r12: u64,
+    rbx: u64,
+    rbp: u64,
+    rip: u64,
+}
+
+pub struct ThreadContext {
+    rsp: u64,
+}
+
+impl ThreadContext {
+    /// Creates a new default `ThreadContext` for a new thread.
+    pub const fn new() -> Self {
+        Self { rsp: 0 }
+    }
+
+    /// Switches to another thread to its yield context.
+    /// The yield context means callee-saved registers.
+    /// It first saves the current thread's context from CPU to this place, and then
+    /// restores the next thread's callee-saved registers from `next_ctx` to CPU.
+    pub fn switch_to_yield_ctx(&mut self, next_ctx: &Self) {
+        // debug!(
+        //     "switch_to_yield_ctx prev rsp {:#x}, next rsp {:#x}",
+        //     self.rsp, next_ctx.rsp
+        // );
+        unsafe { context_switch_to_yield(&mut self.rsp, next_ctx.rsp) }
+    }
+
+    /// Switches to another thread to its trap context.
+    /// The trap context means the whole trap context frame.
+    /// It first saves the current thread's context from CPU to this place, and then
+    /// restores the next thread's trap context from `next_sp` to CPU.
+    pub fn switch_to_trap_ctx(&mut self, next_sp: usize) {
+        // debug!(
+        //     "switch_to_trap_ctx prev rsp {:#x}, next rsp {:#x}",
+        //     self.rsp, next_sp
+        // );
+        unsafe { context_switch_to_trap(&mut self.rsp, next_sp) }
+    }
+}
+
+/// Save prev context (callee-saved registers) into current stack, see `YieldContextFrame` for details.
+macro_rules! save_yield_context {
     () => {
         concat!(
             r#"
-            pushfq
-			push rax
-			push rcx
-			push rdx
-			push rbx
-			push rbp
-			push rsi
-			push rdi
-			push r8
-			push r9
-			push r10
-			push r11
-			push r12
-			push r13
-			push r14
-			push r15
-            rdfsbase rax
-		    push rax
+            push rbp
+            push rbx
+            push r12
+            push r13
+            push r14
+            push r15
 			"#
-        ) // Qemu CPU fsgsbase feature is enabled.
-    };
-}
-
-macro_rules! save_pkru {
-    () => {
-        concat!(
-            r#"
-            xor rax, rax
-            xor ecx, ecx
-            rdpkru
-            push rax
-            "#
         )
     };
 }
 
-macro_rules! restore_pkru {
+/// Pop next context (callee-saved registers) from current stack, see `YieldContextFrame` for details.
+macro_rules! restore_yield_context {
     () => {
         concat!(
             r#"
-            pop rax
-            xor ecx, ecx
-            xor edx, edx
-            wrpkru
-            "#
+            pop r15
+            pop r14
+            pop r13
+            pop r12
+            pop rbx
+            pop rbp
+			"#
         )
     };
 }
 
-macro_rules! restore_context {
+/// Pop next context (whole context frame) from current stack, see `X86_64TrapContextFrame` for details.
+macro_rules! restore_trap_context {
     () => {
         concat!(
-            // Qemu CPU fsgsbase feature is enabled.
             r#"
+            // restore new context
             pop rax
             wrfsbase rax
 			pop r15
@@ -220,104 +246,116 @@ macro_rules! restore_context {
 			pop rcx
 			pop rax
 			popfq
-			ret
 			"#
         )
     };
 }
 
-use core::arch::asm;
+/// Save pkru register into current stack.
+macro_rules! save_pkru {
+    () => {
+        concat!(
+            r#"
+            xor rax, rax
+            xor ecx, ecx
+            rdpkru
+            push rax
+            "#
+        )
+    };
+}
 
-/// The entry of `thread_yield` operation,
-/// It will trigger the scheduler to actively yield to next thread,
-/// which contains the following logic:
-/// 1.  save the registers on current thread's stack space;
-/// 2.  call `switch_to_next_stack`, which will call the `core.schedule()` to pick the next thread,
-///         and switch current stack pointer to next thread.
-/// 3.  when `switch_to_next_stack` returns, the `rax` holds the next thread's stack pointer,
-///         we can get if the thread is yield from irq or yield,
-///         from irq: jump to pop_context_first.
-///         from yield, just set up the necessary registers and br 'x30'.
+/// Restore pkru register from current stack.
+macro_rules! restore_pkru {
+    () => {
+        concat!(
+            r#"
+            pop rax
+            xor ecx, ecx
+            xor edx, edx
+            wrpkru
+            "#
+        )
+    };
+}
+
+/// The actual process of `thread_yield` operation,
+/// It will trigger the scheduler to actively yield to next thread, which is runned before.
+/// 
+/// Which means that next thread's thread context is stored as `YieldContextFrame` in `_next_stack`.
+/// 
+/// Context switch process to a newly allocated thread, see `context_switch_to_trap`.
+/// ## Arguments
+/// * `_current_stack`  - the pointer to prev stack pointer(rsp), on `rdi`.
+/// * `_next_stack`     - next stack pointer(rsp), on `rsi`.
 #[naked]
-pub extern "C" fn yield_to() {
-    unsafe {
-        asm!(
-            save_context!(),
-            save_pkru!(),
-            // Switch pkru to kernel mode.
-            "xor ecx, ecx",
-            "xor edx, edx",
-            "xor rax, rax",
-            "wrpkru",
-            // Pass current stack pointer,
-            "mov rdi, rsp",
-            "call {switch_to_next_stack}",
-            "mov rsp, rax",
-            // Set task switched flag, CR0 bit 3
-            "mov rax, cr0",
-            "or rax, 8",
-            "mov cr0, rax",
-            restore_pkru!(),
-            restore_context!(),
-            switch_to_next_stack = sym switch_to_next_stack,
-            options(noreturn)
-        );
-    }
+unsafe extern "C" fn context_switch_to_yield(_current_stack: &mut u64, _next_stack: u64) {
+    asm!(
+        save_yield_context!(),
+        save_pkru!(),
+        // Switch pkru to kernel mode.
+        "xor ecx, ecx",
+        "xor edx, edx",
+        "xor rax, rax",
+        "wrpkru",
+        // Switch stack pointer.
+        "mov    [rdi], rsp",
+        "mov    rsp, rsi",
+        // Set task switched flag, CR0 bit 3
+        "mov rax, cr0",
+        "or rax, 8",
+        "mov cr0, rax",
+        restore_pkru!(),
+        restore_yield_context!(),
+        "ret",
+        options(noreturn),
+    )
 }
 
-use super::interface::ContextFrame;
-#[no_mangle]
-extern "C" fn switch_to_next_stack(ctx: *mut ContextFrame) -> usize {
-    // if ctx as usize != 0 {
-    //     unsafe {
-    //         println!("yield to ctx on user_sp {:p}\n {}", ctx, ctx.read());
-    //     }
-    // }
-
-    // Store current context's pointer on current core struct.
-    // Note: ctx is just a pointer to current thread stack.
-    let core = crate::libs::cpu::cpu();
-
-    // debug!(
-    //     "switch_to_next_stack is called on thread [{}] current pkru {:#x}",
-    //     core.running_thread().unwrap().tid(),
-    //     super::mpk::rdpkru()
-    // );
-
-    core.set_current_sp(ctx as usize);
-
-    core.schedule();
-
-    core.current_sp()
-}
-
-pub fn set_thread_id(_tid: u64) {}
-
-pub fn get_tls_ptr() -> *const u8 {
-    0xDEAD_BEEF as *const u8
-}
-
-pub fn set_tls_ptr(_tls_ptr: u64) {}
-
-pub unsafe extern "C" fn pop_context_first(ctx: usize) -> ! {
-    debug!("get pkru {:#x}", super::mpk::rdpkru());
-
-    super::mpk::wrpkru(super::mpk::pkru_of_zone_id(1));
-
-    debug!("get modified pkru {:#x}", super::mpk::rdpkru());
-
-    _pop_context_first(ctx);
-    loop {}
-}
-
+/// The actual process of `thread_yield` operation,
+/// It will trigger the scheduler to actively yield to next thread, which is not runned before.
+/// 
+/// Which means that next thread's thread context is stored as `X86_64TrapContextFrame` in `_next_sp`.
+/// 
+/// Context switch process to a runned thread, see `context_switch_to_yield`
+/// ## Arguments
+/// * `_current_stack`  - the pointer to prev stack pointer(rsp), on `rdi`.
+/// * `_next_sp`     - next stack pointer(rsp), on `rsi`.
 #[naked]
-unsafe extern "C" fn _pop_context_first(_next_stack: usize) {
-    // `next_stack` is in `rdi` register
+unsafe extern "C" fn context_switch_to_trap(_current_stack: &mut u64, _next_sp: usize) {
+    asm!(
+        save_yield_context!(),
+        save_pkru!(),
+        // Switch pkru to kernel mode.
+        "xor ecx, ecx",
+        "xor edx, edx",
+        "xor rax, rax",
+        "wrpkru",
+        // Switch stack pointer.
+        "mov    [rdi], rsp",
+        "mov    rsp, rsi",
+        // Set task switched flag, CR0 bit 3
+        "mov rax, cr0",
+        "or rax, 8",
+        "mov cr0, rax",
+        restore_pkru!(),
+        restore_trap_context!(),
+        "ret",
+        options(noreturn),
+    )
+}
+
+/// Pop first thread's context frame and jump to it.
+/// Called by `pop_context_first`.
+#[naked]
+pub(super) unsafe extern "C" fn _pop_context_first(_next_stack: usize) {
+    // `_next_stack` is in `rdi` register
     asm!(
         "cli",
         "mov rsp, rdi",
         restore_pkru!(),
-        restore_context!(),
+        restore_trap_context!(),
+        "ret",
         options(noreturn),
     )
 }

@@ -13,7 +13,7 @@ use x86_64::structures::paging::{
     FrameAllocator, FrameDeallocator,
 };
 
-use crate::arch::x86_64::interface::*;
+use crate::arch::x86_64::{MACHINE_SIZE, PHYSICAL_MEMORY_OFFSET};
 use crate::libs::error::{ERROR_INVARG, ERROR_INTERNAL};
 use crate::libs::traits::*;
 use crate::mm::frame_allocator;

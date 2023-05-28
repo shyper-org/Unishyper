@@ -6,10 +6,11 @@ use core::fmt;
 use core::mem;
 use core::sync::atomic::AtomicUsize;
 use core::sync::atomic::Ordering;
+use core::cell::UnsafeCell;
 
 use spin::{Mutex, Once};
 
-use crate::arch::{ContextFrame, PAGE_SIZE, STACK_SIZE};
+use crate::arch::{ContextFrame, PAGE_SIZE, STACK_SIZE, ThreadContext};
 use crate::libs::traits::ContextFrameTrait;
 use crate::libs::cpu::{CoreId, cpu, get_cpu};
 use crate::libs::scheduler::Scheduler;
@@ -42,6 +43,7 @@ pub enum Status {
     Runnable,
     Ready,
     Blocked,
+    Exited,
 }
 
 impl fmt::Display for Status {
@@ -50,6 +52,7 @@ impl fmt::Display for Status {
             Status::Runnable => write!(f, "Running"),
             Status::Ready => write!(f, "Ready"),
             Status::Blocked => write!(f, "Blocked"),
+            Status::Exited => write!(f, "Exited"),
         }
     }
 }
@@ -68,9 +71,14 @@ struct InnerMut {
     affinity_core: Option<CoreId>,
     // running_core: Mutex<CoreId>,
     status: Mutex<Status>,
-    last_stack_pointer: Mutex<usize>,
+    trap_stack_pointer: Mutex<usize>,
+    in_trap_context: Mutex<bool>,
+    ctx: UnsafeCell<ThreadContext>,
     mem_regions: Mutex<BTreeMap<VAddr, MappedRegion>>,
 }
+
+unsafe impl Send for InnerMut {}
+unsafe impl Sync for InnerMut {}
 
 struct ControlBlock {
     inner: Inner,
@@ -111,6 +119,16 @@ impl Eq for Thread {}
 //     }
 // }
 
+impl fmt::Debug for Thread {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Thread")
+            .field("id", &self.0.inner.uuid)
+            .field("stack", &self.0.inner.stack.start_address())
+            .field("state", &self.status())
+            .finish()
+    }
+}
+
 impl Thread {
     /// Get thread tid, which is globally unique.
     pub fn tid(&self) -> Tid {
@@ -138,19 +156,41 @@ impl Thread {
         *lock == Status::Runnable
     }
 
+    pub fn set_exited(&mut self) {
+        let mut lock = self.0.inner_mut.status.lock();
+        *lock = Status::Exited;
+    }
+
     /// Get thread privilege level.
     pub fn privilege(&self) -> PrivilegedLevel {
         self.0.inner.level
     }
 
     pub fn set_last_stack_pointer(&self, sp: usize) {
-        let mut last_stack_pointer = self.0.inner_mut.last_stack_pointer.lock();
-        *last_stack_pointer = sp;
+        let mut trap_stack_pointer = self.0.inner_mut.trap_stack_pointer.lock();
+        *trap_stack_pointer = sp;
     }
 
     pub fn last_stack_pointer(&self) -> usize {
-        let last_stack_pointer = self.0.inner_mut.last_stack_pointer.lock();
-        *last_stack_pointer
+        let trap_stack_pointer = self.0.inner_mut.trap_stack_pointer.lock();
+        *trap_stack_pointer
+    }
+
+    #[inline]
+    pub unsafe fn ctx_mut_ptr(&self) -> *mut ThreadContext {
+        self.0.inner_mut.ctx.get()
+    }
+
+    #[inline]
+    pub fn in_trap_context(&self) -> bool {
+        let in_trap_context = self.0.inner_mut.in_trap_context.lock();
+        *in_trap_context
+    }
+
+    #[inline]
+    pub fn set_in_yield_context(&self) {
+        let mut in_trap_context = self.0.inner_mut.in_trap_context.lock();
+        *in_trap_context = false;
     }
 
     /// Add newly allocated MappedRegion to thread's control block.
@@ -264,6 +304,13 @@ pub fn thread_alloc(
     let sp = stack_start + stack_region.size_in_bytes();
 
     let last_stack_pointer = sp - mem::size_of::<ContextFrame>();
+
+    debug!(
+        "thread alloc sp {:#x} last_stack_pointer {:#x} size of ContextFrame {:#x}",
+        sp,
+        last_stack_pointer,
+        mem::size_of::<ContextFrame>()
+    );
     // Init thread context in stack region.
     unsafe {
         #[cfg(target_arch = "x86_64")]
@@ -283,7 +330,6 @@ pub fn thread_alloc(
         context_frame.set_gpr(0, entry);
         context_frame.set_gpr(1, arg);
         context_frame.set_stack_pointer(sp.value());
-        context_frame.set_from_irq();
         trace!(
             "NEW context_frame: on {:#p} \n{}",
             context_frame,
@@ -311,7 +357,9 @@ pub fn thread_alloc(
         inner_mut: InnerMut {
             affinity_core,
             status: Mutex::new(Status::Ready),
-            last_stack_pointer: Mutex::new(last_stack_pointer.value()),
+            trap_stack_pointer: Mutex::new(last_stack_pointer.value()),
+            ctx: UnsafeCell::new(ThreadContext::new()),
+            in_trap_context: Mutex::new(true),
             mem_regions: Mutex::new(BTreeMap::new()),
         },
     }));
@@ -560,21 +608,15 @@ pub fn handle_exit_threads() {
 /// Todo: make thread yield more efficient.
 // #[inline(always)]
 pub fn thread_yield() {
-    // debug!("thread_yield is called on Thread [{}]", current_thread_id());
-    // let icntr = crate::libs::timer::current_cycle();
+    // use tock_registers::interfaces::Readable;
+    // debug!(
+    //     "thread_yield is called on Thread  [{}], DAIF {:#x}",
+    //     cortex_a::registers::TPIDRRO_EL0.get(),
+    //     cortex_a::registers::DAIF.get()
+    // );
     irqsave(|| {
-        // let icntr_2 = crate::libs::timer::current_cycle();
-        // println!("\nthread_yield: irqsave {}", icntr_2 - icntr);
-        crate::arch::yield_to();
+        cpu().schedule();
     });
-}
-
-#[no_mangle]
-/// Call cpu scheduler to schedule to next thread.
-pub fn thread_schedule() {
-    // trace!("thread_schedule\n");
-    cpu().schedule();
-    // trace!("thread_schedule end\n");
 }
 
 /// Get current running thread id, return 0 if there is no running thread.
@@ -598,16 +640,18 @@ pub fn current_thread() -> Result<Thread, Error> {
 /// This function will call `thread_yield` to schedule to next active thread.
 pub fn thread_exit() {
     crate::arch::irq::disable();
-    let t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
+    let mut t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
     debug!("thread_exit on Thread [{}]", t.tid());
 
     handle_waiting_threads(t.tid());
 
-    if let Some(current_thread) = cpu().running_thread() {
-        if t.tid() == current_thread.tid() {
-            cpu().set_running_thread(None);
-        }
-    }
+    t.set_exited();
+    // cpu().set_running_thread(Some(t.clone()));
+    // if let Some(current_thread) = cpu().running_thread() {
+    //     if t.tid() == current_thread.tid() {
+    //         cpu().set_running_thread(None);
+    //     }
+    // }
     thread_exit_queue().lock().push_back(t);
     thread_yield();
     warn!("thread_exit, should not reach here!!!");

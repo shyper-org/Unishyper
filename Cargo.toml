@@ -73,7 +73,7 @@ version = "0.4"
 
 [features]
 alloc = []
-default = ["alloc", "qemu", "terminal"]
+default = ["alloc", "qemu", "terminal","tcp"]
 fat = [
   "fatfs",
   "lru",

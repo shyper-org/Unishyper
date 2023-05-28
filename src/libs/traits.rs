@@ -19,6 +19,10 @@ pub trait ArchTrait {
     fn fault_address() -> usize;
     fn core_id() -> usize;
     fn curent_privilege() -> usize;
+    fn pop_context_first(ctx: usize) -> !;
+    fn set_thread_id(tid: u64);
+    fn get_tls_ptr() -> *const u8;
+    fn set_tls_ptr(tls_ptr: u64);
 }
 
 pub trait ContextFrameTrait {
@@ -40,14 +44,6 @@ pub trait ContextFrameTrait {
     /// Set context frame's general purpose register value of given index.
     /// Note: the callee may check the index's legality(x0-x30 on aarch 64).
     fn set_gpr(&mut self, index: usize, value: usize);
-    /// Mark the thread is yield from irq.
-    /// During context restore processes, from irq will end in 'pop_context_first'.
-    fn set_from_irq(&mut self);
-    /// Mark the thread is yield yield,
-    /// which means, the thread called the `thread_yield` function to give up the cpu cycle.
-    /// During context restore processes, from irq will not end in 'pop_context_first'.
-    /// See switch.S for details.
-    fn set_from_yield(&mut self);
 }
 
 pub trait ArchPageTableEntryTrait {

@@ -43,7 +43,7 @@ impl Scheduler for RoundRobinScheduler {
     }
 
     fn pop(&self) -> Option<Thread> {
-        // for t in running_queue.clone().into_iter() {
+        // for t in self.running_queue.lock().clone().into_iter() {
         //     println!("running queue: thread [{}]", t.tid());
         // }
         self.running_queue.lock().pop_front()

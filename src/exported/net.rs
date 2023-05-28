@@ -244,6 +244,7 @@ impl fmt::Debug for TcpStream {
 pub struct TcpListener(SocketAddr);
 
 impl TcpListener {
+    /// Todo: use `bind` provided in `tcplistener`.
     pub fn bind<A: ToSocketAddrs>(addr: A) -> IoResult<TcpListener> {
         let addrs = match addr.to_socket_addrs() {
             Ok(addrs) => addrs,

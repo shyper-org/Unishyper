@@ -100,44 +100,64 @@ impl Core {
         }
     }
 
-    pub fn schedule(&mut self) {
-        if let Some(t) = self.scheduler().pop() {
-            self.run(t);
-        } else if self.running_thread().is_none() {
-            debug!(
-                "scheduler empty on core [{}], run idle thread\n",
-                crate::arch::Arch::core_id()
-            );
-            self.run(self.idle_thread());
-        }
+    pub fn get_next_thread(&mut self) -> Thread {
+        self.scheduler().pop().unwrap_or_else(|| self.idle_thread())
     }
 
-    // pub fn schedule_to(&mut self, t: Thread) {
-    //     self.run(t);
-    // }
+    pub fn schedule(&mut self) {
+        // Get prev thread.
+        let prev = self.running_thread().unwrap_or_else(|| {
+            panic!(
+                "No running thread on core [{}], something is wrong!!!",
+                crate::arch::Arch::core_id()
+            )
+        });
 
-    fn run(&mut self, t: Thread) {
-        crate::arch::set_thread_id(t.tid() as u64);
-        crate::arch::set_tls_ptr(t.get_tls_ptr() as u64);
-
-        if let Some(prev) = self.running_thread() {
-            // Note: normal switch
-            // debug!("switch thread from [{}] to [{}]", prev.tid(), t.tid());
-            prev.set_last_stack_pointer(self.current_sp());
-
-            // add back to scheduler queue
-            if prev.runnable() {
-                self.scheduler().add(prev.clone());
-            }
-
-            // debug!(
-            //     "prev sp {:x}, next sp {:x}",
-            //     self.current_sp(),
-            //     t.last_stack_pointer()
-            // );
+        // Add prev thread back to scheduler queue.
+        if prev.runnable() {
+            self.scheduler().add(prev.clone());
         }
-        self.set_running_thread(Some(t.clone()));
-        self.set_current_sp(t.last_stack_pointer());
+
+        // Get next thread from scheduler.
+        let next = self.scheduler().pop().unwrap_or_else(|| {
+            if prev.runnable() {
+                prev.clone()
+            } else {
+                self.idle_thread()
+            }
+        });
+
+        trace!("cpu schedule\nprev {:?}\nnext {:?}", prev, next);
+
+        if prev.eq(&next) {
+            return;
+        }
+
+        unsafe {
+            let prev_ctx_ptr = prev.ctx_mut_ptr();
+            let next_ctx_ptr = next.ctx_mut_ptr();
+            // assert!(Arc::strong_count(&prev) > 1);
+            // assert!(Arc::strong_count(&next) >= 1);
+            crate::arch::Arch::set_thread_id(next.tid() as u64);
+            crate::arch::Arch::set_tls_ptr(next.get_tls_ptr() as u64);
+            let next_is_not_run = next.in_trap_context();
+            if next_is_not_run {
+                next.set_in_yield_context();
+            }
+            let next_stack_pointer = next.last_stack_pointer();
+            self.set_running_thread(Some(next));
+
+            if next_is_not_run {
+                trace!(
+                    "cpu schedule switch_to_trap_ctx on {:#x}",
+                    next_stack_pointer
+                );
+                (*prev_ctx_ptr).switch_to_trap_ctx(next_stack_pointer);
+            } else {
+                trace!("cpu schedule switch_to_yield_ctx on {:#p}", next_ctx_ptr);
+                (*prev_ctx_ptr).switch_to_yield_ctx(&*next_ctx_ptr);
+            }
+        }
     }
 }
 

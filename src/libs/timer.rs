@@ -5,25 +5,12 @@ pub const TIMER_SEC_TO_US: usize = 1000_000;
 
 //Todo: refactor these methods into different architectures.
 
-#[cfg(target_arch = "aarch64")]
 pub fn interrupt() {
-    crate::drivers::timer::next();
-    // debug!("timer interrupt");
-    crate::libs::thread::handle_blocked_threads();
-    crate::libs::thread::handle_exit_threads();
-    crate::libs::cpu::cpu().schedule();
-}
-
-
-/// Todo: currently `x86` and `aarch64` use different exception handler logic.
-/// Maybe we need to refactor exception stack in `aarch64`.
-#[cfg(target_arch = "x86_64")]
-pub fn interrupt() {
-    // debug!("timer interrupt");
+    trace!("timer interrupt");
     crate::drivers::timer::next();
     crate::libs::thread::handle_blocked_threads();
     crate::libs::thread::handle_exit_threads();
-    crate::libs::thread::thread_yield();
+    // crate::libs::thread::thread_yield();
 }
 
 #[allow(dead_code)]

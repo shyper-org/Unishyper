@@ -100,7 +100,10 @@ fn set_local_endpoint_link(local_endpoint: u16, remote_endpoint: IpEndpoint) {
 
 fn remove_local_endpoint(local_endpoint: u16) {
     let mut lock = LOCAL_ENDPOINT_MAP.lock();
-    let remote_endpoint = lock.remove(&local_endpoint).unwrap();
+    let remote_endpoint = lock.remove(&local_endpoint).unwrap_or_else(|| {
+        warn!("Local endpoint {local_endpoint} has no remote endpoint");
+        return None;
+    });
     if remote_endpoint.is_some() {
         debug!(
             "connect to remote {} is closed, release port {}",

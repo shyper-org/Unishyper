@@ -32,7 +32,7 @@ impl Address for usize {
     }
 }
 
-pub type ContextFrame = super::context_frame::X86_64ContextFrame;
+pub type ContextFrame = super::context_frame::X86_64TrapContextFrame;
 
 // #[allow(unused)]
 // pub type PageTable = super::page_table::X86_64PageTable;

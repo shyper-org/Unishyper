@@ -1,16 +1,45 @@
-mod gdt;
-mod interface;
-mod exception;
-pub mod irq;
-pub mod page_table;
-pub use interface::*;
+use crate::libs::traits::Address;
+use crate::libs::traits::ArchTrait;
+
 mod context_frame;
+mod exception;
+mod gdt;
+pub mod irq;
 pub mod mpk;
+pub mod page_table;
 mod processor;
 
-pub use context_frame::{
-    yield_to, set_thread_id, set_tls_ptr, get_tls_ptr, pop_context_first,
-};
+pub const PHYSICAL_MEMORY_OFFSET: u64 = 0xFFFF_8000_0000_0000;
+
+pub const PAGE_SHIFT: usize = 12;
+pub const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
+pub const MACHINE_SIZE: usize = core::mem::size_of::<usize>();
+
+pub const MAX_VIRTUAL_ADDRESS: usize = usize::MAX;
+pub const MIN_USER_VIRTUAL_ADDRESS: usize = 0x0000_0010_0000_0000;
+pub const MAX_USER_VIRTUAL_ADDRESS: usize = 0x0000_007F_FFFF_FFFF;
+
+pub const MAX_PAGE_NUMBER: usize = MAX_VIRTUAL_ADDRESS / PAGE_SIZE;
+
+pub const STACK_SIZE: usize = 2_097_152; // PAGE_SIZE * 512
+
+/// The virtual address offset from which physical memory is mapped, as described in
+/// https://os.phil-opp.com/paging-implementation/#map-the-complete-physical-memory
+/// It's determined by rboot in rboot.conf.
+const PA2KVA: usize = 0xFFFF_8000_0000_0000;
+const KVA2PA: usize = 0x0000_7FFF_FFFF_FFFF;
+
+impl Address for usize {
+    fn pa2kva(&self) -> usize {
+        *self | PA2KVA
+    }
+    fn kva2pa(&self) -> usize {
+        *self | KVA2PA
+    }
+}
+
+pub type ContextFrame = context_frame::X86_64TrapContextFrame;
+pub type ThreadContext = context_frame::ThreadContext;
 
 pub use gdt::Cpu;
 
@@ -88,4 +117,61 @@ pub unsafe fn reboot() -> ! {
     use x86_64::instructions::port::Port;
     Port::new(0x64).write(0xfeu8);
     unreachable!()
+}
+
+pub struct Arch;
+
+impl ArchTrait for Arch {
+    fn exception_init() {
+        x86_64::instructions::interrupts::disable();
+        processor::configure();
+        gdt::add_current_core();
+        exception::init_idt();
+        // x86_64::instructions::interrupts::enable();
+        info!("exception init success!");
+    }
+
+    fn page_table_init() {
+        debug!("init page table for x86_64");
+        page_table::init();
+    }
+
+    fn invalidate_tlb() {}
+
+    fn wait_for_interrupt() {
+        x86_64::instructions::hlt()
+    }
+
+    fn nop() {
+        x86_64::instructions::nop()
+    }
+
+    fn fault_address() -> usize {
+        0
+    }
+
+    #[inline(always)]
+    fn core_id() -> usize {
+        cpu_id()
+    }
+
+    fn curent_privilege() -> usize {
+        0
+    }
+    #[inline(always)]
+    fn pop_context_first(ctx: usize) -> ! {
+        debug!("get pkru {:#x}", mpk::rdpkru());
+        mpk::wrpkru(mpk::pkru_of_zone_id(1));
+        debug!("get modified pkru {:#x}", mpk::rdpkru());
+        unsafe { context_frame::_pop_context_first(ctx) }
+        loop {}
+    }
+
+    fn set_thread_id(_tid: u64) {}
+
+    fn get_tls_ptr() -> *const u8 {
+        0xDEAD_BEEF as *const u8 as *const u8
+    }
+
+    fn set_tls_ptr(_tls_ptr: u64) {}
 }

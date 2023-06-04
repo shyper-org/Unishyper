@@ -15,8 +15,8 @@ endif
 KERNEL := target/${ARCH}-unknown-${MACHINE}/${PROFILE}/hello_world
 
 # Arch-specific tools
-OBJCOPY := aarch64-elf-objcopy
-OBJDUMP := aarch64-elf-objdump
+OBJCOPY := rust-objcopy
+OBJDUMP := rust-objdump
 
 .PHONY: build clean emu
 

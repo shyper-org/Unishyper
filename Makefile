@@ -29,8 +29,8 @@ clean:
 	@for dir in ${EXAMPLES_DIR}; do make -C ./$$dir clean ||exit; done
 	@echo clean project done!
 
-# aarch64-elf-objcopy ${KERNEL} -O binary ${KERNEL}.bin
-# aarch64-elf-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
+# rust-objcopy ${KERNEL} -O binary ${KERNEL}.bin
+# rust-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
 # QEMU_CMD := qemu-system-aarch64 -M virt -cpu cortex-a53 -device loader,file=${KERNEL},addr=0x80000000,force-raw=on
 # QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
 # 					 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \

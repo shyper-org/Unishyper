@@ -1,16 +1,22 @@
-# Unishyper Demo Version
+# Unishyper
 
-Unishyper is a research unikernel, targeting a scalable and predictable runtime for embedded devices. Unikernel means, you bundle your application directly with the kernel library, so that it can run without any installed operating system.
+Unishyper is a research unikernel, targeting a scalable and predictable runtime for embedded devices. 
+
+Unikernel means, you bundle your application directly with the kernel library, so that it can run without any installed operating system.
+
+🚧 Working In Progress.
 
 ## Boards and Platforms
 
-Unishyper  now supports following platforms.
+Unishyper  now supports following platforms:
 
 | MACHINE | ARCH                    | Description                             |
 |---------|-------------------------|-----------------------------------------|
-| virt    | **aarch64** (AArch64)   | QEMU (qemu-system-aarch64) |
-| shyper     | **aarch64** (AArch64)   |  Type-1 Hypervisor   |
-| tx2     | **aarch64** (AArch64)   | NVIDIA TX2                              |
+| qemu    | **aarch64**  | QEMU (qemu-system-aarch64) |
+| shyper  | **aarch64**  |  Type-1 Hypervisor         |
+| tx2     | **aarch64**  | NVIDIA TX2                 |
+| qemu    | **x86_64**   | QEMU (qemu-system-x86_64)  |
+| qemu    | ~~**riscv64**~~  | ~~QEMU (qemu-system-riscv64)~~  comming soon|
 
 
 ## Features
@@ -21,36 +27,41 @@ Unishyper  now supports following platforms.
 4. Network stack and file system support.
 5. Virtio drivers (virtio-net, virtio-blk).
 6. Terminal support.
+7. Unilib-fs support.
+8. Rust-std support, with modified [rust-toolchain](https://gitee.com/unishyper/rust) 
 ## Toolchains
 
 1. Nightly Rust (`nightly-2022-09-14` tested)
 2. `rust-src` component (use `make dependencies` to install)
-3. QEMU emulator version 5.0.0, `qemu-system-aarch64`.
-4. Linaro GCC 7.5-2019.12
+3. QEMU emulator version 5.0.0.
+4. mkfs from util-linux 2.31.1 (for making disk.img, see Makefile for details)
 
 ## Applications
 
 The examples directory contains example demos.
 
+For build preparation:
+
+Install [cargo-binutils](https://github.com/rust-embedded/cargo-binutils) to use `rust-objcopy` and `rust-objdump` tools:
+
+```bash
+cargo install cargo-binutils
+```
+
+For bootloader on x86_64, [rboot](https://github.com/hky1999/rboot.git) is required.
+
+```
+# See .gitmodules for details
+git submodule update --init --recursive
+```
+
 use this lines to build and emulate:
 
 ```
-# for examples/net_demo
-make net_server | net_client
 # for examples/user
 make user
 # for examples/fs
 make fs
-```
-use this lines to build and debug:
-
-```
-# for examples/net_demo
-make net_server_debug | net_client_debug
-# for examples/user
-make user_debug
-# for examples/fs
-make fs_debug
 ```
 
 ## Terminal Support
@@ -91,27 +102,6 @@ sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
 ```
 
 Add the feature `tcp` in the `Cargo.toml`. Unishyper use the network stack [smoltcp](https://github.com/smoltcp-rs/smoltcp) to offer TCP/UDP communication.
-```toml
-# Cargo.toml
-
-[dependencies.smoltcp]
-version = "0.7"
-optional = true
-default-features = false
-features = [
-    "alloc",
-    "async",
-    "ethernet",
-    "proto-ipv4",
-    "proto-ipv6",
-    "socket-tcp",
-    # "socket-udp",
-    # "std",
-    # Enable for increased output
-    # "log",
-    # "verbose",
-]
-```
 
 By default, Unishyper's network interface uses `10.0.0.2` as IP address, `10.0.0.1`
 for the gateway and `255.255.255.0` as network mask.
@@ -125,17 +115,6 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
 						-global virtio-mmio.force-legacy=false
 ```
  You may see Makefile for details.
-
- You can use **ping** or **traceroute** tools to check if network stacks works.
-
- To run network test, you may follow these steps:
-
- * use gcc to compile socket_client.c in examples/linux_test dir
-   * `gcc examples/linux_test/socket_client.c -o examples/linux_test/client`
- * spawn `netdemo_server ` thread in examples/net_demo/main.c
- * run `sudo tcpdump -i tap0 -vvv -nn -e -p net 10.0.0 and not proto \\udp` to trace useful network packets
- * run `make net_emu`
- * run `/examples/linux_test/client `
 
  ## FS Support
 
@@ -151,13 +130,6 @@ mkfs.fat -F 32 disk.img
 
 Unishyper use the [fatfs](https://github.com/rafalh/rust-fatfs) to offer fatfs support.
 
-```toml
-[dependencies.fatfs]
-version = "0.4"
-git = "https://github.com/rafalh/rust-fatfs"
-default-features = false
-features = ["lfn", "alloc", "unicode", "log_level_trace"]
-```
 Currently, Unishyper does only support blk operation through [virtio-blk](https://www.qemu.org/2021/01/19/virtio-blk-scsi-configuration/).
 To use it, you have to start Unishyper in Qemu with following parameters:
 
@@ -170,8 +142,6 @@ You may see Makefile for details.
 
 ### Unilib-FS
 
-Unishyper's Unilib-FS is based on the support of rust-hypervisor. Unishyper's fs operation request is passed to the MVM by a HVC request from Unishyper and a IPI request inside hypervisor. The MVM will perform the file operation on its user daemon process and send the result back to Unishyper.
+Unishyper's Unilib-FS is based on the support of [Rust-Shyper](https://gitee.com/openeuler/rust_shyper). Unishyper's fs operation request is passed to the MVM by a HVC request from Unishyper and a IPI request inside hypervisor. The MVM will perform the file operation on its user daemon process and send the result back to Unishyper.
 
 Through the thought of unilib, Unishyper can get rid of the huge code size of file system and block device driver, replaced with just a few lines of HVC calls.
-
-The unilib is still under developing.

@@ -22,7 +22,7 @@ pub fn blk_irqhandler() {
             if !driver.lock().handle_interrupt() {
                 error!("Virtio Blk driver failed to handler interrupt");
             }
-        },
+        }
         _ => error!("failed to get block driver"),
     }
 }

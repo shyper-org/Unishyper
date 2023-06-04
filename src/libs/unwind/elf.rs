@@ -19,8 +19,14 @@ pub fn base_addresses() -> BaseAddresses {
             let eh_frame = section_by_name(".eh_frame").unwrap();
             let eh_frame_hdr = section_by_name(".eh_frame_hdr").unwrap();
             let text = section_by_name(".text").unwrap();
-            debug!("eh_frame: range [0x{:016x} - 0x{:016x}]", eh_frame.start, eh_frame.end);
-            debug!("eh_frame_hdr: range [0x{:016x} - 0x{:016x}]", eh_frame_hdr.start, eh_frame_hdr.end);
+            debug!(
+                "eh_frame: range [0x{:016x} - 0x{:016x}]",
+                eh_frame.start, eh_frame.end
+            );
+            debug!(
+                "eh_frame_hdr: range [0x{:016x} - 0x{:016x}]",
+                eh_frame_hdr.start, eh_frame_hdr.end
+            );
             debug!("text: range [0x{:016x} - 0x{:016x}]", text.start, text.end);
             let result = BaseAddresses::default()
                 .set_eh_frame_hdr(eh_frame_hdr.start)

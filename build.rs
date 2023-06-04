@@ -14,6 +14,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     match arch.as_str() {
         "x86_64" => File::create(out_dir.join("linkerx86.ld"))?
             .write_all(include_bytes!("cfg/x86_64linker.ld"))?,
+        "riscv64" => File::create(out_dir.join("linkerriscv.ld"))?
+            .write_all(include_bytes!("cfg/riscv64linker.ld"))?,
         // By default, we set arch as aarch64.
         _ => {
             let machine = match env::var("MACHINE") {
@@ -28,6 +30,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
+    // set envs
+    let build_time = chrono::offset::Local::now().format("%Y-%m-%d %H:%M:%S %Z");
+    println!("cargo:rustc-env=BUILD_TIME={}", build_time);
 
     Ok(())
 }

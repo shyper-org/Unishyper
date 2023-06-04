@@ -14,7 +14,10 @@ pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> 
 where
     F: FnOnce(&mut [u8]) -> Result<usize>,
 {
-    let buf = bufs.iter_mut().find(|b| !b.is_empty()).map_or(&mut [][..], |b| &mut **b);
+    let buf = bufs
+        .iter_mut()
+        .find(|b| !b.is_empty())
+        .map_or(&mut [][..], |b| &mut **b);
     read(buf)
 }
 
@@ -22,6 +25,9 @@ pub(crate) fn default_write_vectored<F>(write: F, bufs: &[IoSlice<'_>]) -> Resul
 where
     F: FnOnce(&[u8]) -> Result<usize>,
 {
-    let buf = bufs.iter().find(|b| !b.is_empty()).map_or(&[][..], |b| &**b);
+    let buf = bufs
+        .iter()
+        .find(|b| !b.is_empty())
+        .map_or(&[][..], |b| &**b);
     write(buf)
 }

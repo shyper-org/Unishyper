@@ -6,7 +6,7 @@ pub const TIMER_SEC_TO_US: usize = 1000_000;
 //Todo: refactor these methods into different architectures.
 
 pub fn interrupt() {
-    trace!("timer interrupt");
+    // debug!("timer interrupt");
     crate::drivers::timer::next();
     crate::libs::thread::handle_blocked_threads();
     crate::libs::thread::handle_exit_threads();
@@ -63,7 +63,8 @@ pub fn boot_time() -> usize {
 
 pub fn init() {
     println!(
-        "Unishyper starts at [{} (UTC)]",
+        "Unishyper built at [{}] starts at [{} (UTC)]",
+        env!("BUILD_TIME"),
         rtc_time64_to_tm(crate::drivers::timer::timestamp_sec() as u64)
     );
     let boot_time = crate::drivers::timer::timestamp_us() as usize - current_us();

@@ -1,8 +1,8 @@
 // serial driver.
-#[cfg(feature = "qemu")]
-mod pl011;
 #[cfg(any(feature = "shyper", feature = "tx2"))]
 mod ns16550;
+#[cfg(feature = "qemu")]
+mod pl011;
 
 // uart driver.
 #[cfg(feature = "qemu")]

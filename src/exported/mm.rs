@@ -4,7 +4,7 @@ pub fn allocate(size: usize) -> VAddr {
     match crate::mm::allocate(size) {
         Some(addr) => {
             return addr;
-        },
+        }
         None => {
             error!("failed to allocate memory of size {}", size);
             return VAddr::zero();

@@ -15,12 +15,8 @@ impl InterruptController for Apic {
         debug!("apic init ok");
     }
 
-    fn enable(&self, int: Interrupt) {
-
-    }
-    fn disable(&self, int: Interrupt) {
-
-    }
+    fn enable(&self, int: Interrupt) {}
+    fn disable(&self, int: Interrupt) {}
 
     fn fetch(&self) -> Option<Interrupt> {
         unimplemented!();

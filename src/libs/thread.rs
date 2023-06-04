@@ -608,13 +608,8 @@ pub fn handle_exit_threads() {
 /// Todo: make thread yield more efficient.
 // #[inline(always)]
 pub fn thread_yield() {
-    // use tock_registers::interfaces::Readable;
-    // debug!(
-    //     "thread_yield is called on Thread  [{}], DAIF {:#x}",
-    //     cortex_a::registers::TPIDRRO_EL0.get(),
-    //     cortex_a::registers::DAIF.get()
-    // );
     irqsave(|| {
+        // debug!("call cpu schedule");
         cpu().schedule();
     });
 }

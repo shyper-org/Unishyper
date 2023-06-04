@@ -39,10 +39,10 @@ unsafe extern "C" fn unwind_recorder(
 
 /// **Landing** refers to the process of jumping to a handler for a stack frame,
 /// e.g., an unwinding cleanup function, or an exception "catch" block.
-/// 
+///
 /// This function basically fills the actual CPU registers with the values in the given `LandingRegisters`
 /// and then jumps to the exception handler (landing pad) pointed to by the stack pointer (sp) in those `LandingRegisters`.
-/// 
+///
 /// This is similar in design to how the latter half of a context switch routine
 /// must restore the previously-saved registers for the next task.
 pub unsafe fn land(regs: &Registers, landing_pad_address: u64) {

@@ -50,6 +50,9 @@ rboot = {git = "https://github.com/hky1999/rboot.git", default-features = false}
 bitflags = {version = "1.3.2", default-features = false}
 x86_64 = "0.14.2"
 
+[target.'cfg(target_arch = "riscv64")'.dependencies]
+riscv = { git = "https://github.com/tonnylyz/riscv" }
+
 [dependencies.smoltcp]
 default-features = false
 features = [
@@ -70,6 +73,9 @@ features = ["lfn", "alloc", "unicode", "log_level_trace"]
 git = "https://github.com/rafalh/rust-fatfs"
 optional = true
 version = "0.4"
+
+[build-dependencies]
+chrono = "0.4.23"
 
 [features]
 alloc = []

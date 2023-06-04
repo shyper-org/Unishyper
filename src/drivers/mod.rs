@@ -6,6 +6,10 @@ mod arch;
 #[path = "arch/x86_64/mod.rs"]
 mod arch;
 
+#[cfg(target_arch = "riscv64")]
+#[path = "arch/riscv64/mod.rs"]
+mod arch;
+
 /// Pending:
 /// Currently we use different serial driver implementations
 /// for different architectures and platforms.
@@ -13,6 +17,13 @@ mod arch;
 /// see arch/{target_arch}/uart for details.
 pub use arch::*;
 pub use arch::{Interrupt, INTERRUPT_CONTROLLER};
+
+#[cfg(any(
+    feature = "tx2",
+    feature = "shyper",
+    all(target_arch = "riscv64", feature = "qemu")
+))]
+mod ns16550;
 
 #[cfg(feature = "fat")]
 pub mod blk;

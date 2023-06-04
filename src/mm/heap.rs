@@ -8,12 +8,6 @@ use crate::libs::traits::*;
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 
 pub fn init() {
-    // We need to init the global heap allocator here.
-    // Because during the process of paged_ranges, a vector is required.
-    // See config.rs for more details.
-    let range = super::config::heap_range();
-    unsafe { HEAP_ALLOCATOR.init(range.start.pa2kva(), range.end - range.start) }
-
     // We dump the current memory layout here.
     println!("Booting, memory layout:");
     println!(
@@ -37,6 +31,12 @@ pub fn init() {
         super::config::elf_range().start.pa2kva(),
         super::config::elf_range().end.pa2kva()
     );
+
+    // We need to init the global heap allocator here.
+    // Because during the process of paged_ranges, a vector is required.
+    // See config.rs for more details.
+    let range = super::config::heap_range();
+    unsafe { HEAP_ALLOCATOR.init(range.start.pa2kva(), range.end - range.start) }
 
     for range in super::config::paged_ranges() {
         println!(

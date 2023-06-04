@@ -1,16 +1,16 @@
-pub mod print;
-pub mod timer;
-pub mod string;
-pub mod traits;
 pub mod cpu;
+pub mod device;
+pub mod error;
+pub mod interrupt;
+pub mod print;
 pub mod scheduler;
 pub mod stack;
-pub mod thread;
-pub mod interrupt;
+pub mod string;
 pub mod synch;
-pub mod error;
-pub mod device;
+pub mod thread;
+pub mod timer;
 pub mod tls;
+pub mod traits;
 
 #[cfg(feature = "tcp")]
 pub mod net;

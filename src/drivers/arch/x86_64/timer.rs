@@ -7,7 +7,6 @@ const TSC_FREQUENCY: u16 = 2600;
 
 pub fn next() {}
 
-
 /// Clock frequency. Indicates the system counter clock frequency, in Hz.
 pub fn frequency() -> usize {
     TSC_FREQUENCY as usize

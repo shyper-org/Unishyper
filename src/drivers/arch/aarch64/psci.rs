@@ -27,6 +27,5 @@ enum Error {
 
 #[cfg(feature = "smp")]
 pub fn cpu_on(mpidr: u64, entry: u64, x0: u64) {
-    let _ =
-        crate::arch::smc::smc_call(Function::CpuOnAarch64 as u64, mpidr, entry, x0, 0, 0, 0, 0);
+    let _ = crate::arch::smc::smc_call(Function::CpuOnAarch64 as u64, mpidr, entry, x0, 0, 0, 0, 0);
 }

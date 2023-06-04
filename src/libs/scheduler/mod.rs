@@ -13,11 +13,8 @@ pub trait Scheduler {
     fn add_front(&self, thread: crate::libs::thread::Thread);
     fn add(&self, thread: crate::libs::thread::Thread);
     fn pop(&self) -> Option<crate::libs::thread::Thread>;
-    fn blocked(& self, thread: crate::libs::thread::Thread, timeout: Option<usize>);
-    fn get_wakeup_thread_by_time(
-        &self,
-        current_ms: usize,
-    ) -> Option<crate::libs::thread::Thread>;
+    fn blocked(&self, thread: crate::libs::thread::Thread, timeout: Option<usize>);
+    fn get_wakeup_thread_by_time(&self, current_ms: usize) -> Option<crate::libs::thread::Thread>;
 }
 
 pub fn init() {
@@ -44,7 +41,6 @@ pub fn global_scheduler() -> &'static sched_rr::RoundRobinScheduler {
         GLOBAL_SCHEDULER.call_once(|| sched_rr::RoundRobinScheduler::new())
     }
 }
-
 
 // static SCHEDULER: ScheduerType = ScheduerType::None;
 

@@ -120,7 +120,7 @@ pub extern "C" fn shyper_exit(arg: i32) {
 pub extern "C" fn shyper_abort() {
     info!("shyper_abort: currently not supported, just exit currently thread");
     crate::arch::irq::disable();
-    loop{}
+    loop {}
     // thread_exit();
 }
 

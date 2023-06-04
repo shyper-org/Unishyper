@@ -45,7 +45,7 @@ impl Debug for Registers {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         for (i, reg) in self.registers.iter().enumerate() {
             match *reg {
-                None => { } // write!(fmt, "[{}]: None, ", i)?,
+                None => {} // write!(fmt, "[{}]: None, ", i)?,
                 Some(r) => write!(fmt, "[{}]: {:#X}, ", i, r)?,
             }
         }

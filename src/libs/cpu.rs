@@ -148,13 +148,10 @@ impl Core {
             self.set_running_thread(Some(next));
 
             if next_is_not_run {
-                trace!(
-                    "cpu schedule switch_to_trap_ctx on {:#x}",
-                    next_stack_pointer
-                );
+                // debug!("cswitch_to_trap_ctx on {:#x}", next_stack_pointer);
                 (*prev_ctx_ptr).switch_to_trap_ctx(next_stack_pointer);
             } else {
-                trace!("cpu schedule switch_to_yield_ctx on {:#p}", next_ctx_ptr);
+                // debug!("switch_to_yield_ctx on {:#p}", next_ctx_ptr);
                 (*prev_ctx_ptr).switch_to_yield_ctx(&*next_ctx_ptr);
             }
         }

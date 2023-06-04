@@ -1,4 +1,3 @@
-
 use tock_registers::register_bitfields;
 
 register_bitfields! {u64,

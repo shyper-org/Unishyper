@@ -281,9 +281,9 @@ macro_rules! restore_pkru {
 
 /// The actual process of `thread_yield` operation,
 /// It will trigger the scheduler to actively yield to next thread, which is runned before.
-/// 
+///
 /// Which means that next thread's thread context is stored as `YieldContextFrame` in `_next_stack`.
-/// 
+///
 /// Context switch process to a newly allocated thread, see `context_switch_to_trap`.
 /// ## Arguments
 /// * `_current_stack`  - the pointer to prev stack pointer(rsp), on `rdi`.
@@ -314,9 +314,9 @@ unsafe extern "C" fn context_switch_to_yield(_current_stack: &mut u64, _next_sta
 
 /// The actual process of `thread_yield` operation,
 /// It will trigger the scheduler to actively yield to next thread, which is not runned before.
-/// 
+///
 /// Which means that next thread's thread context is stored as `X86_64TrapContextFrame` in `_next_sp`.
-/// 
+///
 /// Context switch process to a runned thread, see `context_switch_to_yield`
 /// ## Arguments
 /// * `_current_stack`  - the pointer to prev stack pointer(rsp), on `rdi`.

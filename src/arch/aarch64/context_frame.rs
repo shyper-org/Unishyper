@@ -217,7 +217,6 @@ macro_rules! restore_yield_context {
     () => {
         concat!(
             r#"
-            // restore new context
             ldp     x19, x20, [x1]
             mov     sp, x19
             msr     tpidr_el0, x20

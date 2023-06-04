@@ -6,13 +6,13 @@ const IRQ_FLAG_A: usize = 1 << 8;
 /// Enable Interrupts
 #[inline]
 pub fn enable() {
-	unsafe {
-		asm!(
-			"msr daifclr, {mask}",
-			mask = const 0b111,
-			options(nostack, nomem),
-		);
-	}
+    unsafe {
+        asm!(
+            "msr daifclr, {mask}",
+            mask = const 0b111,
+            options(nostack, nomem),
+        );
+    }
 }
 
 /// Enable Interrupts and wait for the next interrupt (HLT instruction)
@@ -22,25 +22,25 @@ pub fn enable() {
 #[inline]
 #[allow(unused)]
 pub fn enable_and_wait() {
-	unsafe {
-		asm!(
-			"msr daifclr, {mask}; wfi",
-			mask = const 0b111,
-			options(nostack, nomem),
-		);
-	}
+    unsafe {
+        asm!(
+            "msr daifclr, {mask}; wfi",
+            mask = const 0b111,
+            options(nostack, nomem),
+        );
+    }
 }
 
 /// Disable Interrupts
 #[inline]
 pub fn disable() {
-	unsafe {
-		asm!(
-			"msr daifset, {mask}",
-			mask = const 0b111,
-			options(nostack, nomem),
-		);
-	}
+    unsafe {
+        asm!(
+            "msr daifset, {mask}",
+            mask = const 0b111,
+            options(nostack, nomem),
+        );
+    }
 }
 
 /// Disable IRQs (nested)
@@ -51,23 +51,23 @@ pub fn disable() {
 /// were not activated before calling this function.
 #[inline]
 pub fn nested_disable() -> bool {
-	let flags: usize;
-	unsafe {
-		asm!(
-			"mrs {}, daif",
-			out(reg) flags,
-			options(nostack, nomem),
-		);
-	}
+    let flags: usize;
+    unsafe {
+        asm!(
+            "mrs {}, daif",
+            out(reg) flags,
+            options(nostack, nomem),
+        );
+    }
 
-	let mut was_enabled = true;
-	if flags & (IRQ_FLAG_A | IRQ_FLAG_I) > 0 {
-		was_enabled = false;
-	}
+    let mut was_enabled = true;
+    if flags & (IRQ_FLAG_A | IRQ_FLAG_I) > 0 {
+        was_enabled = false;
+    }
 
-	disable();
-	// println!("nested disable irq, was enabled {}", was_enabled);
-	was_enabled
+    disable();
+    // println!("nested disable irq, was enabled {}", was_enabled);
+    was_enabled
 }
 
 /// Enable IRQs (nested)
@@ -76,8 +76,8 @@ pub fn nested_disable() -> bool {
 /// interrupts again if they were enabled before.
 #[inline]
 pub fn nested_enable(was_enabled: bool) {
-	if was_enabled {
-		enable();
-	}
-	// println!("nested enable irq, was enabled {}", was_enabled);
+    if was_enabled {
+        enable();
+    }
+    // println!("nested enable irq, was enabled {}", was_enabled);
 }

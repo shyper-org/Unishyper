@@ -32,7 +32,7 @@ pub fn open(path: &str, flags: i32, mode: i32) -> i32 {
         != 0
     {
         warn!("Unknown file flags used! {}", flags);
-        return - 1;
+        return -1;
     }
 
     let path_va = &path.as_bytes()[0] as *const _ as usize;

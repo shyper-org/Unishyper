@@ -50,7 +50,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
         self.block
     }
 
-    fn set_block(&self) -> Self{
+    fn set_block(&self) -> Self {
         EntryAttribute {
             writable: self.writable,
             user: self.user,
@@ -61,7 +61,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             shared: self.shared,
             #[cfg(target_arch = "x86_64")]
             zone_key: self.zone_key,
-            block: true
+            block: true,
         }
     }
 
@@ -89,7 +89,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             shared,
             #[cfg(target_arch = "x86_64")]
             zone_key: 0,
-            block
+            block,
         }
     }
 
@@ -216,7 +216,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
 
 #[cfg(target_arch = "x86_64")]
 impl PageTableEntryAttrZoneTrait for EntryAttribute {
-    fn set_zone(&self, zone_id: u16) -> Self{
+    fn set_zone(&self, zone_id: u16) -> Self {
         EntryAttribute {
             writable: self.writable,
             user: self.user,
@@ -226,7 +226,7 @@ impl PageTableEntryAttrZoneTrait for EntryAttribute {
             copy_on_write: self.copy_on_write,
             shared: self.shared,
             zone_key: zone_id,
-            block: self.block
+            block: self.block,
         }
     }
     fn get_zone_key(&self) -> u16 {

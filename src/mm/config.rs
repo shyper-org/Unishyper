@@ -36,6 +36,8 @@ pub fn kernel_range() -> Range<usize> {
     (KERNEL_ENTRY as usize)..(KERNEL_END as usize)
 }
 
+// Todo: refactor heap space.
+
 #[cfg(not(target_arch = "x86_64"))]
 pub fn heap_range() -> Range<usize> {
     kernel_end_address().value()..crate::board::ELF_IMAGE_LOAD_ADDR

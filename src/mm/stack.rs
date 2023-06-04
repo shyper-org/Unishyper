@@ -96,12 +96,15 @@ pub fn alloc_stack(size_in_pages: usize, tid: usize) -> Option<Stack> {
 /// `pages` is the combined `AllocatedPages` object that holds
 ///  the guard page followed by the actual stack pages to be mapped.
 fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames, _tid: usize) -> Option<Stack> {
+    // Split the guard page.
     let start_of_stack_pages = *pages.start() + 1;
     let (guard_page, stack_pages) = pages.split(start_of_stack_pages).ok()?;
 
     let attr = EntryAttribute::user_default();
+
     #[cfg(target_arch = "x86_64")]
     let attr = attr.set_zone(crate::arch::mpk::thread_id_to_zone_id(_tid) as u16);
+
     // Map stack pages to physical frames, leave the guard page unmapped.
     let stack_region = match map_allocated_pages_to(stack_pages, frames, attr) {
         Ok(stack_region) => stack_region,

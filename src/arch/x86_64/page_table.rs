@@ -337,7 +337,7 @@ impl PageTableTrait for X86_64PageTable {
     //     }
     // }
 
-    fn recursive_map(&self, va: usize) {
-        assert_eq!(va % (1 << PAGE_TABLE_L1_SHIFT), 0);
-    }
+    // fn recursive_map(&self, va: usize) {
+    //     assert_eq!(va % (1 << PAGE_TABLE_L1_SHIFT), 0);
+    // }
 }

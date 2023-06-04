@@ -168,7 +168,7 @@ pub fn init() {
             pgdir_frame.start().start_address()
         );
         SpinlockIrqSave::new(Aarch64PageTable {
-            directory : pgdir_frame,
+            directory: pgdir_frame,
             pages: Mutex::new(Vec::new()),
         })
     });
@@ -357,16 +357,16 @@ impl PageTableTrait for Aarch64PageTable {
     //     }
     // }
 
-    fn recursive_map(&self, va: usize) {
-        assert_eq!(va % (1 << PAGE_TABLE_L1_SHIFT), 0);
-        let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
-        let l1x = va / (1 << PAGE_TABLE_L1_SHIFT);
-        directory.set_entry(
-            l1x,
-            Aarch64PageTableEntry::from(Entry::new(
-                EntryAttribute::user_readonly(),
-                self.directory.start_address().value(),
-            )),
-        );
-    }
+    // fn recursive_map(&self, va: usize) {
+    //     assert_eq!(va % (1 << PAGE_TABLE_L1_SHIFT), 0);
+    //     let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
+    //     let l1x = va / (1 << PAGE_TABLE_L1_SHIFT);
+    //     directory.set_entry(
+    //         l1x,
+    //         Aarch64PageTableEntry::from(Entry::new(
+    //             EntryAttribute::user_readonly(),
+    //             self.directory.start_address().value(),
+    //         )),
+    //     );
+    // }
 }

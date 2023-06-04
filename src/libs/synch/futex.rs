@@ -11,7 +11,7 @@ use crate::libs::synch::spinlock::SpinlockIrqSave;
 use crate::libs::timer::current_us;
 use crate::libs::thread::{
     Thread, current_thread, thread_yield, thread_block_current_with_timeout_us,
-    thread_block_current, thread_wake
+    thread_block_current, thread_wake,
 };
 
 static PARKING_LOT: SpinlockIrqSave<HashMap<usize, VecDeque<Thread>, RandomState>> =
@@ -122,27 +122,27 @@ pub fn futex_wait(address: &AtomicU32, expected: u32, timeout: Option<usize>, fl
 /// waiting threads. If `count` is negative, returns -EINVAL.
 pub fn futex_wake(address: &AtomicU32, count: i32) -> i32 {
     if count < 0 {
-		return -1;
-	}
+        return -1;
+    }
 
-	let mut parking_lot = PARKING_LOT.lock();
-	let mut queue = match parking_lot.entry(address.as_mut_ptr().addr()) {
-		Entry::Occupied(entry) => entry,
-		Entry::Vacant(_) => return 0,
-	};
+    let mut parking_lot = PARKING_LOT.lock();
+    let mut queue = match parking_lot.entry(address.as_mut_ptr().addr()) {
+        Entry::Occupied(entry) => entry,
+        Entry::Vacant(_) => return 0,
+    };
 
-	let mut woken = 0;
-	while woken != count || count == i32::MAX {
-		match queue.get_mut().pop_front() {
-			Some(t) => thread_wake(&t),
-			None => break,
-		}
-		woken = woken.saturating_add(1);
-	}
+    let mut woken = 0;
+    while woken != count || count == i32::MAX {
+        match queue.get_mut().pop_front() {
+            Some(t) => thread_wake(&t),
+            None => break,
+        }
+        woken = woken.saturating_add(1);
+    }
 
-	if queue.get().is_empty() {
-		queue.remove();
-	}
+    if queue.get().is_empty() {
+        queue.remove();
+    }
 
-	woken
+    woken
 }

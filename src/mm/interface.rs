@@ -55,7 +55,7 @@ pub trait PageTableTrait {
     fn lookup_entry(&self, va: usize) -> Option<(Entry, MapGranularity)>;
     fn lookup_page(&self, va: usize) -> Option<Entry>;
     // fn remove_page(&self, va: usize) -> Result<(), Error>;
-    fn recursive_map(&self, va: usize);
+    // fn recursive_map(&self, va: usize);
 }
 
 use crate::arch::PAGE_SHIFT;

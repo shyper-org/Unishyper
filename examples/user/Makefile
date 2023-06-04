@@ -21,14 +21,8 @@ RBOOT_DIR := ../../rboot
 ESP := $(KERNEL_DIR)/esp
 OVMF := ${RBOOT_DIR}/OVMF.fd
 
-# Arch-specific tools
-ifeq ($(ARCH), aarch64)
-OBJCOPY := aarch64-elf-objcopy
-OBJDUMP := aarch64-elf-objdump
-else ifeq ($(ARCH), x86_64)
-OBJCOPY := objcopy
-OBJDUMP := objdump
-endif
+OBJCOPY := rust-objcopy
+OBJDUMP := rust-objdump
 
 .PHONY: build clean
 
@@ -51,6 +45,9 @@ endif
 ifeq ($(ARCH), aarch64)
 QEMU_CMD := qemu-system-aarch64 -M virt -cpu cortex-a53 -smp 4 -m 2048 \
 			-device loader,file=${KERNEL},addr=0x80000000,force-raw=on -kernel ${KERNEL}.bin
+else ifeq ($(ARCH), riscv64)
+QEMU_CMD := qemu-system-riscv64 -M virt -bios default -smp 4 -m 2048 \
+			-device loader,file=${KERNEL},addr=0xc0000000,force-raw=on -kernel ${KERNEL}.bin
 else ifeq ($(ARCH), x86_64)
 QEMU_CMD := qemu-system-x86_64 \
 			-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt,pku \
@@ -85,9 +82,11 @@ ifeq ($(wildcard disk.img),)
 endif
 
 qcow2: disk
+ifeq ($(ARCH), x86_64)
 ifeq ($(wildcard disk.qcow2),)
 	qemu-img convert -f raw disk.img -O qcow2 disk.qcow2
 	qemu-img resize disk.qcow2 +1G
+endif
 endif
 
 clean:

@@ -5,7 +5,7 @@ use alloc::string::ToString;
 use crate::drivers::Interrupt;
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 
-static IRQ_NAMES: SpinlockIrqSave<BTreeMap<u32, String>> =SpinlockIrqSave::new(BTreeMap::new());
+static IRQ_NAMES: SpinlockIrqSave<BTreeMap<u32, String>> = SpinlockIrqSave::new(BTreeMap::new());
 static IRQ_HANDLERS: SpinlockIrqSave<BTreeMap<u32, fn()>> = SpinlockIrqSave::new(BTreeMap::new());
 
 pub trait InterruptController {
@@ -20,7 +20,12 @@ pub trait InterruptController {
 
 #[no_mangle]
 pub fn irq_install_handler(irq_number: u32, handler: fn(), name: &'static str) {
-    trace!("[{}] Install handler for interrupt {} irq_num [32+{}]", name, irq_number, irq_number);
+    trace!(
+        "[{}] Install handler for interrupt {} irq_num [32+{}]",
+        name,
+        irq_number,
+        irq_number
+    );
     let mut irq_name_lock = IRQ_NAMES.lock();
     let mut irq_handler_lock = IRQ_HANDLERS.lock();
 

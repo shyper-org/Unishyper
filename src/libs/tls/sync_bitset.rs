@@ -17,7 +17,10 @@ impl SyncBitset {
 
     /// Not atomic.
     pub fn iter(&self) -> SyncBitsetIter<'_> {
-        SyncBitsetIter { iter: self.0.iter().enumerate().peekable(), elem_idx: 0 }
+        SyncBitsetIter {
+            iter: self.0.iter().enumerate().peekable(),
+            elem_idx: 0,
+        }
     }
 
     pub fn clear(&self, index: usize) {

@@ -23,8 +23,8 @@ pub mod net;
 pub use net::*;
 
 #[cfg(all(feature = "fs", feature = "fat"))]
-pub mod fs;
-#[cfg(all(feature = "fs", feature = "fat"))]
 pub mod fd;
+#[cfg(all(feature = "fs", feature = "fat"))]
+pub mod fs;
 #[cfg(all(feature = "fs", feature = "fat"))]
 pub mod io;

@@ -5,6 +5,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 #[cfg(feature = "smp")]
 static COUNT: AtomicUsize = AtomicUsize::new(0);
 
+#[allow(unused)]
 pub fn barrier() {
     #[cfg(feature = "smp")]
     {

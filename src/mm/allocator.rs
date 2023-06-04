@@ -69,7 +69,6 @@ pub fn allocate_region(size: usize) -> Result<MappedRegion, &'static str> {
     map_allocated_pages(pages, attr)
 }
 
-
 pub fn allocate(size: usize) -> Option<VAddr> {
     debug!("user allocate size {:x}", size);
     assert!(size > 0);

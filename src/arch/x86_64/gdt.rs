@@ -33,7 +33,8 @@ impl Cpu {
 
         debug!(
             "DOUBLE_FAULT_STACK stack_start {:#x} stack_end {:#x}",
-            self.double_fault_stack.as_ptr() as u64, stack_top
+            self.double_fault_stack.as_ptr() as u64,
+            stack_top
         );
 
         let code_selector = self.gdt.add_entry(Descriptor::kernel_code_segment());

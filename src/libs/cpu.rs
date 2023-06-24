@@ -9,8 +9,8 @@ pub type CoreId = usize;
 
 pub struct Core {
     // Stack pointer of user mode.
-    current_stack_pointer: usize,
     running_thread: Option<Thread>,
+    current_stack_pointer: usize,
     idle_thread: Once<Thread>,
     sched: ScheduerType,
     #[cfg(target_arch = "x86_64")]
@@ -50,6 +50,10 @@ impl Core {
     // thread
     pub fn running_thread(&self) -> Option<Thread> {
         self.running_thread.clone()
+    }
+
+    fn running_thread_ref(&self) -> Option<&Thread> {
+        self.running_thread.as_ref()
     }
 
     pub fn set_running_thread(&mut self, t: Option<Thread>) {
@@ -105,20 +109,28 @@ impl Core {
     }
 
     pub fn schedule(&mut self) {
+        // let start = crate::libs::timer::current_cycle();
         // Get prev thread.
-        let prev = self.running_thread().unwrap_or_else(|| {
-            panic!(
-                "No running thread on core [{}], something is wrong!!!",
-                crate::arch::Arch::core_id()
-            )
-        });
+        // let prev = self.running_thread_ref().unwrap_or_else(|| {
+        //     panic!(
+        //         "No running thread on core [{}], something is wrong!!!",
+        //         crate::arch::Arch::core_id()
+        //     )
+        // });
+        let prev = self.running_thread_ref().unwrap();
+        // let end = crate::libs::timer::current_cycle();
+        // debug!("get prev thread cycle {}", end - start);
 
+        // let start = crate::libs::timer::current_cycle();
         // Add prev thread back to scheduler queue.
         if prev.runnable() {
             self.scheduler().add(prev.clone());
         }
+        // let end = crate::libs::timer::current_cycle();
+        // debug!("add prev to scheduler cycle {}", end - start);
 
         // Get next thread from scheduler.
+        // let start = crate::libs::timer::current_cycle();
         let next = self.scheduler().pop().unwrap_or_else(|| {
             if prev.runnable() {
                 prev.clone()
@@ -126,6 +138,8 @@ impl Core {
                 self.idle_thread()
             }
         });
+        // let end = crate::libs::timer::current_cycle();
+        // debug!("pop next to scheduler cycle {}", end - start);
 
         trace!("cpu schedule\nprev {:?}\nnext {:?}", prev, next);
 
@@ -133,7 +147,7 @@ impl Core {
             return;
         }
 
-        unsafe {
+        unsafe {         
             let prev_ctx_ptr = prev.ctx_mut_ptr();
             let next_ctx_ptr = next.ctx_mut_ptr();
             // assert!(Arc::strong_count(&prev) > 1);
@@ -161,8 +175,8 @@ impl Core {
 /// Get current CPU structure.
 #[inline(always)]
 pub fn cpu() -> &'static mut Core {
-    let core_id = crate::arch::Arch::core_id();
-    unsafe { &mut CORES[core_id] }
+    // let core_id = crate::arch::Arch::core_id();
+    unsafe { &mut CORES[0] }
 }
 
 /// Get target CPU structure of given cpu id.

@@ -18,7 +18,7 @@ qemu = [
     # "unishyper/smp",
     # "unishyper/scheduler-percore",
     "unishyper/qemu",
-    "unishyper/serial",
+    # "unishyper/serial",
     # "unishyper/unwind",
     "unishyper/terminal",
     # "unishyper/fs",
@@ -26,6 +26,7 @@ qemu = [
 tx2 = [
     "unishyper/alloc",
     "unishyper/tx2",
+    "unishyper/serial",
     # "unishyper/terminal",
     ]
 shyper = [

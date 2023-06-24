@@ -25,7 +25,7 @@ pub fn init_idt() {
         .set_handler_fn(general_protection_fault_handler);
     // Set page fault handler.
     idt.page_fault.set_handler_fn(page_fault_handler);
-    // Set timer handler, Todo: no timer interrupt.
+    // Set timer handler.
     idt[apic::INT_TIMER].set_handler_fn(timer_interrupt_handler);
 
     idt.load();

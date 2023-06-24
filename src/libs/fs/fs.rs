@@ -74,7 +74,7 @@ impl Filesystem {
         #[cfg(not(feature = "std"))]
         use alloc::borrow::ToOwned;
 
-        info!("Mounting {}", mntpath);
+        debug!("Mounting {}", mntpath);
         if mntpath.contains('/') {
             warn!(
                 "Trying to mount at '{}', but slashes in name are not supported!",

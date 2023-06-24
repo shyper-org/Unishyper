@@ -5,6 +5,7 @@ mod context_frame;
 mod exception;
 mod gdt;
 pub mod irq;
+#[cfg(feature = "mpk")]
 pub mod mpk;
 pub mod page_table;
 mod processor;
@@ -34,7 +35,7 @@ impl Address for usize {
         *self | PA2KVA
     }
     fn kva2pa(&self) -> usize {
-        *self | KVA2PA
+        *self & KVA2PA
     }
 }
 
@@ -160,9 +161,8 @@ impl ArchTrait for Arch {
     }
     #[inline(always)]
     fn pop_context_first(ctx: usize) -> ! {
-        debug!("get pkru {:#x}", mpk::rdpkru());
+        #[cfg(feature = "mpk")]
         mpk::wrpkru(mpk::pkru_of_zone_id(1));
-        debug!("get modified pkru {:#x}", mpk::rdpkru());
         unsafe { context_frame::_pop_context_first(ctx) }
         loop {}
     }

@@ -228,3 +228,32 @@ pub fn virtual_to_physical(virtual_address: &VAddr) -> Option<PAddr> {
     };
     Some(paddr)
 }
+
+#[cfg(feature = "pci")]
+pub fn map_pci_mem_bar(bar_addr: usize, bar_size: usize) -> usize {
+    let attr = EntryAttribute::kernel_device();
+    let mut physical_address = PAddr::new_canonical(bar_addr);
+    use crate::mm::page_allocator;
+    let pages = match page_allocator::allocate_pages_by_bytes(bar_size) {
+        Some(pages) => pages,
+        None => panic!("failed to allocate pages for PCI bar"),
+    };
+    let start_addr = pages.start_address().value();
+
+    let mut page_table = crate::arch::page_table::page_table().lock();
+    for page in pages.deref().clone().into_iter() {
+        match page_table.map(page.start_address().value(), physical_address.value(), attr) {
+            Ok(()) => {
+                debug!("map paddr physical_address {} success", physical_address);
+                physical_address += crate::arch::PAGE_SIZE;
+            }
+            Err(_) => {
+                panic!("map_pci_mem_bar failed on {}", page.start_address());
+            }
+        }
+    }
+    // let frames = frame_allocator::allocate_frames_at(paddr, num_frames);
+    core::mem::forget(pages);
+
+    start_addr
+}

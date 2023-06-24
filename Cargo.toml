@@ -79,7 +79,7 @@ chrono = "0.4.23"
 
 [features]
 alloc = []
-default = ["alloc", "qemu", "terminal","tcp"]
+default = ["alloc", "tx2", "terminal","tcp","pci"]
 fat = [
   "fatfs",
   "lru",
@@ -87,6 +87,8 @@ fat = [
 fs = [
   "ioslice",
 ]
+mpk = []
+pci = []
 qemu = []
 scheduler-global = ["smp"]
 scheduler-percore = ["smp"]

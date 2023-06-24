@@ -324,7 +324,7 @@ impl VirtioBlkDriver {
         self.com_cfg.features_ok();
 
         match self.dev_spec_init() {
-            Ok(_) => info!(
+            Ok(_) => debug!(
                 "Device specific initialization for Virtio block device {:x} finished",
                 self.dev_cfg.dev_id
             ),
@@ -340,7 +340,7 @@ impl VirtioBlkDriver {
     /// Device Specific initialization according to Virtio specifictation v1.1. - 5.1.5
     fn dev_spec_init(&mut self) -> Result<(), VirtioBlkError> {
         match self.virtqueue_init() {
-            Ok(_) => info!("Block driver successfully initialized virtqueues."),
+            Ok(_) => debug!("Block driver successfully initialized virtqueues."),
             Err(vnet_err) => return Err(vnet_err),
         }
         Ok(())

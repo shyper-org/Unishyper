@@ -45,6 +45,12 @@
 // note: see issue #76001 <https://github.com/rust-lang/rust/issues/76001> for more information
 #![feature(inline_const)]
 
+// note: see issue #71941 <https://github.com/rust-lang/rust/issues/71941> for more information
+// help: add `#![feature(nonnull_slice_from_raw_parts)]` to the crate attributes to enable
+#![feature(nonnull_slice_from_raw_parts)]
+#![feature(alloc_layout_extra)]
+#![feature(slice_ptr_get)]
+
 #[macro_use]
 extern crate log;
 // #[macro_use]
@@ -72,6 +78,7 @@ pub use libs::traits::ArchTrait;
 pub use exported::*;
 // This `irq_disable` is just for test, to be moved.
 pub use arch::irq::disable as irq_disable;
+pub use mm::heap::Global;
 
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
@@ -117,6 +124,7 @@ pub extern "C" fn loader_main(core_id: usize) {
         libs::thread::thread_wake(&t);
         t.set_in_yield_context();
         arch::Arch::set_thread_id(t.tid() as u64);
+        arch::Arch::set_tls_ptr(t.get_tls_ptr() as u64);
         libs::cpu::cpu().set_running_thread(Some(t));
         // Init fs if configured.
         #[cfg(feature = "fs")]

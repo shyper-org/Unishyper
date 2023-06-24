@@ -48,11 +48,6 @@ pub fn current_cycle() -> usize {
     0
 }
 
-#[allow(dead_code)]
-const TIMER_SEC_TO_MS: u64 = 1000;
-#[allow(dead_code)]
-const TIMER_SEC_TO_US: u64 = 1000_000;
-
 pub fn timestamp_sec() -> u64 {
     const NSEC_PER_SEC: u64 = 1000_000_000;
     const GOLDFISH_MMIO_BASE: usize = 0xffff_ffff_0000_0000 + 0x101000;
@@ -62,5 +57,5 @@ pub fn timestamp_sec() -> u64 {
 }
 
 pub fn timestamp_us() -> u64 {
-    timestamp_sec() * TIMER_SEC_TO_US
+    timestamp_sec() * 1000_000u64
 }

@@ -2,7 +2,10 @@
 //! See Virito specification v1.1. - 2.6
 #![allow(dead_code)]
 
+#[cfg(not(feature = "pci"))]
 use super::super::transport::mmio::{ComCfg, NotifCfg, NotifCtrl};
+#[cfg(feature = "pci")]
+use super::super::transport::pci::{ComCfg, NotifCfg, NotifCtrl};
 use super::error::VirtqError;
 use super::{
     BuffSpec, Buffer, BufferToken, Bytes, DescrFlags, MemDescr, MemPool, Pinned, Transfer,
@@ -458,7 +461,7 @@ impl SplitVq {
 
         vq_handler.enable_queue();
 
-        info!("Created SplitVq: idx={}, size={}", index.0, size);
+        trace!("Created SplitVq: idx={}, size={}", index.0, size);
 
         Ok(SplitVq {
             ring: RefCell::new(descr_ring),

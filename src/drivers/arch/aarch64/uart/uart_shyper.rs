@@ -1,4 +1,4 @@
-use super::ns16550::*;
+use crate::drivers::ns16550::*;
 use tock_registers::interfaces::{Readable, Writeable};
 
 // The real mmio addressed of serial on Nvidia tx2 are 0xc280000 and 0x3100000.

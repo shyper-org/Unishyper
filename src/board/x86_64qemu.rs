@@ -2,12 +2,6 @@
 
 use crate::libs::interrupt::InterruptController;
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
-use crate::libs::device::Device;
-
-#[cfg(any(feature = "tcp", feature = "fat"))]
-use crate::libs::device::VirtioDevice;
-
 #[cfg(not(feature = "smp"))]
 pub const BOARD_CORE_NUMBER: usize = 1;
 
@@ -25,25 +19,6 @@ pub const BOARD_CORE_NUMBER: usize = 2;
 
 pub const KERNEL_HEAP_SIZE: usize = 8 * 1024 * 1024; // 8 MB
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
-use alloc::{vec, vec::Vec};
-#[cfg(any(feature = "tcp", feature = "fat"))]
-pub fn devices() -> Vec<Device> {
-    vec![
-        #[cfg(feature = "fat")]
-        Device::Virtio(VirtioDevice::new(
-            "virtio_blk",
-            0x0a00_0000..0x0a00_0200,
-            0x10,
-        )),
-        #[cfg(feature = "tcp")]
-        Device::Virtio(VirtioDevice::new(
-            "virtio_net",
-            0x0a00_3e00..0x0a00_4000,
-            0x2f,
-        )),
-    ]
-}
 
 pub fn init() {
     crate::drivers::init_devices();

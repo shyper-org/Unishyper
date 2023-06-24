@@ -112,7 +112,7 @@ pub fn init() {
             dir_frame: frame,
         })
     });
-    info!(
+    debug!(
         "Page table init ok, dir at {:#x}",
         page_table().lock().base_pa()
     );
@@ -202,15 +202,26 @@ impl PageTableTrait for X86_64PageTable {
         self.dir_frame.start_address().as_u64() as usize
     }
 
-    fn map(&mut self, va: usize, pa: usize, _attr: EntryAttribute) -> Result<(), Error> {
-        debug!(
-            "page table map va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
+    fn map(&mut self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
+        // let mut flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE;
+        let mut flags = PageTableFlags::PRESENT;
+        if attr.writable() {
+            flags |= PageTableFlags::WRITABLE;
+        }
+        if attr.device() {
+            flags |= PageTableFlags::NO_CACHE;
+        }
+        if !(attr.k_executable() && attr.u_executable()) {
+            flags |= PageTableFlags::NO_EXECUTE;
+        }
+
+        trace!(
+            "page table map va 0x{:016x} pa: 0x{:016x}, flags {:?}",
             va,
             pa,
-            self.base_pa()
+            flags.clone()
         );
 
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE;
         let page_4kb = Page::<Size4KiB>::containing_address(VirtAddr::new(va as u64));
         let frame_4kb = Frame::<Size4KiB>::containing_address(PhysAddr::new(pa as u64));
         match unsafe {
@@ -238,7 +249,7 @@ impl PageTableTrait for X86_64PageTable {
             warn!("map_2mb: required block attribute");
             return Err(ERROR_INVARG);
         }
-        debug!(
+        trace!(
             "page table map_2mb va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
             va,
             pa,

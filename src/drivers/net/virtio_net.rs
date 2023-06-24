@@ -13,8 +13,14 @@ use core::mem;
 use core::result::Result;
 use core::{cell::RefCell, cmp::Ordering};
 
+#[cfg(not(feature = "pci"))]
 use crate::drivers::net::virtio_mmio::NetDevCfgRaw;
+#[cfg(feature = "pci")]
+use crate::drivers::net::virtio_pci::NetDevCfgRaw;
+#[cfg(not(feature = "pci"))]
 use crate::drivers::virtio::transport::mmio::{ComCfg, IsrStatus, NotifCfg};
+#[cfg(feature = "pci")]
+use crate::drivers::virtio::transport::pci::{ComCfg, IsrStatus, NotifCfg};
 use crate::drivers::virtio::virtqueue::{
     AsSliceU8, BuffSpec, BufferToken, Bytes, Transfer, Virtq, VqIndex, VqSize, VqType,
 };
@@ -448,6 +454,8 @@ pub struct VirtioNetDriver {
 
     pub(super) num_vqs: u16,
     pub(super) irq: u8,
+    #[allow(unused)]
+    pub(super) polling_mode_counter: u32,
 }
 
 impl NetworkInterface for VirtioNetDriver {
@@ -706,6 +714,8 @@ impl VirtioNetDriver {
     /// See Virtio specification v1.1. - 3.1.1.
     ///                      and v1.1. - 5.1.5
     pub fn init_dev(&mut self) -> Result<(), VirtioNetError> {
+
+        debug!("init dev  com cfg at {:#p}", &self.com_cfg);
         // Reset
         self.com_cfg.reset_dev();
 
@@ -755,6 +765,7 @@ impl VirtioNetDriver {
                         return Err(vnet_err);
                     }
                     VirtioNetError::IncompFeatsSet(drv_feats, dev_feats) => {
+                        info!("IncompFeatsSet for virtio device {:x}. Features are: {:?}", self.dev_cfg.dev_id, &feats);
                         // Create a new matching feature set for device and driver if the minimal set is met!
                         if (min_feat_set & dev_feats) != min_feat_set {
                             error!("Device features set, does not satisfy minimal features needed. Aborting!");

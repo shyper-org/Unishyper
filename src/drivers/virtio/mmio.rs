@@ -98,8 +98,8 @@ fn parse_virtio_devices() {
     let devices = crate::board::devices();
     for device in devices {
         match device {
-            Device::Virtio(device) => {
-                if let Ok(mmio) = init_virtio_device(device.registers) {
+            Device::Virtio(device) => match init_virtio_device(device.registers) {
+                Ok(mmio) => {
                     let driver = match init_device(mmio, device.interrupts as u32) {
                         #[cfg(feature = "fat")]
                         Ok(VirtioDriver::Blk(drv)) => {
@@ -114,7 +114,10 @@ fn parse_virtio_devices() {
                     info!("Virtio device [\"{}\'] init ok!", device.name);
                     register_driver(driver);
                 }
-            }
+                Err(e) => {
+                    warn!("Device {:?} init failed for {:?}", device.name, e);
+                }
+            },
             Device::Unknown => panic!("Unsupported Device"),
         }
     }

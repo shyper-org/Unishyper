@@ -345,23 +345,24 @@ impl Ns16550Mmio {
     }
 }
 
-// pub struct Ns16550Mmio32 {
-//     base_addr: usize,
-// }
+pub struct Ns16550Mmio32 {
+    base_addr: usize,
+}
 
-// impl core::ops::Deref for Ns16550Mmio32 {
-//     type Target = Ns16550Mmio32Block;
+impl core::ops::Deref for Ns16550Mmio32 {
+    type Target = Ns16550Mmio32Block;
 
-//     fn deref(&self) -> &Self::Target {
-//         unsafe { &*self.ptr() }
-//     }
-// }
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr() }
+    }
+}
 
-// impl Ns16550Mmio32 {
-//     pub const fn new(base_addr: usize) -> Self {
-//         Ns16550Mmio32 { base_addr }
-//     }
-//     fn ptr(&self) -> *const Ns16550Mmio32Block {
-//         self.base_addr as *const _
-//     }
-// }
+impl Ns16550Mmio32 {
+    #[allow(unused)]
+    pub const fn new(base_addr: usize) -> Self {
+        Ns16550Mmio32 { base_addr }
+    }
+    fn ptr(&self) -> *const Ns16550Mmio32Block {
+        self.base_addr as *const _
+    }
+}

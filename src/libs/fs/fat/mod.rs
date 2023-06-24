@@ -40,7 +40,7 @@ impl Fatfs {
     fn new() -> Self {
         let fs = FileSystem::new(DiskCursor::new(0), FsOptions::new()).expect("FATFS init failed");
         let fd2file = RefCell::new(BTreeMap::new());
-        info!("fat fs init success.");
+        debug!("fat fs init success.");
         Fatfs { fs, fd2file }
     }
     pub fn singleton() -> &'static Self {

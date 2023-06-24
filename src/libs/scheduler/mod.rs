@@ -9,12 +9,13 @@ pub enum ScheduerType {
     GlobalSchedRoundRobin,
 }
 
+use crate::libs::thread::Thread;
 pub trait Scheduler {
-    fn add_front(&self, thread: crate::libs::thread::Thread);
-    fn add(&self, thread: crate::libs::thread::Thread);
-    fn pop(&self) -> Option<crate::libs::thread::Thread>;
-    fn blocked(&self, thread: crate::libs::thread::Thread, timeout: Option<usize>);
-    fn get_wakeup_thread_by_time(&self, current_ms: usize) -> Option<crate::libs::thread::Thread>;
+    fn add_front(&self, thread: Thread);
+    fn add(&self, thread: Thread);
+    fn pop(&self) -> Option<Thread>;
+    fn blocked(&self, thread: Thread, timeout: Option<usize>);
+    fn get_wakeup_thread_by_time(&self, current_ms: usize) -> Option<Thread>;
 }
 
 pub fn init() {
@@ -24,7 +25,7 @@ pub fn init() {
         crate::libs::cpu::cpu().set_scheduler(core_scheduler);
         info!("Per core scheduler init ok");
     } else {
-        info!("Init global scheduler...");
+        debug!("Init global scheduler...");
         crate::libs::cpu::cpu().set_scheduler(ScheduerType::GlobalSchedRoundRobin);
         info!("Global scheduler init ok");
     }

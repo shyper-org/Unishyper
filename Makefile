@@ -46,23 +46,17 @@ user:
 fs:
 	make -C ${FS_DEMO_DIR} emu
 
-net_bw_server:
-	make -C ${NET_DEMO_DIR} server_bw_emu
-
-net_bw_client:
-	make -C ${NET_DEMO_DIR} client_bw_emu
-
-net_latency_server:
-	make -C ${NET_DEMO_DIR} server_latency_emu
-
-net_latency_client:
-	make -C ${NET_DEMO_DIR} client_latency_emu
+net:
+	make -C ${NET_DEMO_DIR} emu
 
 user_debug:
 	make -C ${USER_DIR} debug
 
 fs_debug:
 	make -C ${FS_DEMO_DIR} debug
+
+net_debug:
+	make -C ${NET_DEMO_DIR} debug
 
 linux_test:
 	make -C ${LINUX_TEST_DIR} build

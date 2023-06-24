@@ -28,8 +28,8 @@ pub fn network_delay(timestamp: Instant) -> Option<Duration> {
 }
 
 fn run_executor() {
-    // println!("run executor, queue len {}", QUEUE.len());
     let mut queue = QUEUE.lock();
+    // println!("run executor, queue len {}", queue.len());
     let mut runnables: Vec<Runnable> = Vec::with_capacity(queue.len());
     while let Some(runnable) = queue.pop() {
         // println!("seg queue pop");

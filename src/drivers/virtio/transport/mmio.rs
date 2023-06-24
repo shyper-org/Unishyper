@@ -363,7 +363,7 @@ pub fn init_device(
         DevId::VIRTIO_DEV_ID_BLK => {
             match VirtioBlkDriver::init(dev_id, registers, irq_no) {
                 Ok(virt_blk_drv) => {
-                    info!("Virtio blk driver initialized.");
+                    debug!("Virtio blk driver initialized.");
                     // Install interrupt handler
                     irq_install_handler(irq_no, blk_irqhandler, "virtio_blk");
                     Ok(VirtioDriver::Blk(virt_blk_drv))

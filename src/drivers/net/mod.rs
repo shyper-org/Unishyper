@@ -1,6 +1,9 @@
 pub mod constants;
+#[cfg(not(feature = "pci"))]
 pub mod virtio_mmio;
 pub mod virtio_net;
+#[cfg(feature = "pci")]
+pub mod virtio_pci;
 
 /// A trait for accessing the network interface
 pub trait NetworkInterface {
@@ -26,12 +29,15 @@ pub trait NetworkInterface {
     /// Handle interrupt and check if a packet is available
     fn handle_interrupt(&mut self) -> bool;
 }
-
+#[cfg(not(feature = "pci"))]
 use crate::drivers::virtio::mmio::get_network_driver;
+
+#[cfg(feature = "pci")]
+use crate::drivers::pci::get_network_driver;
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 
 pub fn network_irqhandler() {
-    trace!("Receive network interrupt");
+    debug!("Receive network interrupt");
 
     let check_scheduler = match get_network_driver() {
         Some(driver) => driver.lock().handle_interrupt(),

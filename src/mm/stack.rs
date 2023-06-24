@@ -9,7 +9,7 @@ use crate::mm::page_allocator::AllocatedPages;
 use crate::mm::paging::{MappedRegion, map_allocated_pages_to, EntryAttribute};
 use crate::mm::address::VAddr;
 use crate::mm::interface::{PageTableEntryAttrTrait, MapGranularity};
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", feature = "mpk"))]
 use crate::mm::interface::PageTableEntryAttrZoneTrait;
 
 static COUNT: AtomicUsize = AtomicUsize::new(1);
@@ -102,7 +102,7 @@ fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames, _tid: usize
 
     let attr = EntryAttribute::user_default();
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", feature = "mpk"))]
     let attr = attr.set_zone(crate::arch::mpk::thread_id_to_zone_id(_tid) as u16);
 
     // Map stack pages to physical frames, leave the guard page unmapped.

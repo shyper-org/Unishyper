@@ -1,4 +1,4 @@
-use super::uart_16550::SerialPort;
+use super::uart_16550_port::SerialPort;
 
 const SERIAL_IO_PORT: u16 = 0x3F8;
 

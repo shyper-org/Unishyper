@@ -92,6 +92,7 @@ impl Drop for ControlBlock {
 }
 
 #[derive(Clone)]
+#[repr(transparent)]
 pub struct Thread(Arc<ControlBlock>);
 
 impl Ord for Thread {
@@ -313,7 +314,7 @@ pub fn thread_alloc(
     );
     // Init thread context in stack region.
     unsafe {
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(target_arch = "x86_64", feature = "mpk"))]
         let ori_pkru = crate::arch::mpk::swicth_to_kernel_pkru();
 
         core::ptr::write_bytes(
@@ -335,7 +336,7 @@ pub fn thread_alloc(
             context_frame,
             context_frame
         );
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(target_arch = "x86_64", feature = "mpk"))]
         crate::arch::mpk::switch_from_kernel_pkru(ori_pkru);
     }
 

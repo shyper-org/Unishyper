@@ -140,6 +140,7 @@ impl VirtioNetDriver {
             ),
             num_vqs: 0,
             irq,
+            polling_mode_counter: 0,
         })
     }
 

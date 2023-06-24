@@ -31,7 +31,6 @@ pub fn current_us() -> usize {
     count * TIMER_SEC_TO_US / freq
 }
 
-#[allow(dead_code)]
 /// Get current time in millisecond(10 ^ -3 second).
 pub fn current_ms() -> usize {
     let count = crate::drivers::timer::counter();

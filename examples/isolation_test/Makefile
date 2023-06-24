@@ -57,10 +57,7 @@ QEMU_CMD := qemu-system-x86_64 \
 			-smp 4 -m 4G \
 			-drive if=pflash,format=raw,readonly,file=$(OVMF) \
 			-drive format=raw,file=fat:rw:$(ESP) \
-			-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
-			-drive format=qcow2,file=disk.qcow2,media=disk,cache=writeback,id=sfsimg,if=none \
-			-device ahci,id=ahci0 \
-			-device ide-hd,drive=sfsimg,bus=ahci0.0
+			-device isa-debug-exit,iobase=0xf4,iosize=0x04
 endif
 
 QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
@@ -71,10 +68,10 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
 						-global virtio-mmio.force-legacy=false
 QEMU_COMMON_OPTIONS := -serial stdio -display none -s
 
-emu: build qcow2
+emu: build
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS}
 
-debug: build qcow2
+debug: build
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -S
 
 disk:
@@ -82,12 +79,6 @@ ifeq ($(wildcard disk.img),)
 	rm -rf disk
 	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
 	mkfs.fat -F 32 disk.img
-endif
-
-qcow2: disk
-ifeq ($(wildcard disk.qcow2),)
-	qemu-img convert -f raw disk.img -O qcow2 disk.qcow2
-	qemu-img resize disk.qcow2 +1G
 endif
 
 clean:

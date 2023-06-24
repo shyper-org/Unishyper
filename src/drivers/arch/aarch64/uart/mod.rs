@@ -1,6 +1,6 @@
 // serial driver.
-#[cfg(any(feature = "shyper", feature = "tx2"))]
-mod ns16550;
+// #[cfg(any(feature = "shyper", feature = "tx2"))]
+// mod ns16550;
 #[cfg(feature = "qemu")]
 mod pl011;
 

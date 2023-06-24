@@ -163,7 +163,7 @@ pub fn init() {
     PAGE_TABLE.call_once(|| {
         let pgdir_frame = frame_allocator::allocate_frames(1).unwrap();
         pgdir_frame.start().zero();
-        info!(
+        debug!(
             "Page table init ok, dir at {}",
             pgdir_frame.start().start_address()
         );
@@ -181,7 +181,7 @@ pub fn install_page_table() {
     use tock_registers::interfaces::Writeable;
     let pgdir_addr = page_table().lock().directory.start().start_address();
     TTBR0_EL1.set(pgdir_addr.value() as u64);
-    info!("Page table is installed");
+    debug!("Page table is installed");
     crate::arch::Arch::invalidate_tlb();
 }
 

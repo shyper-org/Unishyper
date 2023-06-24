@@ -16,24 +16,22 @@ pub use self::frame_allocator::Frame;
 pub fn allocator_init() {
     match frame_allocator::init() {
         Ok(_) => {
-            info!("frame allocator init ok");
+            debug!("frame allocator init ok");
             frame_allocator::dump_frame_allocator_state();
         }
         Err(e) => {
             warn!("frame allocator init failed, error {}", e);
         }
     }
-    info!("frame allocator init ok");
     match page_allocator::init() {
         Ok(_) => {
-            info!("page allocator init ok");
+            debug!("page allocator init ok");
             page_allocator::dump_page_allocator_state();
         }
         Err(e) => {
             warn!("page allocator init failed, error {}", e);
         }
     }
-    info!("page_allocator init ok");
 }
 
 #[cfg(feature = "terminal")]

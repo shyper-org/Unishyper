@@ -41,12 +41,11 @@ extern "C" fn netdemo_server(_arg: usize) {
     let mut tot_time_stable: u64 = 0;
     let mut _i = 0;
 
-    let mut start = current_us() as u64;
-    let mut end = 0 as u64;
     while active {
+        let start = current_us() as u64;
         let recv = stream.read(&mut buf).unwrap();
         if recv > 0 {
-            end = current_us() as u64;
+            let end = current_us() as u64;
             let duration = end - start;
 
             // Capture measures
@@ -66,7 +65,6 @@ extern "C" fn netdemo_server(_arg: usize) {
             break;
         }
         _i += 1;
-        start = end;
     }
     print!(
         "Receive total {} Bytes, stable {} Bytes, stable connection for {} us\n",

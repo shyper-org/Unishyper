@@ -32,6 +32,9 @@ pub mod net;
 #[cfg(any(feature = "tcp", feature = "fat"))]
 pub mod virtio;
 
+#[cfg(feature = "pci")]
+pub mod pci;
+
 pub mod error {
     #[cfg(any(feature = "tcp", feature = "fat"))]
     use crate::drivers::virtio::error::VirtioError;
@@ -69,7 +72,12 @@ pub mod error {
 }
 
 pub fn init_devices() {
-    info!("init virtio devices");
+    #[cfg(feature = "pci")]
+    crate::drivers::pci::init();
+    #[cfg(feature = "pci")]
+    crate::drivers::pci::print_information();
+
+    debug!("init virtio devices");
     #[cfg(any(feature = "tcp", feature = "fat"))]
     crate::drivers::virtio::init_drivers();
 }

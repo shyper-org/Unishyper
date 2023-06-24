@@ -1,19 +1,37 @@
+use cfg_if::cfg_if;
+
 pub mod env;
 /// A module containing Virtio's feature bits.
 pub mod features;
-#[cfg(any(feature = "tcp", feature = "fat"))]
-pub mod mmio;
-#[cfg(any(feature = "tcp", feature = "fat"))]
-pub mod transport;
-#[cfg(any(feature = "tcp", feature = "fat"))]
-pub mod virtqueue;
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
-pub use mmio::init_drivers;
+// #[cfg(any(feature = "tcp", feature = "fat"))]
+//
+
+#[cfg(not(feature = "pci"))]
+pub mod mmio;
+
+cfg_if! {
+    if #[cfg(any(feature = "tcp", feature = "fat"))] {
+        pub mod transport;
+        pub mod virtqueue;
+    }
+}
+
+pub fn init_drivers() {
+    cfg_if! {
+        if #[cfg(feature = "pci")] {
+            crate::drivers::pci::init_drivers();
+        } else {
+            mmio::init_drivers();
+        }
+    }
+}
 
 pub const VIRTIO_MAX_QUEUE_SIZE: u16 = 1024;
 
 pub mod error {
+    #[cfg(feature = "pci")]
+    use crate::drivers::pci::error::PciError;
     #[cfg(feature = "fat")]
     use crate::drivers::blk::virtio_blk::error::VirtioBlkError;
     #[cfg(feature = "tcp")]
@@ -22,11 +40,14 @@ pub mod error {
 
     #[derive(Debug)]
     pub enum VirtioError {
+        #[cfg(feature = "pci")]
+        FromPci(PciError),
         DevNotSupported(u16),
         #[cfg(feature = "tcp")]
         NetDriver(VirtioNetError),
         #[cfg(feature = "fat")]
         BlkDriver(VirtioBlkError),
+        #[allow(unused)]
         Unknown,
     }
 
@@ -34,6 +55,14 @@ pub mod error {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
                 VirtioError::Unknown => write!(f, "Driver failed to initialize virtio device due to unknown reasosn!"),
+                #[cfg(feature = "pci")]
+				VirtioError::FromPci(pci_error) => match pci_error {
+                    PciError::General(id) => write!(f, "Driver failed to initialize device with id: {id:#x}. Due to unknown reasosn!"),
+                    PciError::NoBar(id ) => write!(f, "Driver failed to initialize device with id: {id:#x}. Reason: No BAR's found."), 
+                    PciError::NoCapPtr(id) => write!(f, "Driver failed to initialize device with id: {id:#x}. Reason: No Capabilities pointer found."),
+                    PciError::BadCapPtr(id) => write!(f, "Driver failed to initialize device with id: {id:#x}. Reason: Malformed Capabilities pointer."),
+                    PciError::NoVirtioCaps(id) => write!(f, "Driver failed to initialize device with id: {id:#x}. Reason: No Virtio capabilities were found."),
+                },
                 VirtioError::DevNotSupported(id) => write!(f, "Device with id {:#x} not supported.", id),
                 #[cfg(feature = "tcp")]
                 VirtioError::NetDriver(net_error) => match net_error {

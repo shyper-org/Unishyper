@@ -141,6 +141,7 @@ where
             // let end = crate::libs::timer::current_us();
             // println!("poll_common , one pull use {} us, current {} us", end - start, end);
             // start = crate::libs::timer::current_us();
+            core::hint::spin_loop();
         }
         // println!("poll_common end , totally use {} us, current {} us", start - _start, start);
     }
@@ -482,6 +483,8 @@ pub fn network_init() {
         }
 
         spawn(network_run()).detach();
+    } else {
+        warn!("network_init, NetworkState is not Initialized!");
     }
     info!("network_init() lib init finished");
 }

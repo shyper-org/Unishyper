@@ -11,12 +11,12 @@ else
 CARGO_FLAGS =  --no-default-features
 endif
 
-CARGO_FLAGS := ${CARGO_FLAGS} --features "${MACHINE}"
+# CARGO_FLAGS := ${CARGO_FLAGS} --features "${MACHINE}"
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL_DIR := target/${ARCH}${MACHINE}/${PROFILE}
-KERNEL := ${KERNEL_DIR}/user
+KERNEL_DIR := target/${ARCH}-unknown-shyper/${PROFILE}
+KERNEL := ${KERNEL_DIR}/std_test
 RBOOT_DIR := ../../rboot
 ESP := $(KERNEL_DIR)/esp
 OVMF := ${RBOOT_DIR}/OVMF.fd
@@ -24,15 +24,15 @@ OVMF := ${RBOOT_DIR}/OVMF.fd
 OBJCOPY := rust-objcopy
 OBJDUMP := rust-objdump
 
-.PHONY: build clean
+.PHONY: build clean emu
 
 bootloader:
 ifeq ($(ARCH), x86_64)
 	cd ${RBOOT_DIR} && make build
 endif
 
-build: # bootloader
-	cargo build --target ${TARGET_CFG} -Z build-std=core,alloc ${CARGO_FLAGS} 
+build: #bootloader
+	cargo +stage1 build -Zbuild-std=std,panic_unwind --target ${ARCH}-unknown-shyper ${CARGO_FLAGS} 
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
 ifeq ($(ARCH), x86_64)
@@ -76,7 +76,10 @@ ifeq ($(ARCH), x86_64)
 QEMU_CMD := ${QEMU_CMD} \
 			-drive if=pflash,format=raw,readonly,file=$(OVMF) \
 			-drive format=raw,file=fat:rw:$(ESP) \
-			-device isa-debug-exit,iobase=0xf4,iosize=0x04
+			-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+			-drive format=qcow2,file=disk.qcow2,media=disk,cache=writeback,id=sfsimg,if=none \
+			-device ahci,id=ahci0 \
+			-device ide-hd,drive=sfsimg,bus=ahci0.0 
 endif
 
 QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
@@ -87,10 +90,11 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
 						-global virtio-mmio.force-legacy=false
 QEMU_COMMON_OPTIONS := -serial stdio -display none -s
 
-emu: build
+emu: build qcow2
+	echo ${QEMU_CMD}
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS}
 
-debug: build
+debug: build qcow2
 	${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -S
 
 disk:
@@ -98,6 +102,14 @@ ifeq ($(wildcard disk.img),)
 	rm -rf disk
 	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
 	mkfs.fat -F 32 disk.img
+endif
+
+qcow2: disk
+ifeq ($(ARCH), x86_64)
+ifeq ($(wildcard disk.qcow2),)
+	qemu-img convert -f raw disk.img -O qcow2 disk.qcow2
+	qemu-img resize disk.qcow2 +1G
+endif
 endif
 
 clean:

@@ -34,11 +34,6 @@ pub fn current_cycle() -> usize {
     r
 }
 
-#[allow(dead_code)]
-const TIMER_SEC_TO_MS: u64 = 1000;
-#[allow(dead_code)]
-const TIMER_SEC_TO_US: u64 = 1000_000;
-
 #[cfg(feature = "qemu")]
 pub fn timestamp_sec() -> u64 {
     const PL031_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x9010000;
@@ -51,5 +46,5 @@ pub fn timestamp_sec() -> u64 {
 }
 
 pub fn timestamp_us() -> u64 {
-    timestamp_sec() * TIMER_SEC_TO_US
+    timestamp_sec() * 1000_000u64
 }

@@ -1,8 +1,7 @@
-ARCH ?= aarch64
-MACHINE ?= shyper
+ARCH ?= x86_64
+MACHINE ?= qemu
 PROFILE ?= release
-
-export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
+KVM ?= true
 
 # Cargo flags.
 ifeq (${PROFILE}, release)
@@ -12,7 +11,12 @@ CARGO_FLAGS =
 endif
 
 # Target directory.
-KERNEL := target/${ARCH}-unknown-${MACHINE}/${PROFILE}/httpd
+KERNEL_DIR := target/${ARCH}-unknown-shyper/${PROFILE}
+KERNEL := ${KERNEL_DIR}/httpd
+
+RBOOT_DIR := ../../rboot
+ESP := $(KERNEL_DIR)/esp
+OVMF := ${RBOOT_DIR}/OVMF.fd
 
 # Arch-specific tools
 OBJCOPY := rust-objcopy
@@ -20,26 +24,82 @@ OBJDUMP := rust-objdump
 
 .PHONY: build clean emu
 
+bootloader:
+ifeq ($(ARCH), x86_64)
+	cd ${RBOOT_DIR} && make build
+endif
+
 build:
-	cargo +stage1 build -Zbuild-std=std,panic_unwind --target aarch64-unknown-shyper ${CARGO_FLAGS} 
+	cargo +stage1 build -Zbuild-std=std,panic_unwind --target ${ARCH}-unknown-shyper ${CARGO_FLAGS} 
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
+ifeq ($(ARCH), x86_64)
+	mkdir -p $(ESP)/EFI/Demo $(ESP)/EFI/Boot
+	cp ${RBOOT_DIR}/target/x86_64-unknown-uefi/$(PROFILE)/rboot.efi $(ESP)/EFI/Boot/BootX64.efi
+	cp ${RBOOT_DIR}/rboot.conf $(ESP)/EFI/Boot/rboot.conf
+	cp ${KERNEL} $(ESP)/EFI/Demo/kernel.elf
+endif
 
-QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
-					 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
-					 -global virtio-mmio.force-legacy=false
 QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no \
 						-device virtio-net-device,mac=48:b0:2d:0e:6e:9e,netdev=tap0 \
 						-global virtio-mmio.force-legacy=false
 QEMU_COMMON_OPTIONS := -serial stdio -display none -smp 4 -m 2048
 
-emu: build disk
-	sudo qemu-system-aarch64 -M virt -cpu cortex-a53 \
-		-device loader,file=${KERNEL},addr=0x80000000,force-raw=on \
+QEMU_CMD := qemu-system-$(ARCH)
+
+## Set machine type.
+
+ifeq ($(ARCH), aarch64)
+QEMU_CMD := ${QEMU_CMD} -M virt -cpu cortex-a53 -smp 4 -m 2048
+endif
+
+ifeq ($(ARCH), riscv64)
+QEMU_CMD := ${QEMU_CMD} -M virt -bios default -smp 4 -m 2048 
+endif
+
+ifeq ($(ARCH), x86_64)
+ifeq ($(KVM), true)
+QEMU_CMD := ${QEMU_CMD} -cpu host -enable-kvm -smp 1 -m 4G
+else
+QEMU_CMD := ${QEMU_CMD} -cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt,pku -smp 1 -m 4G
+endif
+endif
+
+## Set loader device.
+ifeq ($(ARCH), aarch64)
+QEMU_CMD := ${QEMU_CMD} -device loader,file=${KERNEL},addr=0x80000000,force-raw=on -kernel ${KERNEL}.bin
+endif
+ifeq ($(ARCH), riscv64)
+QEMU_CMD := ${QEMU_CMD} -device loader,file=${KERNEL},addr=0xc0000000,force-raw=on -kernel ${KERNEL}.bin
+endif
+ifeq ($(ARCH), x86_64)
+QEMU_CMD := ${QEMU_CMD} \
+			-drive if=pflash,format=raw,readonly,file=$(OVMF) \
+			-drive format=raw,file=fat:rw:$(ESP) \
+			-device isa-debug-exit,iobase=0xf4,iosize=0x04
+endif
+
+ifneq ($(ARCH), x86_64)
+QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no \
+						-device virtio-net-device,mac=48:b0:2d:0e:6e:9e,netdev=tap0 \
+						-global virtio-mmio.force-legacy=false
+endif
+ifeq ($(ARCH), x86_64)
+QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no,vhost=on \
+						-device virtio-net-pci,netdev=tap0,disable-legacy=on,mac=48:b0:2d:0e:6e:9e
+endif
+
+QEMU_COMMON_OPTIONS := -serial stdio -display none -s
+
+emu: build
+	sudo ${QEMU_CMD} \
 		${QEMU_COMMON_OPTIONS} \
-		${QEMU_DISK_OPTIONS} \
-		${QEMU_NETWORK_OPTIONS} \
-		-kernel ${KERNEL}.bin -s
+		${QEMU_NETWORK_OPTIONS}
+
+debug: build
+	sudo ${QEMU_CMD} \
+		${QEMU_COMMON_OPTIONS} \
+		${QEMU_NETWORK_OPTIONS} -S
 
 # Set up tap device as qemu netdev.
 tap_setup:
@@ -47,14 +107,6 @@ tap_setup:
 	sudo ip addr add 10.0.0.1/24 broadcast 10.0.0.255 dev tap0
 	sudo ip link set dev tap0 up
 	sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
-
-# Prepare disk.img for qemu.
-disk:
-ifeq ($(wildcard disk.img),)
-	rm -rf disk
-	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
-	mkfs.fat -F 32 disk.img
-endif
 
 clean:
 	-cargo clean

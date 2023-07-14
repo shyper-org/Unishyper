@@ -8,6 +8,15 @@ extern "C" {
     pub fn strlen(s: *const core::ffi::c_char) -> usize;
 }
 
+/// To support core::intrinsics::sqrtf64;
+/// See https://gitee.com/unishyper/rust-fstest
+/// Todo: To be removed.
+#[cfg(all(not(feature = "std"), feature = "fs"))]
+#[no_mangle]
+pub extern "C" fn sqrt(x: f64) -> f64 {
+    libm::sqrt(x)
+}
+
 /// Memmove
 ///
 /// Copy N bytes of memory from src to dest. The memory areas may overlap.

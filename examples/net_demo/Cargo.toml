@@ -19,9 +19,10 @@ qemu = [
     "alloc",
     "unishyper/alloc",
     "unishyper/tcp",
-    "unishyper/pci",
+    # "unishyper/pci",
     "unishyper/qemu",
     "unishyper/serial",
+    # "unishyper/unwind",
     ]
 shyper = [
     "alloc",
@@ -49,4 +50,5 @@ name = "client-latency"
 path = "src/tcp-latency/client.rs"
 
 [profile.release]
-debug = true
+# opt-level = 's'
+lto = true

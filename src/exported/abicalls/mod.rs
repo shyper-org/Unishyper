@@ -168,14 +168,14 @@ pub extern "C" fn shyper_yield() {
     crate::libs::thread::thread_yield()
 }
 
-fn microseconds_to_timespec(microseconds: usize, result: &mut timespec) {
-    result.tv_sec = (microseconds / 1_000_000) as i64;
-    result.tv_nsec = ((microseconds % 1_000_000) * 1000) as i64;
+fn nanoseconds_to_timespec(nanoseconds: usize, result: &mut timespec) {
+    result.tv_sec = (nanoseconds / 1_000_000_000) as i64;
+    result.tv_nsec = (nanoseconds % 1_000_000_000) as i64;
 }
 
 #[no_mangle]
 pub extern "C" fn shyper_clock_gettime(clock_id: u64, tp: *mut timespec) -> i32 {
-    use crate::libs::timer::{CLOCK_REALTIME, CLOCK_MONOTONIC, current_us, boot_time};
+    use crate::libs::timer::{CLOCK_REALTIME, CLOCK_MONOTONIC, current_ns, boot_time};
     assert!(
         !tp.is_null(),
         "shyper_clock_gettime called with a zero tp parameter"
@@ -183,13 +183,13 @@ pub extern "C" fn shyper_clock_gettime(clock_id: u64, tp: *mut timespec) -> i32 
     let result = unsafe { &mut *tp };
     match clock_id {
         CLOCK_REALTIME | CLOCK_MONOTONIC => {
-            let mut microseconds = current_us();
+            let mut nanoseconds = current_ns();
 
             if clock_id == CLOCK_REALTIME {
-                microseconds += boot_time();
+                nanoseconds += boot_time() * 1000;
             }
 
-            microseconds_to_timespec(microseconds, result);
+            nanoseconds_to_timespec(nanoseconds, result);
             0
         }
         _ => {

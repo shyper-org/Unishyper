@@ -18,13 +18,11 @@ pub trait InterruptController {
     fn finish(&self, int: Interrupt);
 }
 
-#[no_mangle]
+#[cfg(not(target_arch = "x86_64"))]
 pub fn irq_install_handler(irq_number: u32, handler: fn(), name: &'static str) {
-    trace!(
+    info!(
         "[{}] Install handler for interrupt {} irq_num [32+{}]",
-        name,
-        irq_number,
-        irq_number
+        name, irq_number, irq_number
     );
     let mut irq_name_lock = IRQ_NAMES.lock();
     let mut irq_handler_lock = IRQ_HANDLERS.lock();
@@ -33,6 +31,21 @@ pub fn irq_install_handler(irq_number: u32, handler: fn(), name: &'static str) {
     irq_handler_lock.insert(32 + irq_number, handler);
 
     crate::drivers::INTERRUPT_CONTROLLER.enable(32 + irq_number as usize);
+}
+
+#[cfg(target_arch = "x86_64")]
+pub fn irq_install_handler(irq_number: u32, handler: usize, name: &'static str) {
+    info!(
+        "[{}] Install handler for interrupt {} irq_num [32+{}]",
+        name, irq_number, irq_number
+    );
+    let mut irq_name_lock = IRQ_NAMES.lock();
+
+    irq_name_lock.insert(32 + irq_number, name.to_string());
+    // irq_handler_lock.insert(32 + irq_number, handler);
+
+    crate::arch::irq_install_handler(irq_number, handler);
+    // crate::drivers::INTERRUPT_CONTROLLER.enable(32 + irq_number as usize);
 }
 
 pub fn interrupt(int: Interrupt) {

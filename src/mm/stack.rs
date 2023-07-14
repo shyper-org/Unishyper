@@ -86,6 +86,8 @@ pub fn alloc_stack(size_in_pages: usize, tid: usize) -> Option<Stack> {
         size_in_pages,
         MapGranularity::Page2MB as usize,
     )?;
+    // let pages = page_allocator::allocate_pages(2)?;
+    // let frames = frame_allocator::allocate_frames(1)?;
     trace!("alloc_stack pages {:?}", &pages);
     trace!("alloc_stack frames {:?}", &frames);
     inner_alloc_stack(pages, frames, tid)

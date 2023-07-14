@@ -101,6 +101,7 @@ pub fn block_on<F, T>(future: F, timeout: Option<Duration>) -> Result<T, ()>
 where
     F: Future<Output = T>,
 {
+    debug!("block_on is called");
     // Polling mode => no NIC interrupts => NIC thread should not run
     set_polling_mode(true);
     let start = now();
@@ -130,6 +131,7 @@ where
 
             // allow interrupts => NIC thread is able to run
             set_polling_mode(false);
+            debug!("block on return ok");
             return Ok(t);
         }
 
@@ -149,6 +151,7 @@ where
 
                 // allow interrupts => NIC thread is able to run
                 set_polling_mode(false);
+                debug!("block on return err");
                 return Err(());
             }
         }

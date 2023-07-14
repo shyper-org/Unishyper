@@ -78,7 +78,10 @@ impl PosixFileSystem for &Fatfs {
                             let my_file = FatfsFile::new(fd, path);
                             Ok(Box::new(my_file))
                         }
-                        _ => Err(FileError::EOTHERS),
+                        Err(err) => {
+                            warn!("fat fs create on path {}, err {:?}", path, err);
+                            Err(FileError::EOTHERS)
+                        }
                     }
                 }
             }
@@ -90,7 +93,10 @@ impl PosixFileSystem for &Fatfs {
         let root = fs.root_dir();
         match root.remove(path) {
             Ok(_) => Ok(()),
-            Err(_) => Err(FileError::ENOENT),
+            Err(err) => {
+                warn!("fat fs unlink path {} err {:?}", path, err);
+                Err(FileError::ENOENT)
+            }
         }
     }
 

@@ -90,14 +90,14 @@ QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no 
 						-global virtio-mmio.force-legacy=false
 endif
 ifeq ($(ARCH), x86_64)
-QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no \
+QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no,vhost=on \
 						-device virtio-net-pci,netdev=tap0,disable-legacy=on,mac=48:b0:2d:0e:6e:9e
 endif
 
 QEMU_COMMON_OPTIONS := -serial stdio -display none -s
 
 emu: build
-	${QEMU_CMD} \
+	sudo ${QEMU_CMD} \
 		${QEMU_COMMON_OPTIONS} \
 		${QEMU_NETWORK_OPTIONS}
 

@@ -655,6 +655,36 @@ pub fn thread_exit() {
     loop {}
 }
 
+#[cfg(feature = "unwind")]
+extern "C" fn thread_wrapper(func: extern "C" fn(usize), arg: usize) -> usize {
+    const RETRY_MAX: usize = 5;
+    let mut i = 0;
+    #[cfg(not(feature = "std"))]
+    use crate::libs::unwind::catch::catch_unwind;
+    #[cfg(feature = "std")]
+    use std::panic::catch_unwind;
+    loop {
+        i += 1;
+        let r = catch_unwind(|| {
+            func(arg);
+        });
+        match r {
+            Ok(_) => {
+                break 0;
+            }
+            Err(_) => {
+                info!("thread_wrapper: retry #{}", i);
+                // Enable interrupt when first enter this thread.
+                // This is awkward, we may need to improve context switch mechanism, see src/arch/switch.rs.
+                // crate::arch::irq::enable_and_wait();
+                if i > RETRY_MAX {
+                    break 1;
+                }
+            }
+        }
+    }
+}
+
 /// Main spawn logic.
 /// Spawn a new thread with a given entry address.
 /// Use "thread_start" as a wrapper, which automatically calls thread_exit when thread is finished.
@@ -681,32 +711,7 @@ fn _inner_spawn(
         extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> usize {
             #[cfg(feature = "unwind")]
             {
-                const RETRY_MAX: usize = 5;
-                let mut i = 0;
-                #[cfg(not(feature = "std"))]
-                use crate::libs::unwind::catch::catch_unwind;
-                #[cfg(feature = "std")]
-                use std::panic::catch_unwind;
-                loop {
-                    i += 1;
-                    let r = catch_unwind(|| {
-                        func(arg);
-                    });
-                    match r {
-                        Ok(_) => {
-                            break;
-                        }
-                        Err(_) => {
-                            info!("retry #{}", i);
-                            // Enable interrupt when first enter this thread.
-                            // This is awkward, we may need to improve context switch mechanism, see src/arch/switch.rs.
-                            crate::arch::irq::enable_and_wait();
-                            if i > RETRY_MAX {
-                                break;
-                            }
-                        }
-                    }
-                }
+                thread_wrapper(func, arg);
             }
             #[cfg(not(feature = "unwind"))]
             func(arg);
@@ -755,6 +760,7 @@ fn _inner_spawn(
 /// Spawn a new thread with a given entry address.
 /// Target thread is waked immediately.
 /// Return its thread ID.
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn thread_spawn(func: extern "C" fn(usize), arg: usize) -> Tid {
     _inner_spawn(func, arg, true, false, None, -1)
 }

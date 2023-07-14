@@ -2,6 +2,8 @@
 pub const TIMER_SEC_TO_MS: usize = 1000;
 #[allow(dead_code)]
 pub const TIMER_SEC_TO_US: usize = 1000_000;
+#[allow(dead_code)]
+pub const TIMER_SEC_TO_NS: usize = 1000_000_000;
 
 //Todo: refactor these methods into different architectures.
 
@@ -22,6 +24,14 @@ pub fn current_cycle() -> usize {
 pub(crate) const CLOCK_REALTIME: u64 = 1;
 #[cfg(feature = "std")]
 pub(crate) const CLOCK_MONOTONIC: u64 = 4;
+
+#[allow(dead_code)]
+/// Get current time in nanosecond(10 ^ -9 second).
+pub fn current_ns() -> usize {
+    let count = crate::drivers::timer::counter();
+    let freq = crate::drivers::timer::frequency();
+    count * TIMER_SEC_TO_NS / freq
+}
 
 #[allow(dead_code)]
 /// Get current time in microsecond(10 ^ -6 second).
@@ -62,7 +72,7 @@ pub fn boot_time() -> usize {
 
 pub fn init() {
     println!(
-        "Unishyper built at [{}] starts at [{} (UTC)]",
+        "Unishyper built at [{}]\nUnishyper starts at [{} (UTC)]",
         env!("BUILD_TIME"),
         rtc_time64_to_tm(crate::drivers::timer::timestamp_sec() as u64)
     );

@@ -156,7 +156,9 @@ pub struct Aarch64PageTable {
 static PAGE_TABLE: Once<SpinlockIrqSave<Aarch64PageTable>> = Once::new();
 
 pub fn page_table() -> &'static SpinlockIrqSave<Aarch64PageTable> {
-    PAGE_TABLE.get().unwrap()
+    PAGE_TABLE
+        .get()
+        .expect("FAILED page table is not successfully init")
 }
 
 pub fn init() {
@@ -172,6 +174,7 @@ pub fn init() {
             pages: Mutex::new(Vec::new()),
         })
     });
+    info!("page table init ok, PAGE_TABLE at {:p}", &PAGE_TABLE);
 }
 
 /// Install page table for user address,

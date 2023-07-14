@@ -30,3 +30,8 @@ shyper = [
     "unishyper/shyper"
     ]
 alloc = []
+
+[profile.release]
+opt-level = 's'
+debug = true
+lto = true

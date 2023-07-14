@@ -19,13 +19,14 @@ pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0xc000_0000;
 pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x4000_0000;
 
 pub const ELF_IMAGE_LOAD_ADDR: usize = 0x8000_0000;
-pub const ELF_SIZE: usize = 0xa0_0000;
 
 pub const GICD_BASE: usize = 0x08000000;
 pub const GICC_BASE: usize = 0x08010000;
 
+pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
+
 #[cfg(any(feature = "tcp", feature = "fat"))]
-use alloc::{vec,vec::Vec};
+use alloc::{vec, vec::Vec};
 #[cfg(any(feature = "tcp", feature = "fat"))]
 pub fn devices() -> Vec<Device> {
     vec![

@@ -11,25 +11,10 @@ pub fn init() {
     // We dump the current memory layout here.
     println!("Booting, memory layout:");
     println!(
-        "Kernel range:\tpa [{:#x} - {:#x}] kva [{:#x} - {:#x}]",
-        super::config::kernel_range().start,
-        super::config::kernel_range().end,
-        super::config::kernel_range().start.pa2kva(),
-        super::config::kernel_range().end.pa2kva()
-    );
-    println!(
-        "Heap range:\tpa [{:#x} - {:#x}] kva [{:#x} - {:#x}]",
-        super::config::heap_range().start,
-        super::config::heap_range().end,
+        "Heap range:\tkva [{:#x} - {:#x}] size {} KB",
         super::config::heap_range().start.pa2kva(),
-        super::config::heap_range().end.pa2kva()
-    );
-    println!(
-        "ELF range:\tpa [{:#x} - {:#x}] kva [{:#x} - {:#x}]",
-        super::config::elf_range().start,
-        super::config::elf_range().end,
-        super::config::elf_range().start.pa2kva(),
-        super::config::elf_range().end.pa2kva()
+        super::config::heap_range().end.pa2kva(),
+        (super::config::heap_range().end - super::config::heap_range().start) / 1024
     );
 
     // We need to init the global heap allocator here.
@@ -38,15 +23,19 @@ pub fn init() {
     let range = super::config::heap_range();
     unsafe { HEAP_ALLOCATOR.init(range.start.pa2kva(), range.end - range.start) }
 
+    let mut paged_ranges_size = 0;
     for range in super::config::paged_ranges() {
         println!(
-            "Paged range:\tpa [{:#x} - {:#x}] kva [{:#x} - {:#x}]",
-            range.start,
-            range.end,
+            "Paged range:\tkva [{:#x} - {:#x}] size {} KB",
             range.start.pa2kva(),
-            range.end.pa2kva()
+            range.end.pa2kva(),
+            (range.end - range.start) / 1024
         );
+        paged_ranges_size += range.end - range.start;
     }
+    println!("Total Free Memory size {} KB", paged_ranges_size / 1024);
+
+    println!("ELF File Load at {:#x}", crate::board::ELF_IMAGE_LOAD_ADDR);
 }
 
 #[cfg(feature = "terminal")]
@@ -97,8 +86,26 @@ unsafe impl GlobalAlloc for SpinlockIrqSaveHeapAllocator {
 
 #[cfg(not(feature = "std"))]
 #[alloc_error_handler]
-fn alloc_error_handler(_: Layout) -> ! {
-    panic!("alloc_error_handler: heap panic");
+fn alloc_error_handler(layout: Layout) -> ! {
+    println!(
+        "alloc_error_handler: heap panic on Layout size {:#x} = {}KB = {}MB  align {:#x}",
+        layout.size(),
+        layout.size() / 1024,
+        layout.size() / 1024 / 1024,
+        layout.align()
+    );
+    let stats_total_bytes = HEAP_ALLOCATOR.0.lock().stats_total_bytes();
+    let stats_alloc_user = HEAP_ALLOCATOR.0.lock().stats_alloc_user();
+    let stats_alloc_actual = HEAP_ALLOCATOR.0.lock().stats_alloc_actual();
+    println!(
+        "alloc_error_handler STATS: total_bytes {:#x} = {}KB = {}MB alloc_user {:#x} alloc_actual {:#x}",
+        stats_total_bytes,
+        stats_total_bytes / 1024,
+        stats_total_bytes / 1024 / 1024,
+        stats_alloc_user,
+        stats_alloc_actual
+    );
+    loop {}
 }
 
 /// Interface to allocate memory from system heap.
@@ -197,7 +204,11 @@ unsafe impl Allocator for Global {
     fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = self.allocate(layout)?;
         // SAFETY: `alloc` returns a valid memory block
-        unsafe { ptr.as_non_null_ptr().as_ptr().write_bytes(0, ptr.len()) }
+        use crate::libs::string::memset;
+        unsafe {
+            memset(ptr.as_mut_ptr(), 0, ptr.len());
+        }
+        // unsafe { ptr.as_non_null_ptr().as_ptr().write_bytes(0, ptr.len()); }
         Ok(ptr)
     }
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {

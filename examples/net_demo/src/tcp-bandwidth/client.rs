@@ -15,10 +15,8 @@ use unishyper::*;
 extern crate alloc;
 
 extern "C" fn netdemo_client(_arg: usize) {
-    println!("Connecting to the server 10.0.0.2...");
-
-    let n_bytes = 1048576;
-    let n_rounds = 100;
+    let n_bytes = 8192;
+    let n_rounds = 1000000;
     let tot_n_bytes = (n_bytes * n_rounds) as u64;
 
     println!(
@@ -35,7 +33,7 @@ extern "C" fn netdemo_client(_arg: usize) {
 
         // Create a buffer of 0s, size n_bytes, to be sent over multiple times
         let buf = vec![0; n_bytes];
-        let progress_tracking_percentage = n_rounds / 100;
+        let progress_tracking_percentage = n_rounds / 10;
 
         for i in 0..n_rounds {
             connection::send_message(n_bytes, &mut stream, &buf);
@@ -46,7 +44,7 @@ extern "C" fn netdemo_client(_arg: usize) {
             //     Err(err) => panic!("crazy stuff happened while sending {}", err),
             // }
             if i % progress_tracking_percentage == 0 {
-                println!("{}% completed", i / progress_tracking_percentage);
+                println!("{}0% completed", i / progress_tracking_percentage);
             }
         }
 

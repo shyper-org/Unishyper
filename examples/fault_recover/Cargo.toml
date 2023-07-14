@@ -1,0 +1,26 @@
+[package]
+edition = "2021"
+name = "fault_recover"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.unishyper]
+default-features = false
+path = "../../"
+
+[dependencies]
+inject = { path = "../../inject" }
+
+[features]
+default = ["qemu"]
+qemu = [
+  "unishyper/qemu",
+  "unishyper/serial",
+  "unishyper/unwind-test",
+  # "unishyper/fs",
+  # "unishyper/fat",
+]
+
+[profile.release]
+debug = true

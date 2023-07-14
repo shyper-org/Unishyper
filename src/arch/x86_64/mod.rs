@@ -42,6 +42,9 @@ impl Address for usize {
 pub type ContextFrame = context_frame::X86_64TrapContextFrame;
 pub type ThreadContext = context_frame::ThreadContext;
 
+pub use exception::irq_install_handler;
+pub use exception::init_idt;
+
 pub use gdt::Cpu;
 
 use rboot::BootInfo;
@@ -127,7 +130,7 @@ impl ArchTrait for Arch {
         x86_64::instructions::interrupts::disable();
         processor::configure();
         gdt::add_current_core();
-        exception::init_idt();
+        exception::load_idt();
         // x86_64::instructions::interrupts::enable();
         info!("exception init success!");
     }

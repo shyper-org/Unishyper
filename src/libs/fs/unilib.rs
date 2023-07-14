@@ -37,9 +37,13 @@ impl PosixFileSystem for UnilibFs {
         Ok(Box::new(my_file))
     }
 
-    fn unlink(&self, _path: &str) -> Result<(), FileError> {
-        warn!("[warning] unlink not implemented in unilib-fs.");
-        Ok(())
+    fn unlink(&self, path: &str) -> Result<(), FileError> {
+        let res = unilib::fs::unlink(path);
+        if res < 0 {
+            Err(FileError::ENOENT)
+        } else {
+            Ok(())
+        }
     }
 
     fn print_dir(&self, _path: &str) -> Result<(), FileError> {

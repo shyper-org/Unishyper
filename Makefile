@@ -2,6 +2,9 @@ ARCH ?= aarch64
 MACHINE ?= qemu
 PROFILE ?= release
 
+# Panic Inject Function
+export PI
+
 # NOTE: this is to deal with `(signal: 11, SIGSEGV: invalid memory reference)`
 # https://github.com/rust-lang/rust/issues/73677
 RUSTFLAGS := -C llvm-args=-global-isel=false
@@ -17,6 +20,7 @@ EXAMPLES_DIR := $(shell find examples -maxdepth 1 -mindepth 1 -type d)
 USER_DIR := examples/user
 FS_DEMO_DIR := examples/fs_demo
 NET_DEMO_DIR := examples/net_demo
+HTTPD_DIR := examples/httpd
 LINUX_TEST_DIR := examples/linux_test
 
 .PHONY: all build clean user net_bw_server net_bw_client disk tap_setup linux_test
@@ -26,7 +30,7 @@ build:
 
 clean:
 	-cargo clean
-	@for dir in ${EXAMPLES_DIR}; do make -C ./$$dir clean ||exit; done
+	@for dir in ${EXAMPLES_DIR}; do make -C ./$$dir clean; done
 	@echo clean project done!
 
 # rust-objcopy ${KERNEL} -O binary ${KERNEL}.bin
@@ -48,6 +52,9 @@ fs:
 
 net:
 	make -C ${NET_DEMO_DIR} emu
+
+httpd:
+	make -C ${HTTPD_DIR} emu
 
 user_debug:
 	make -C ${USER_DIR} debug

@@ -521,6 +521,7 @@ impl ComCfg {
         // );
         self.com_cfg.device_feature_select = 1;
 
+        #[cfg(target_arch = "x86_64")]
         unsafe {
             core::arch::x86_64::_mm_lfence();
         }
@@ -535,6 +536,7 @@ impl ComCfg {
         // See Virtio specification v1.1. - 4.1.4.3
         self.com_cfg.device_feature_select = 0;
 
+        #[cfg(target_arch = "x86_64")]
         unsafe {
             core::arch::x86_64::_mm_lfence();
         }
@@ -1289,7 +1291,11 @@ pub fn init_device(adapter: &PciAdapter) -> Result<VirtioDriver, DriverError> {
                 VirtioDriver::Network(_) => {
                     info!("Install virtio interrupt handler at line {}", adapter.irq);
                     // Install interrupt handler
-                    irq_install_handler(adapter.irq as u32, network_irqhandler, "virtio_net");
+                    irq_install_handler(
+                        adapter.irq as u32,
+                        network_irqhandler as usize,
+                        "virtio_net",
+                    );
 
                     Ok(drv)
                 }

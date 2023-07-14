@@ -1,11 +1,23 @@
-use alloc::boxed::Box;
-
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::set_general_handler;
 
 use crate::{drivers::apic, libs::interrupt::InterruptController};
 
+pub static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::new();
+
+pub fn load_idt() {
+    unsafe {
+		IDT.load_unsafe();
+	}
+}
+
 pub fn init_idt() {
-    let idt = Box::leak(Box::new(InterruptDescriptorTable::new()));
+    let idt = unsafe { &mut *(&mut IDT as *mut _ as *mut InterruptDescriptorTable) };
+
+    set_general_handler!(idt, abort, 0..32);
+	set_general_handler!(idt, unhandle, 32..64);
+	set_general_handler!(idt, unknown, 64..);
+
     // Set breakpoint handler, caused by `x86_64::instructions::interrupts::int3();`
     idt.breakpoint.set_handler_fn(breakpoint_handler);
     // Set double fault handler.
@@ -28,7 +40,36 @@ pub fn init_idt() {
     // Set timer handler.
     idt[apic::INT_TIMER].set_handler_fn(timer_interrupt_handler);
 
-    idt.load();
+    // idt.load();
+}
+
+
+fn abort(stack_frame: InterruptStackFrame, index: u8, error_code: Option<u64>) {
+	error!("Exception {index}");
+	error!("Error code: {error_code:?}");
+	error!("Stack frame: {stack_frame:#?}");
+	// scheduler::abort();
+}
+
+fn unhandle(_stack_frame: InterruptStackFrame, index: u8, _error_code: Option<u64>) {
+	warn!("received unhandled irq {index}");
+	// apic::eoi();
+	// increment_irq_counter(index.into());
+}
+
+fn unknown(_stack_frame: InterruptStackFrame, index: u8, _error_code: Option<u64>) {
+	warn!("unknown interrupt {index}");
+	// apic::eoi();
+}
+
+pub fn irq_install_handler(irq_number: u32, handler: usize) {
+    info!("Install handler for interrupt {}", irq_number);
+
+    let idt = unsafe { &mut *(&mut IDT as *mut _ as *mut InterruptDescriptorTable) };
+    unsafe {
+        idt[apic::IRQ_MIN + irq_number as usize]
+            .set_handler_addr(x86_64::VirtAddr::new(handler as u64)).set_stack_index(0);
+    }
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
@@ -41,6 +82,7 @@ extern "x86-interrupt" fn overflow_handler(stack_frame: InterruptStackFrame) {
 
 extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) {
     println!("EXCEPTION: INVALID OPCODE\n{:#?}", stack_frame);
+    hlt_loop();
 }
 
 extern "x86-interrupt" fn double_fault_handler(
@@ -111,8 +153,8 @@ extern "x86-interrupt" fn page_fault_handler(
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    trace!("timer interrupt");
-    trace!("stack frame:\n{:#?}", _stack_frame);
+    // trace!("timer interrupt");
+    // trace!("stack frame:\n{:#?}", _stack_frame);
     crate::libs::timer::interrupt();
     // Finished interrupt before switching
     apic::INTERRUPT_CONTROLLER.finish(apic::INT_TIMER);

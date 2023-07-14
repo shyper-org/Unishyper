@@ -35,13 +35,13 @@ impl DataBlock {
 
 impl BlkIO for DataBlock {
     fn read(&self, sector: usize, count: usize) -> Result<(), AtaError> {
-        assert!(count == 1);
+        debug_assert!(count == 1);
         blk::read(sector, count, self.0.as_ptr() as usize);
         Ok(())
     }
 
     fn write(&self, sector: usize, count: usize) -> Result<(), AtaError> {
-        assert!(count == 1);
+        debug_assert!(count == 1);
         blk::write(sector, count, self.0.as_ptr() as usize);
         Ok(())
     }
@@ -64,7 +64,7 @@ pub struct BlockCache {
 impl BlockCache {
     pub fn new() -> Self {
         BlockCache {
-            cache: LruCache::new(MAX_LRU),
+            cache: LruCache::new(core::num::NonZeroUsize::new(MAX_LRU).unwrap()),
         }
     }
 

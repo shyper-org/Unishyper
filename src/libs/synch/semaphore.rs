@@ -35,6 +35,7 @@ impl Semaphore {
     ///
     /// This method will block until the internal count of the semaphore is at
     /// least 1.
+    #[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
     pub fn acquire(&self) {
         // Loop until we have acquired the semaphore.
         loop {
@@ -77,6 +78,7 @@ impl Semaphore {
     ///
     /// This will increment the number of resources in this semaphore by 1 and
     /// will notify any pending waiters in `acquire` or `access` if necessary.
+    #[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
     pub fn release(&self) {
         let mut inner = self.inner.lock();
         debug!(

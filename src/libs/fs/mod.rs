@@ -100,6 +100,7 @@ pub fn init() {
 
 use interface::*;
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn unlink(path: &str) -> i32 {
     debug!("unlink {}", path);
 
@@ -110,18 +111,22 @@ pub fn unlink(path: &str) -> i32 {
     0
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn open(path: &str, flags: i32, mode: i32) -> i32 {
     debug!("Open {}, {}, {}", path, flags, mode);
     let mut fs = fs::FILESYSTEM.lock();
 
     let fd = fs.open(path, open_flags_to_perm(flags, mode as u32));
-    if let Ok(fd) = fd {
-        fd as i32
-    } else {
-        -1
+    match fd {
+        Ok(fd) => fd as i32,
+        Err(err) => {
+            warn!("fs open path {} error {:?}", path, err);
+            -1
+        }
     }
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn close(fd: i32) -> i32 {
     assert!(fd > 2);
     let mut fs = fs::FILESYSTEM.lock();
@@ -129,6 +134,7 @@ pub fn close(fd: i32) -> i32 {
     0
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn read(fd: i32, buf: *mut u8, len: usize) -> isize {
     assert!(len <= isize::MAX as usize);
     assert!(fd > 2);
@@ -147,6 +153,7 @@ pub fn read(fd: i32, buf: *mut u8, len: usize) -> isize {
     read_bytes as isize
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn write(fd: i32, buf: *const u8, len: usize) -> isize {
     assert!(len <= isize::MAX as usize);
     assert!(fd > 2);
@@ -162,6 +169,7 @@ pub fn write(fd: i32, buf: *const u8, len: usize) -> isize {
     written_bytes as isize
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn lseek(fd: i32, offset: isize, whence: i32) -> isize {
     debug!("lseek! {}, {}, {}", fd, offset, whence);
 
@@ -179,6 +187,7 @@ pub fn stat(file: *const u8, st: usize) -> i32 {
     unimplemented!("stat is unimplemented");
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn print_dir(path: &str) -> Result<(), FileError> {
     #[cfg(all(feature = "fat", feature = "unilib"))]
     if path == "" {
@@ -192,6 +201,7 @@ pub fn print_dir(path: &str) -> Result<(), FileError> {
     fs.print_dir(path)
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 pub fn create_dir<P: AsRef<str>>(path: P) -> Result<(), FileError> {
     let fs = fs::FILESYSTEM.lock();
     fs.create_dir(path.as_ref())

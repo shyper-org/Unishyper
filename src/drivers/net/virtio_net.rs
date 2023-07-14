@@ -699,12 +699,14 @@ impl VirtioNetDriver {
     pub fn disable_interrupts(&self) {
         // Für send und receive queues?
         // Nur für receive? Weil send eh ausgeschaltet ist?
+        debug!("disable interrupts");
         self.recv_vqs.disable_notifs();
     }
 
     pub fn enable_interrupts(&self) {
         // Für send und receive queues?
         // Nur für receive? Weil send eh ausgeschaltet ist?
+        debug!("enable interrupts");
         self.recv_vqs.enable_notifs();
     }
 
@@ -754,7 +756,7 @@ impl VirtioNetDriver {
         // Negotiate features with device. Automatically reduces selected feats in order to meet device capabilities.
         // Aborts in case incompatible features are selected by the dricer or the device does not support min_feat_set.
         match self.negotiate_features(&feats) {
-            Ok(_) => info!(
+            Ok(_) => debug!(
                 "Driver found a subset of features for virtio device {:x}. Features are: {:?}",
                 self.dev_cfg.dev_id, &feats
             ),
@@ -765,7 +767,7 @@ impl VirtioNetDriver {
                         return Err(vnet_err);
                     }
                     VirtioNetError::IncompFeatsSet(drv_feats, dev_feats) => {
-                        info!("IncompFeatsSet for virtio device {:x}. Features are: {:?}", self.dev_cfg.dev_id, &feats);
+                        debug!("IncompFeatsSet for virtio device {:x}. Features are: {:?}", self.dev_cfg.dev_id, &feats);
                         // Create a new matching feature set for device and driver if the minimal set is met!
                         if (min_feat_set & dev_feats) != min_feat_set {
                             error!("Device features set, does not satisfy minimal features needed. Aborting!");
@@ -782,7 +784,7 @@ impl VirtioNetDriver {
                             };
 
                             match self.negotiate_features(&feats) {
-                                Ok(_) => info!("Driver found a subset of features for virtio device {:x}. Features are: {:?}", self.dev_cfg.dev_id, &feats),
+                                Ok(_) => debug!("Driver found a subset of features for virtio device {:x}. Features are: {:?}", self.dev_cfg.dev_id, &feats),
                                 Err(vnet_err) => {
                                     match vnet_err {
                                         VirtioNetError::FeatReqNotMet(feat_set) => {
@@ -815,7 +817,7 @@ impl VirtioNetDriver {
 
         // Checks if the device has accepted final set. This finishes feature negotiation.
         if self.com_cfg.check_features() {
-            info!(
+            debug!(
                 "Features have been negotiated between virtio network device {:x} and driver.",
                 self.dev_cfg.dev_id
             );
@@ -826,7 +828,7 @@ impl VirtioNetDriver {
         }
 
         match self.dev_spec_init() {
-            Ok(_) => info!(
+            Ok(_) => debug!(
                 "Device specific initialization for Virtio network device {:x} finished",
                 self.dev_cfg.dev_id
             ),
@@ -853,7 +855,7 @@ impl VirtioNetDriver {
         // features according to Virtio spec. v1.1 - 5.1.3.1.
         match FeatureSet::check_features(wanted_feats) {
             Ok(_) => {
-                info!("Feature set wanted by network driver are in conformance with specification.")
+                trace!("Feature set wanted by network driver are in conformance with specification.")
             }
             Err(vnet_err) => return Err(vnet_err),
         }
@@ -870,7 +872,7 @@ impl VirtioNetDriver {
     /// Device Specific initialization according to Virtio specifictation v1.1. - 5.1.5
     fn dev_spec_init(&mut self) -> Result<(), VirtioNetError> {
         match self.virtqueue_init() {
-            Ok(_) => info!("Network driver successfully initialized virtqueues."),
+            Ok(_) => debug!("Network driver successfully initialized virtqueues."),
             Err(vnet_err) => return Err(vnet_err),
         }
 

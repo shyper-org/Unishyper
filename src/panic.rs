@@ -1,8 +1,12 @@
 #[allow(non_snake_case)]
 #[no_mangle]
-extern "C" fn _Unwind_Resume(arg: usize) -> ! {
-    info!("Unwind resume arg {}", arg);
-    loop {}
+extern "C" fn _Unwind_Resume(_arg: usize) -> ! {
+  // info!("Unwind resume arg {:#x}", arg);
+  #[cfg(feature = "unwind")]
+  crate::libs::unwind::unwind_resume(_arg);
+  #[cfg(not(feature = "unwind"))]
+  loop {}
+
 }
 
 #[cfg(not(feature = "std"))]
@@ -31,8 +35,21 @@ pub fn panic_handler(info: &core::panic::PanicInfo) -> ! {
         error!("Location: {}:{}", location.file(), location.line());
     }
 
-    // #[cfg(feature = "unwind")]
-    // crate::libs::unwind::unwind_from_panic(3);
-    // #[cfg(not(feature = "unwind"))]
+    #[cfg(feature = "unwind")]
+    crate::libs::unwind::unwind_from_panic(3);
+    #[cfg(not(feature = "unwind"))]
     loop {}
+}
+
+#[allow(dead_code)]
+static mut PANICKED: bool = false;
+
+#[allow(dead_code)]
+pub fn random_panic() {
+    unsafe {
+        if !PANICKED {
+            PANICKED = true;
+            panic!("[[RANDOM]][[PANIC]]");
+        }
+    }
 }

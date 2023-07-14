@@ -17,6 +17,8 @@ extern crate alloc;
 extern "C" fn latency_server(_arg: usize) {
     println!("Server for latency test running, listening for connection on 0.0.0.0:4444");
 
+    irq_disable();
+
     let listener =
         TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 4444)).unwrap();
 
@@ -30,8 +32,8 @@ extern "C" fn latency_server(_arg: usize) {
         socket_addr
     );
 
-    let n_bytes = 1;
-    let n_rounds = 100;
+    let n_bytes = 2048;
+    let n_rounds = 5;
     let mut buf = vec![0; n_bytes];
 
     stream
@@ -42,7 +44,12 @@ extern "C" fn latency_server(_arg: usize) {
         connection::receive_message(n_bytes, &mut stream, &mut buf);
         connection::send_message(n_bytes, &mut stream, &buf);
     }
-    println!("Done exchanging stuff")
+
+    irq_disable();
+    println!("Done exchanging stuff");
+    loop{
+        irq_disable();
+    }
 }
 
 #[no_mangle]

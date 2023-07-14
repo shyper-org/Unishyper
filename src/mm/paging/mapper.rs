@@ -244,7 +244,7 @@ pub fn map_pci_mem_bar(bar_addr: usize, bar_size: usize) -> usize {
     for page in pages.deref().clone().into_iter() {
         match page_table.map(page.start_address().value(), physical_address.value(), attr) {
             Ok(()) => {
-                debug!("map paddr physical_address {} success", physical_address);
+                trace!("map paddr physical_address {} success", physical_address);
                 physical_address += crate::arch::PAGE_SIZE;
             }
             Err(_) => {

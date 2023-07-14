@@ -2,13 +2,13 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 
 use alloc::string::String;
-use fatfs::SeekFrom;
 use ioslice::{IoSlice, IoSliceMut};
 
 use crate::libs::fs;
 use crate::libs::fs::interface::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
 
 use crate::exported::io;
+use crate::exported::io::SeekFrom;
 use crate::exported::io::cvt;
 use crate::exported::fd::FileDesc;
 
@@ -17,7 +17,11 @@ pub struct Path {
 }
 
 pub fn cstr(path: &Path) -> io::Result<String> {
-    Ok(String::from(path.to_str().unwrap()))
+    use crate::libs::fs::FS_ROOT;
+    use alloc::format;
+    Ok(String::from(
+        format!("{}{}", FS_ROOT, path.to_str().unwrap()).as_str(),
+    ))
 }
 
 #[allow(unused)]

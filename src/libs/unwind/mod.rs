@@ -47,6 +47,7 @@ use arch::*;
 #[path = "arch/aarch64.rs"]
 pub mod arch;
 
+mod addr2line;
 pub mod catch;
 pub mod elf;
 pub mod lsda;
@@ -216,10 +217,56 @@ impl FallibleIterator for StackFrameIter {
     }
 }
 
-extern "C" {
-    #[allow(improper_ctypes)]
-    fn unwind_trampoline(ctx: usize);
+/// Starts the unwinding procedure for the current thread from exception.
+/// by working backwards up the call stack starting from the exception context frame.
+///
+/// # Arguments
+/// * `registers`: exception context frame.
+///
+pub fn unwind_from_exception(registers: Registers) -> ! {
+    let ctx = Box::new(UnwindingContext {
+        skip: 0,
+        reason: 0x1,
+        stack_frame_iter: StackFrameIter::new(registers),
+    });
+    // let _ = ctx.stack_frame_iter.next();
+    let ctx = Box::into_raw(ctx);
+    unwind(ctx);
+    cleanup(ctx);
+    error!("unwind failed!");
+    loop {}
 }
+
+// core::arch::global_asm! {
+//     r#"
+//     .global unwind_trampoline
+//     unwind_trampoline:
+//     .cfi_startproc
+//          mov x1, sp
+//          sub sp, sp, 0xA0
+//          .cfi_adjust_cfa_offset 0x60
+//          stp x19, x20, [sp, #0x00]
+//          stp x21, x22, [sp, #0x10]
+//          stp x23, x24, [sp, #0x20]
+//          stp x25, x26, [sp, #0x30]
+//          stp x27, x28, [sp, #0x40]
+//          stp x29, lr,  [sp, #0x50]
+//          .cfi_rel_offset lr, 0x58
+//          mov x2, sp
+//          bl unwind_recorder
+//          ldr lr, [sp, #0x58]
+//          .cfi_restore lr
+//          add sp, sp, 0x60
+//          .cfi_adjust_cfa_offset -0x60
+//          ret
+//     .cfi_endproc
+//     "#
+// }
+
+// extern "C" {
+//     #[allow(improper_ctypes)]
+//     pub fn unwind_trampoline(ctx: usize);
+// }
 
 /// Starts the unwinding procedure for the current thread from panic.
 /// by working backwards up the call stack starting from the current stack frame.
@@ -286,8 +333,11 @@ fn unwind(ctx: *mut UnwindingContext) {
             return;
         }
         Ok(Some(frame)) => {
-            info!("function addr {:016x}", frame.initial_address);
-            info!("call site {:016x}", frame.call_site_address);
+            print!("{}", frame);
+            // print!("function addr {:#x}, at ", frame.initial_address);
+            // addr2line::parse_elf(frame.initial_address);
+            // print!("call site addr {:#x}, at ", frame.call_site_address);
+            // addr2line::parse_elf(frame.call_site_address);
             match frame.lsda {
                 None => {
                     // LSDA not found in this call frame, just keep unwinding.

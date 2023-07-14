@@ -22,8 +22,8 @@ pub fn test_mm_alloc() {
 		for _j in 0..100 {
 			unsafe {
 				let start = current_cycle();
-				// let res = Global.allocate(layout);
-				let res = Global.allocate_zeroed(layout);
+				let res = Global.allocate(layout);
+				// let res = Global.allocate_zeroed(layout);
 				let end = current_cycle();
 				res_list.push(res);
 				cnt_inside = cnt_inside + (end - start);

@@ -192,3 +192,27 @@ fn stat(_file: *const u8, _st: usize) -> i32 {
     let _ = hvc_call(0, 0, 0, hvc_mode!(HVC_UNILIB, HVC_UNILIB_FS_STAT));
     unimplemented!("stat is unimplemented");
 }
+
+/// **Unlink** API for unilib fs, attempts to open a file at given path of expected flags and mode.
+/// HVC_UNILIB | HVC_UNILIB_FS_UNLINK
+/// Returns the file descriptor of the newly opened file, or -1 on failure.
+/// ## Arguments
+/// * `path`    - The intermediated physical address of the path that GVM wants to unlink through unilib-fs API.
+pub fn unlink(path: &str) -> isize {
+    debug!("Unlink {}", path);
+
+    let path_va = &path.as_bytes()[0] as *const _ as usize;
+    let path_pa = VAddr::from(path_va).to_physical_address().value();
+    debug!(
+        "path address 0x{:p} , convert to 0x{:x}, get pa 0x{:x}",
+        path, path_va, path_pa
+    );
+    let ret = hvc_call(
+        path_pa,
+        path.len(),
+        0,
+        hvc_mode!(HVC_UNILIB, HVC_UNILIB_FS_UNLINK),
+    ) as isize;
+    debug!("Unlink get res {}", ret);
+    ret
+}

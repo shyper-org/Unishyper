@@ -16,7 +16,8 @@ pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x8000_0000..0xf000_0000;
 pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x8000_0000;
 
 pub const ELF_IMAGE_LOAD_ADDR: usize = 0xc0000000;
-pub const ELF_SIZE: usize = 0xa0_0000;
+
+pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
 
 pub fn init() {
     crate::drivers::uart::init();

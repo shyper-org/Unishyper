@@ -13,10 +13,11 @@ pub const HVC_UNILIB_FS_READ: usize = 3;
 pub const HVC_UNILIB_FS_WRITE: usize = 4;
 pub const HVC_UNILIB_FS_LSEEK: usize = 5;
 pub const HVC_UNILIB_FS_STAT: usize = 6;
+pub const HVC_UNILIB_FS_UNLINK: usize = 7;
 #[allow(dead_code)]
-pub const HVC_UNILIB_FS_APPEND: usize = 7;
+pub const HVC_UNILIB_FS_APPEND: usize = 0x10;
 #[allow(dead_code)]
-pub const HVC_UNILIB_FS_FINISHED: usize = 8;
+pub const HVC_UNILIB_FS_FINISHED: usize = 0x11;
 
 #[macro_export]
 macro_rules! hvc_mode {

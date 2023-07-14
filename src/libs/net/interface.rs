@@ -89,7 +89,7 @@ fn check_local_endpoint(endpoint: u16) -> bool {
 fn set_local_endpoint_link(local_endpoint: u16, remote_endpoint: IpEndpoint) {
     let mut lock = LOCAL_ENDPOINT_MAP.lock();
     if !lock.contains_key(&local_endpoint) {
-        warn!("local endpoint not exists");
+        // warn!("local endpoint not exists");
         return;
     }
     // if lock.get(&local_endpoint).unwrap().is_some() {
@@ -101,7 +101,7 @@ fn set_local_endpoint_link(local_endpoint: u16, remote_endpoint: IpEndpoint) {
 fn remove_local_endpoint(local_endpoint: u16) {
     let mut lock = LOCAL_ENDPOINT_MAP.lock();
     let remote_endpoint = lock.remove(&local_endpoint).unwrap_or_else(|| {
-        warn!("Local endpoint {local_endpoint} has no remote endpoint");
+        // warn!("Local endpoint {local_endpoint} has no remote endpoint");
         return None;
     });
     if remote_endpoint.is_some() {
@@ -137,7 +137,7 @@ where
         // let _start = start;
         while self.iface.poll(timestamp).unwrap_or(true) {
             // just to make progress
-            // debug!("NetworkInterface::poll_common::poll:send or receive packets!!!");
+            debug!("NetworkInterface::poll_common::poll:send or receive packets!!!");
             // let end = crate::libs::timer::current_us();
             // println!("poll_common , one pull use {} us, current {} us", end - start, end);
             // start = crate::libs::timer::current_us();
@@ -170,33 +170,17 @@ impl AsyncSocket {
         let mut guard = NIC.lock();
         let nic = guard.as_nic_mut().unwrap();
         let res = {
-            // let start = crate::libs::timer::current_us();
-
             let s = nic.iface.get_socket::<TcpSocket<'_>>(self.0);
             let res = f(s);
-
-            // let end = crate::libs::timer::current_us();
-            // println!(
-            //     "AsyncSocket with() f use {} us, current {} us",
-            //     end - start,
-            //     end
-            // );
             res
         };
         // To flush send buffers.
         // After using the socket, the network interface has to poll the nic,
         // This is required to flush all send buffers.
         let t = now();
-        // let start = t.total_micros() as usize;
         if nic.poll_delay(t).map(|d| d.total_millis()).unwrap_or(0) == 0 {
             nic.poll_common(t);
         }
-        // let end = crate::libs::timer::current_us();
-        // println!(
-        //     "AsyncSocket with() poll_common use {} us, current {} us",
-        //     end - start,
-        //     end
-        // );
         res
     }
 
@@ -258,12 +242,13 @@ impl AsyncSocket {
     }
 
     pub async fn accept(&self, port: u16) -> Result<(IpAddress, u16), Error> {
-        trace!("AsyncSocket accept");
+        info!("AsyncSocket accept");
         self.with(|socket| socket.listen(port).map_err(|_| Error::Illegal))?;
 
         future::poll_fn(|cx| {
             self.with(|socket| {
                 if socket.is_active() {
+                    info!("AsyncSocket is_active state {}", socket.state());
                     Poll::Ready(Ok(()))
                 } else {
                     match socket.state() {
@@ -284,6 +269,7 @@ impl AsyncSocket {
         let mut guard = NIC.lock();
         let nic = guard.as_nic_mut().map_err(|_| Error::Illegal)?;
         let socket = nic.iface.get_socket::<TcpSocket<'_>>(self.0);
+        info!("AsyncSocket accept state {}", socket.state());
         socket.set_keep_alive(Some(Duration::from_millis(DEFAULT_KEEP_ALIVE_INTERVAL)));
         let endpoint = socket.remote_endpoint();
 
@@ -316,35 +302,38 @@ impl AsyncSocket {
 
     pub async fn write(&self, buffer: &[u8]) -> Result<usize, Error> {
         let len = buffer.len();
+        info!("write !!! len {}", len);
         let mut pos: usize = 0;
 
         while pos < len {
             let n = future::poll_fn(|cx| {
-                self.with(|socket| match socket.state() {
-                    TcpState::FinWait1
-                    | TcpState::FinWait2
-                    | TcpState::Closed
-                    | TcpState::Closing
-                    | TcpState::TimeWait => Poll::Ready(Err(Error::Illegal)),
-                    _ => {
-                        if !socket.may_send() {
-                            return Poll::Ready(Err(Error::Illegal));
-                        } else if socket.can_send() {
-                            return Poll::Ready(
-                                socket
-                                    .send_slice(&buffer[pos..])
-                                    .map_err(|_| Error::Illegal),
-                            );
-                        }
+                self.with(|socket| {
+                    info!("write !!! socket state {}", socket.state());
+                    if socket.can_send() {
+                        return Poll::Ready(socket.send_slice(&buffer[pos..]).map_err(|err| {
+                            warn!("write: socket send_slice err {}", err);
+                            Error::Illegal
+                        }));
+                    }
 
-                        if pos > 0 {
-                            // we already send some data => return 0 as signal to stop the
-                            // async write
-                            return Poll::Ready(Ok(0));
+                    if pos > 0 {
+                        // we already send some data => return 0 as signal to stop the
+                        // async write
+                        return Poll::Ready(Ok(0));
+                    }
+                    match socket.state() {
+                        TcpState::FinWait1
+                        | TcpState::FinWait2
+                        | TcpState::Closed
+                        | TcpState::Closing
+                        | TcpState::TimeWait => {
+                            warn!("write: ellegal on state {}", socket.state());
+                            Poll::Ready(Err(Error::Illegal))
                         }
-
-                        socket.register_send_waker(cx.waker());
-                        Poll::Pending
+                        _ => {
+                            socket.register_send_waker(cx.waker());
+                            Poll::Pending
+                        }
                     }
                 })
             })
@@ -519,6 +508,13 @@ pub fn tcp_stream_connect(ip: &[u8], port: u16, timeout: Option<u64>) -> Result<
 #[inline(always)]
 pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ()> {
     let socket = AsyncSocket::from(handle);
+    let peer_addr = tcp_stream_peer_addr(handle)?;
+    info!(
+        "tcp_stream_read T[{}] from {}:{}",
+        crate::libs::thread::current_thread_id(),
+        peer_addr.0,
+        peer_addr.1
+    );
     block_on(socket.read(buffer), None)?.map_err(|_| ())
 }
 
@@ -526,17 +522,34 @@ pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ()> {
 pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ()> {
     let socket = AsyncSocket::from(handle);
     // let peer_addr = tcp_stream_peer_addr(handle)?;
-    // warn!(
-    //     "tcp_stream_write T[{}] to {}:{}",
+    // let s = match str::from_utf8(buffer) {
+    //     Ok(v) => v,
+    //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    // };
+    // info!(
+    //     "tcp_stream_write T[{}] to {}:{}, len {},\n{:?}\n{}",
     //     crate::libs::thread::current_thread_id(),
     //     peer_addr.0,
-    //     peer_addr.1
+    //     peer_addr.1,
+    //     buffer.len(),
+    //     buffer,
+    //     s
     // );
-    block_on(socket.write(buffer), None)?.map_err(|_| ())
+    block_on(socket.write(buffer), None)?.map_err(|err| {
+        warn!("tcp_stream_write err {}", err);
+        ()
+    })
 }
 
 #[inline(always)]
 pub fn tcp_stream_close(handle: Handle) -> Result<(), ()> {
+    let peer_addr = tcp_stream_peer_addr(handle)?;
+    debug!(
+        "tcp_stream_close T[{}] ip {}:{}",
+        crate::libs::thread::current_thread_id(),
+        peer_addr.0,
+        peer_addr.1
+    );
     let socket = AsyncSocket::from(handle);
     block_on(socket.close(), None)?.map_err(|_| ())
 }
@@ -574,15 +587,16 @@ impl Shutdown {
 }
 
 #[inline(always)]
-pub fn tcp_stream_shutdown(handle: Handle, how: Shutdown) -> Result<(), ()> {
-    match how {
-        Shutdown::Read => {
-            warn!("Shutdown::Read is not implemented");
-            Ok(())
-        }
-        Shutdown::Write => tcp_stream_close(handle),
-        Shutdown::Both => tcp_stream_close(handle),
-    }
+pub fn tcp_stream_shutdown(handle: Handle, _how: Shutdown) -> Result<(), ()> {
+    // match how {
+    //     Shutdown::Read => {
+    //         warn!("Shutdown::Read is not implemented");
+    //         Ok(())
+    //     }
+    //     Shutdown::Write => tcp_stream_close(handle),
+    //     Shutdown::Both => tcp_stream_close(handle),
+    // }
+    tcp_stream_close(handle)
 }
 
 #[inline(always)]
@@ -630,7 +644,7 @@ pub fn tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ()> {
 #[inline(always)]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
     let local_endpoint = port;
-    trace!(
+    debug!(
         "tcp_listener_accept T[{}] on local endpoint {}",
         crate::libs::thread::current_thread_id(),
         local_endpoint
@@ -638,7 +652,7 @@ pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
     let socket = AsyncSocket::new();
     let (addr, port) = block_on(socket.accept(port), None)?.map_err(|_| ())?;
 
-    trace!(
+    info!(
         "tcp_listener_accept T[{}] success on ip {} port {}, local_endpoint {}",
         crate::libs::thread::current_thread_id(),
         addr,

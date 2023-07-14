@@ -12,7 +12,7 @@ impl InterruptController for Apic {
         lapic.cpu_init();
         crate::util::barrier();
 
-        debug!("apic init ok");
+        info!("InterruptController apic init ok");
     }
 
     fn enable(&self, int: Interrupt) {}

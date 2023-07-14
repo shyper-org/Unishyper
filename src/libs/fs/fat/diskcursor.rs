@@ -64,7 +64,7 @@ impl Read for DiskCursor {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, DiskCursorIoError> {
         let mut i = 0;
         while i < buf.len() {
-            let count = ((buf.len() - i) / BSIZE).max(1);
+            let count = 1;
             let block = self.cache.get(self.sector, count);
 
             let data = block.get_data(self.offset);
@@ -95,7 +95,7 @@ impl Write for DiskCursor {
     fn write(&mut self, buf: &[u8]) -> Result<usize, DiskCursorIoError> {
         let mut i = 0;
         while i < buf.len() {
-            let count = ((buf.len() - i) / BSIZE).max(1);
+            let count = 1;
             let block = self.cache.get(self.sector, count);
 
             let data = block.get_data_mut(self.offset);
@@ -105,7 +105,7 @@ impl Write for DiskCursor {
 
             let end = (i + data.len()).min(buf.len());
             let len = end - i;
-            data[..end].copy_from_slice(&buf[i..len]);
+            data[..len].copy_from_slice(&buf[i..end]);
 
             block.write(self.sector, count).expect("ata error");
 

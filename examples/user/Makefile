@@ -32,7 +32,7 @@ ifeq ($(ARCH), x86_64)
 endif
 
 build: # bootloader
-	cargo build --target ${TARGET_CFG} -Z build-std=core,alloc ${CARGO_FLAGS} 
+	cargo build --target ${TARGET_CFG} -Z build-std=core,alloc -Z build-std-features=compiler-builtins-mem ${CARGO_FLAGS} 
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
 ifeq ($(ARCH), x86_64)

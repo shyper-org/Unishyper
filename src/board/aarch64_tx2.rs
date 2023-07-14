@@ -39,14 +39,10 @@ pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x4000_0000;
 #[cfg(feature = "shyper")]
 pub const ELF_IMAGE_LOAD_ADDR: usize = 0x6000_0000;
 
-pub const ELF_SIZE: usize = 0xa0_0000;
+pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
 
 #[cfg(any(feature = "tcp", feature = "fat"))]
-use {
-    alloc::vec::Vec,
-    alloc::vec,
-    crate::libs::device::Device,
-};
+use {alloc::vec::Vec, alloc::vec, crate::libs::device::Device};
 #[cfg(any(feature = "tcp", feature = "fat"))]
 pub fn devices() -> Vec<Device> {
     use crate::libs::device::VirtioDevice;

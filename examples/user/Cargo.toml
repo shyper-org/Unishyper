@@ -18,7 +18,8 @@ qemu = [
     # "unishyper/smp",
     # "unishyper/scheduler-percore",
     "unishyper/qemu",
-    # "unishyper/serial",
+    "unishyper/serial",
+    # "unishyper/mpk",
     # "unishyper/unwind",
     "unishyper/terminal",
     # "unishyper/fs",
@@ -30,15 +31,18 @@ tx2 = [
     # "unishyper/terminal",
     ]
 shyper = [
-    "unishyper/alloc",
+    # "unishyper/alloc",
     # "unishyper/smp",
     "unishyper/shyper",
-    "unishyper/terminal",
-    "unishyper/fs",
-    "unishyper/unilib",
-    "unishyper/fat",
+    "unishyper/serial",
+    # "unishyper/terminal",
+    # "unishyper/fs",
+    # "unishyper/unilib",
+    # "unishyper/fat",
     ]
 alloc = []
 
 [profile.release]
 debug = true
+opt-level = 's'  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
+lto = true

@@ -11,7 +11,7 @@ else
 CARGO_FLAGS =  --no-default-features
 endif
 
-# CARGO_FLAGS := ${CARGO_FLAGS} --features "${MACHINE}"
+CARGO_FLAGS := ${CARGO_FLAGS} --features "${MACHINE}"
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
@@ -119,13 +119,13 @@ shyper: build
 
 # Use tftp to load unikernel binary file to target location on Tegra X2 ROM.
 tx2: build
-	mkimage -n unishyper -A arm64 -O linux -C none -T kernel -a 0x80080000 -e 0x80080000 -d ${KERNEL}.bin ${KERNEL}.ubi
+	mkimage -n unishyper -A arm64 -O linux -C none -T kernel -a 0x40080000 -e 0x40080000 -d ${KERNEL}.bin ${KERNEL}.ubi
 	cp ${KERNEL} /tftp/
 	cp ${KERNEL}.ubi /tftp/
-	echo "tftp 0xc0000000 192.168.106.140:user; tftp 0x8a000000 192.168.106.140:user.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"
+	echo "tftp 0xc0000000 192.168.106.140:std_test; tftp 0x40080000 192.168.106.140:std_test.ubi; bootm start 0x40080000 - 0x80000000; bootm loados; bootm go"
 
 tx2_153: build
 	mkimage -n unishyper -A arm64 -O linux -C none -T kernel -a 0x80080000 -e 0x80080000 -d ${KERNEL}.bin ${KERNEL}.ubi
 	scp ${KERNEL} root@192.168.106.153:/tftp
 	scp ${KERNEL}.ubi root@192.168.106.153:/tftp
-	echo "tftp 0xc0000000 192.168.106.153:user; tftp 0x8a000000 192.168.106.153:user.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"
+	echo "tftp 0xc0000000 192.168.106.153:std_test; tftp 0x8a000000 192.168.106.153:std_test.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"

@@ -3,10 +3,8 @@
 use alloc::vec::Vec;
 use core::{fmt, u32, u8};
 
-use x86_64::instructions::port::{PortWriteOnly, PortReadOnly};
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 use crate::util::irqsave;
-// use x86::io::*;
 
 // use crate::mm::{PhysAddr, VirtAddr};
 use crate::drivers::net::virtio_net::VirtioNetDriver;
@@ -114,10 +112,7 @@ fn parse_bars(bus: u8, device: u8, vendor_id: u16, device_id: u16) -> Vec<PciBar
         let barword = read_config(bus, device, register);
         debug!(
             "Found bar{} @{:x}:{:x} as {:#x}",
-            i,
-            vendor_id,
-            device_id,
-            barword
+            i, vendor_id, device_id, barword
         );
 
         // We assume BIOS or something similar has initialized the device already and set appropriate values into the bar registers
@@ -337,7 +332,9 @@ impl fmt::Display for PciAdapter {
 
 /// Returns the value (indicated by bus, device and register) of the pci
 /// configuration space.
+#[cfg(target_arch = "x86_64")]
 pub fn read_config(bus: u8, device: u8, register: u32) -> u32 {
+    use x86_64::instructions::port::{PortWriteOnly, PortReadOnly};
     let address =
         PCI_CONFIG_ADDRESS_ENABLE | u32::from(bus) << 16 | u32::from(device) << 11 | register;
     let mut config_address_port = PortWriteOnly::<u32>::new(PCI_CONFIG_ADDRESS_PORT);
@@ -351,7 +348,14 @@ pub fn read_config(bus: u8, device: u8, register: u32) -> u32 {
     }
 }
 
+#[cfg(not(target_arch = "x86_64"))]
+pub fn read_config(bus: u8, device: u8, register: u32) -> u32 {
+    unimplemented!()
+}
+
+#[cfg(target_arch = "x86_64")]
 pub fn write_config(bus: u8, device: u8, register: u32, data: u32) {
+    use x86_64::instructions::port::{PortWriteOnly, PortReadOnly};
     let address =
         PCI_CONFIG_ADDRESS_ENABLE | u32::from(bus) << 16 | u32::from(device) << 11 | register;
     let mut config_address_port = PortWriteOnly::<u32>::new(PCI_CONFIG_ADDRESS_PORT);
@@ -362,6 +366,11 @@ pub fn write_config(bus: u8, device: u8, register: u32, data: u32) {
         config_address_port.write(address);
         config_data_port.write(data)
     }
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+pub fn write_config(bus: u8, device: u8, register: u32, data: u32) {
+    unimplemented!()
 }
 
 pub fn init() {

@@ -26,6 +26,8 @@ pub fn get_buffer_char() -> u8 {
     }
 }
 
+
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 extern "C" fn input_thread(_arg: usize) {
     debug!("input_thread started Thread [{}]", current_thread_id());
     loop {
@@ -37,6 +39,7 @@ extern "C" fn input_thread(_arg: usize) {
     }
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 extern "C" fn shell_thread(_arg: usize) {
     debug!("shell_thread started Thread [{}]", current_thread_id());
     #[cfg(feature = "fs")]
@@ -204,6 +207,7 @@ fn handle_run(arg: Option<&str>) {
     }
 }
 
+#[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 fn print_help() {
     println!(concat!(
         "This is unishyper,\n",

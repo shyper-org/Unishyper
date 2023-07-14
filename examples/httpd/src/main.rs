@@ -4,6 +4,8 @@
 use unishyper as _;
 
 fn main() {
+	println!("Hello!");
+	
 	let heart = vec![240, 159, 146, 151];
 	let text = format!(
 		"Hello from Unishyper {}",

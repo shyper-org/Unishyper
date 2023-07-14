@@ -7,6 +7,7 @@ use crate::libs::interrupt::*;
 
 use super::ContextFrame;
 
+core::arch::global_asm!(include_str!("start.S"));
 core::arch::global_asm!(include_str!("exception.S"));
 
 #[no_mangle]

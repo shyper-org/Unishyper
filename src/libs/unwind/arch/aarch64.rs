@@ -1,10 +1,6 @@
 use crate::arch::registers::Registers;
 use crate::arch::registers::Aarch64;
 
-extern "C" {
-    fn unwind_lander(regs: *const LandingRegs) -> !;
-}
-
 /// The calling convention dictates the following order of arguments:
 /// * first arg in `x0` register, the pointer of the UnwindingContext,
 /// * second arg in `x1` register, the stack pointer,
@@ -35,6 +31,55 @@ unsafe extern "C" fn unwind_recorder(
     registers[Aarch64::X30] = Some(saved_regs.lr);
 
     super::unwind_from_panic_stub(registers, ctx);
+}
+
+#[naked]
+pub unsafe extern "C" fn unwind_trampoline(ctx: usize) {
+    core::arch::asm!(
+        "mov x1, sp",
+        "sub sp, sp, 0xA0",
+        ".cfi_adjust_cfa_offset 0x60",
+        "stp x19, x20, [sp, #0x00]",
+        "stp x21, x22, [sp, #0x10]",
+        "stp x23, x24, [sp, #0x20]",
+        "stp x25, x26, [sp, #0x30]",
+        "stp x27, x28, [sp, #0x40]",
+        "stp x29, lr,  [sp, #0x50]",
+        ".cfi_rel_offset lr, 0x58",
+        "mov x2, sp",
+        "bl unwind_recorder",
+        "ldr lr, [sp, #0x58]",
+        ".cfi_restore lr",
+        "add sp, sp, 0x60",
+        ".cfi_adjust_cfa_offset -0x60",
+        "ret",
+        options(noreturn),
+    )
+}
+
+#[naked]
+unsafe extern "C" fn unwind_lander(regs: *const LandingRegs) -> ! {
+    core::arch::asm!(
+        "ldp x2,  x3,  [x0, #0x10]",
+        "ldp x4,  x5,  [x0, #0x20]",
+        "ldp x6,  x7,  [x0, #0x30]",
+        "ldp x8,  x9,  [x0, #0x40]",
+        "ldp x10, x11, [x0, #0x50]",
+        "ldp x12, x13, [x0, #0x60]",
+        "ldp x14, x15, [x0, #0x70]",
+        "ldp x16, x17, [x0, #0x80]",
+        "ldp x18, x19, [x0, #0x90]",
+        "ldp x20, x21, [x0, #0xA0]",
+        "ldp x22, x23, [x0, #0xB0]",
+        "ldp x24, x25, [x0, #0xC0]",
+        "ldp x26, x27, [x0, #0xD0]",
+        "ldp x28, x29, [x0, #0xE0]",
+        "ldp x30, x1,  [x0, #0xF0]",
+        "mov sp, x1",
+        "ldp x0,  x1,  [x0, #0x00]",
+        "ret",
+        options(noreturn),
+    )
 }
 
 /// **Landing** refers to the process of jumping to a handler for a stack frame,
@@ -83,52 +128,6 @@ pub unsafe fn land(regs: &Registers, landing_pad_address: u64) {
     lr.x[28] = regs[Aarch64::X28].unwrap_or(0);
 
     unwind_lander(&lr);
-}
-
-core::arch::global_asm! {
-r#"
-.global unwind_trampoline
-unwind_trampoline:
-.cfi_startproc
-     mov x1, sp
-     sub sp, sp, 0xA0
-     .cfi_adjust_cfa_offset 0x60
-     stp x19, x20, [sp, #0x00]
-     stp x21, x22, [sp, #0x10]
-     stp x23, x24, [sp, #0x20]
-     stp x25, x26, [sp, #0x30]
-     stp x27, x28, [sp, #0x40]
-     stp x29, lr,  [sp, #0x50]
-     .cfi_rel_offset lr, 0x58
-     mov x2, sp
-     bl unwind_recorder
-     ldr lr, [sp, #0x58]
-     .cfi_restore lr
-     add sp, sp, 0x60
-     .cfi_adjust_cfa_offset -0x60
-     ret
-.cfi_endproc
-.global unwind_lander
-unwind_lander:
-     ldp x2,  x3,  [x0, #0x10]
-     ldp x4,  x5,  [x0, #0x20]
-     ldp x6,  x7,  [x0, #0x30]
-     ldp x8,  x9,  [x0, #0x40]
-     ldp x10, x11, [x0, #0x50]
-     ldp x12, x13, [x0, #0x60]
-     ldp x14, x15, [x0, #0x70]
-     ldp x16, x17, [x0, #0x80]
-     ldp x18, x19, [x0, #0x90]
-     ldp x20, x21, [x0, #0xA0]
-     ldp x22, x23, [x0, #0xB0]
-     ldp x24, x25, [x0, #0xC0]
-     ldp x26, x27, [x0, #0xD0]
-     ldp x28, x29, [x0, #0xE0]
-     ldp x30, x1,  [x0, #0xF0]
-     mov sp, x1
-     ldp x0,  x1,  [x0, #0x00]
-     ret
-"#
 }
 
 #[repr(C)]

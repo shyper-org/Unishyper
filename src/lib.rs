@@ -6,13 +6,14 @@
 #![feature(format_args_nl)]
 #![feature(lang_items)]
 // warning: the feature `const_btree_new` has been stable since 1.66.0 and no longer requires an attribute to enable
-#![cfg_attr(not(feature = "std"), feature(const_btree_new))]
+// warning: the feature `const_btree_new` has been partially stabilized since 1.66.0 and is succeeded by the feature `const_btree_len`
+#![cfg_attr(not(feature = "std"), feature(const_btree_len))]
 #![feature(allocator_api)]
 #![feature(never_type)]
 #![feature(asm_const)]
-#![feature(drain_filter)]
+// #![feature(drain_filter)]
 // warning: the feature `map_first_last` has been stable since 1.66.0 and no longer requires an attribute to enable
-#![cfg_attr(not(feature = "std"), feature(map_first_last))]
+// #![cfg_attr(not(feature = "std"), feature(map_first_last))]
 // use of unstable library feature 'step_trait': recently redesigned
 // see issue #42168 <https://github.com/rust-lang/rust/issues/42168> for more information
 // add `#![feature(step_trait)]` to the crate attributes to enable
@@ -40,14 +41,13 @@
 #![cfg_attr(target_arch = "x86_64", feature(abi_x86_interrupt))]
 // error: `MaybeUninit::<T>::zeroed` is not yet stable as a const fn
 #![feature(const_maybe_uninit_zeroed)]
-#![feature(asm_sym)]
+// #![feature(asm_sym)]
 #![feature(naked_functions)]
 // note: see issue #76001 <https://github.com/rust-lang/rust/issues/76001> for more information
 #![feature(inline_const)]
-
 // note: see issue #71941 <https://github.com/rust-lang/rust/issues/71941> for more information
 // help: add `#![feature(nonnull_slice_from_raw_parts)]` to the crate attributes to enable
-#![feature(nonnull_slice_from_raw_parts)]
+// #![feature(nonnull_slice_from_raw_parts)]
 #![feature(alloc_layout_extra)]
 #![feature(slice_ptr_get)]
 
@@ -80,8 +80,11 @@ pub use exported::*;
 pub use arch::irq::disable as irq_disable;
 pub use mm::heap::Global;
 
+pub use panic::random_panic;
+
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
+    arch::Arch::exception_init();
     if core_id == 0 {
         // Init serial output.
         #[cfg(feature = "serial")]
@@ -97,8 +100,6 @@ pub extern "C" fn loader_main(core_id: usize) {
         #[cfg(feature = "smp")]
         board::launch_other_cores();
     }
-
-    arch::Arch::exception_init();
 
     board::init_per_core();
     info!("per core init ok on core [{}]", core_id);

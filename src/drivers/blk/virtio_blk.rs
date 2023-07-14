@@ -259,6 +259,7 @@ impl BlkInterface for VirtioBlkDriver {
             }
         }
     }
+
     fn handle_interrupt(&mut self) -> bool {
         trace!("handle interrupt 32 + {}", self.irq);
 

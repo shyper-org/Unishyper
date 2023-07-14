@@ -36,8 +36,9 @@ use crate::drivers::virtio::mmio::get_network_driver;
 use crate::drivers::pci::get_network_driver;
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 
+#[cfg(not(target_arch = "x86_64"))]
 pub fn network_irqhandler() {
-    debug!("Receive network interrupt");
+    trace!("Receive network interrupt");
 
     let check_scheduler = match get_network_driver() {
         Some(driver) => driver.lock().handle_interrupt(),
@@ -48,6 +49,29 @@ pub fn network_irqhandler() {
     };
 
     if check_scheduler {
+        crate::libs::net::interface::network_poll();
+        crate::libs::thread::thread_yield();
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+use x86_64::structures::idt::InterruptStackFrame;
+
+#[cfg(target_arch = "x86_64")]
+pub extern "x86-interrupt" fn network_irqhandler(_stack_frame: InterruptStackFrame) {
+    trace!("Receive network interrupt!!!");
+    use crate::libs::interrupt::InterruptController;
+    crate::drivers::INTERRUPT_CONTROLLER.finish(0);
+    // apic::eoi();
+
+    let has_packet = if let Some(driver) = get_network_driver() {
+        driver.lock().handle_interrupt()
+    } else {
+        warn!("Unable to handle interrupt!");
+        false
+    };
+
+    if has_packet {
         crate::libs::net::interface::network_poll();
         crate::libs::thread::thread_yield();
     }

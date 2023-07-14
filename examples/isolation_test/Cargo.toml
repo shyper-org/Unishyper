@@ -10,6 +10,9 @@ authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 path = "../../"
 default-features = false
 
+[dependencies]
+inject = { path = "../../inject" }
+
 [features]
 default = ["qemu"]
 qemu = [

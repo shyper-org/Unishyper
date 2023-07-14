@@ -284,7 +284,7 @@ impl SplitVq {
         if !self.dropped.borrow().is_empty() {
             self.dropped
                 .borrow_mut()
-                .drain_filter(|tkn| tkn.state == TransferState::Finished);
+                .retain(|tkn| tkn.state != TransferState::Finished);
         }
     }
 

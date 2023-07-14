@@ -141,7 +141,7 @@ impl Core {
         // let end = crate::libs::timer::current_cycle();
         // debug!("pop next to scheduler cycle {}", end - start);
 
-        trace!("cpu schedule\nprev {:?}\nnext {:?}", prev, next);
+        // trace!("cpu schedule\nprev {:?}\nnext {:?}", prev, next);
 
         if prev.eq(&next) {
             return;

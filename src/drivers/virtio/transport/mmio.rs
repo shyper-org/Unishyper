@@ -28,7 +28,6 @@ use crate::drivers::net::network_irqhandler;
 use crate::drivers::blk::virtio_blk::VirtioBlkDriver;
 #[cfg(feature = "fat")]
 use crate::drivers::blk::blk_irqhandler;
-// use crate::drivers::blk::;
 
 /// Virtio device ID's
 /// See Virtio specification v1.1. - 5
@@ -365,6 +364,8 @@ pub fn init_device(
                 Ok(virt_blk_drv) => {
                     debug!("Virtio blk driver initialized.");
                     // Install interrupt handler
+                    // Currently we use polling IO.
+                    // Todo: interrupt driven IO.
                     irq_install_handler(irq_no, blk_irqhandler, "virtio_blk");
                     Ok(VirtioDriver::Blk(virt_blk_drv))
                 }

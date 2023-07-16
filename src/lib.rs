@@ -29,7 +29,7 @@
 // error[E0658]: use of unstable library feature 'atomic_mut_ptr': recently added
 // note: see issue #66893 <https://github.com/rust-lang/rust/issues/66893> for more information
 // help: add `#![feature(atomic_mut_ptr)]` to the crate attributes to enable
-#![cfg_attr(feature = "std", feature(atomic_mut_ptr))]
+// #![cfg_attr(feature = "std", feature(atomic_mut_ptr))]
 // error[E0658]: use of unstable library feature 'strict_provenance'
 // note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
 // help: add `#![feature(strict_provenance)]` to the crate attributes to enable
@@ -37,7 +37,7 @@
 // error[E0658]: use of unstable library feature 'is_some_and'
 // note: see issue #93050 <https://github.com/rust-lang/rust/issues/93050> for more information
 // help: add `#![feature(is_some_and)]` to the crate attributes to enable
-#![cfg_attr(feature = "std", feature(is_some_and))]
+// #![cfg_attr(feature = "std", feature(is_some_and))]
 #![cfg_attr(target_arch = "x86_64", feature(abi_x86_interrupt))]
 // error: `MaybeUninit::<T>::zeroed` is not yet stable as a const fn
 #![feature(const_maybe_uninit_zeroed)]

@@ -21,7 +21,7 @@ OBJDUMP := rust-objdump
 .PHONY: build clean emu
 
 build:
-	cargo +stage1 build -Zbuild-std=std,panic_unwind --target aarch64-unknown-shyper ${CARGO_FLAGS} 
+	cargo +shyper build -Zbuild-std=std,panic_unwind --target aarch64-unknown-shyper ${CARGO_FLAGS} 
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
 

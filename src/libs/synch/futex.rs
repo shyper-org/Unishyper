@@ -62,7 +62,7 @@ pub fn futex_wait(address: &AtomicU32, expected: u32, timeout: Option<usize>, fl
         }
     };
     parking_lot
-        .entry(address.as_mut_ptr().addr())
+        .entry(address.as_ptr().addr())
         .or_default()
         .push_back(current_thread.clone());
     drop(parking_lot);
@@ -74,7 +74,7 @@ pub fn futex_wait(address: &AtomicU32, expected: u32, timeout: Option<usize>, fl
         if wakeup_time.is_some_and(|t| t <= current_us()) {
             let mut wakeup = true;
             // Timeout occurred, try to remove ourselves from the waiting queue.
-            if let Entry::Occupied(mut queue) = parking_lot.entry(address.as_mut_ptr().addr()) {
+            if let Entry::Occupied(mut queue) = parking_lot.entry(address.as_ptr().addr()) {
                 // If we are not in the waking queue, this must have been a wakeup.
                 let vec_queue = queue.get_mut();
                 let mut i = 0;
@@ -99,7 +99,7 @@ pub fn futex_wait(address: &AtomicU32, expected: u32, timeout: Option<usize>, fl
         } else {
             // If we are not in the waking queue, this must have been a wakeup.
             let wakeup = !parking_lot
-                .get(&address.as_mut_ptr().addr())
+                .get(&address.as_ptr().addr())
                 .is_some_and(|queue| queue.contains(&current_thread));
 
             if wakeup {
@@ -126,7 +126,7 @@ pub fn futex_wake(address: &AtomicU32, count: i32) -> i32 {
     }
 
     let mut parking_lot = PARKING_LOT.lock();
-    let mut queue = match parking_lot.entry(address.as_mut_ptr().addr()) {
+    let mut queue = match parking_lot.entry(address.as_ptr().addr()) {
         Entry::Occupied(entry) => entry,
         Entry::Vacant(_) => return 0,
     };

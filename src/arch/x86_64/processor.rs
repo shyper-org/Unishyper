@@ -20,7 +20,7 @@ pub fn configure() {
         debug!("Processor [{}] supports pku", core_id);
         unsafe {
             Cr4::update(|f| f.insert(Cr4Flags::PROTECTION_KEY_USER));
-            Cr4::update(|f| f.insert(Cr4Flags::PROTECTION_KEY_SUPERVISOR));
+            // Cr4::update(|f| f.insert(Cr4Flags::PROTECTION_KEY_SUPERVISOR));
         }
     }
     if extended_feature_info.has_fsgsbase() {

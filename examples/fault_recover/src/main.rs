@@ -23,5 +23,4 @@ fn main() {
     thread_spawn(resource::test_recover, 123);
     // thread_spawn(sem::semaphore_test, 123);
     // thread_spawn(fs::test_fs, 123);
-    exit();
 }

@@ -242,13 +242,13 @@ impl AsyncSocket {
     }
 
     pub async fn accept(&self, port: u16) -> Result<(IpAddress, u16), Error> {
-        info!("AsyncSocket accept");
+        debug!("AsyncSocket accept");
         self.with(|socket| socket.listen(port).map_err(|_| Error::Illegal))?;
 
         future::poll_fn(|cx| {
             self.with(|socket| {
                 if socket.is_active() {
-                    info!("AsyncSocket is_active state {}", socket.state());
+                    debug!("AsyncSocket is_active state {}", socket.state());
                     Poll::Ready(Ok(()))
                 } else {
                     match socket.state() {
@@ -269,7 +269,7 @@ impl AsyncSocket {
         let mut guard = NIC.lock();
         let nic = guard.as_nic_mut().map_err(|_| Error::Illegal)?;
         let socket = nic.iface.get_socket::<TcpSocket<'_>>(self.0);
-        info!("AsyncSocket accept state {}", socket.state());
+        debug!("AsyncSocket accept state {}", socket.state());
         socket.set_keep_alive(Some(Duration::from_millis(DEFAULT_KEEP_ALIVE_INTERVAL)));
         let endpoint = socket.remote_endpoint();
 

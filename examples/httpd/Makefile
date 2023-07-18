@@ -29,7 +29,7 @@ ifeq ($(ARCH), x86_64)
 	cd ${RBOOT_DIR} && make build
 endif
 
-build:
+build: bootloader
 	cargo +shyper build -Zbuild-std=std,panic_unwind --target ${ARCH}-unknown-shyper ${CARGO_FLAGS} 
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
@@ -74,7 +74,7 @@ QEMU_CMD := ${QEMU_CMD} -device loader,file=${KERNEL},addr=0xc0000000,force-raw=
 endif
 ifeq ($(ARCH), x86_64)
 QEMU_CMD := ${QEMU_CMD} \
-			-drive if=pflash,format=raw,readonly,file=$(OVMF) \
+			-drive if=pflash,format=raw,readonly=on,file=$(OVMF) \
 			-drive format=raw,file=fat:rw:$(ESP) \
 			-device isa-debug-exit,iobase=0xf4,iosize=0x04
 endif

@@ -55,13 +55,6 @@ extern "C" fn latency_server(_arg: usize) {
 #[no_mangle]
 fn main() {
     println!("********enter net demo server main******");
-
-    network_init();
-
-    println!("********network_init finished ******");
-
     let tid = thread_spawn(latency_server, 123);
     println!("Spawn user network latency_server thread with id {}", tid);
-
-    exit();
 }

@@ -60,5 +60,4 @@ fn main() {
             Ok(s) => println!("> {}", s),
         }
     }
-    exit();
 }

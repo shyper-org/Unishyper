@@ -8,8 +8,3 @@ pub mod interface;
 
 pub use smoltcp::wire::IpAddress;
 pub use interface::*;
-
-pub fn init() -> i32 {
-    interface::network_init();
-    0
-}

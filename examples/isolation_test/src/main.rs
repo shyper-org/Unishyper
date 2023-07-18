@@ -59,6 +59,5 @@ fn main() {
     loop {
         thread_yield();
         println!("Back to main thread, test var is {}", test_var);
-        exit();
     }
 }

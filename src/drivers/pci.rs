@@ -355,7 +355,7 @@ pub fn read_config(bus: u8, device: u8, register: u32) -> u32 {
 
 #[cfg(target_arch = "x86_64")]
 pub fn write_config(bus: u8, device: u8, register: u32, data: u32) {
-    use x86_64::instructions::port::{PortWriteOnly, PortReadOnly};
+    use x86_64::instructions::port::PortWriteOnly;
     let address =
         PCI_CONFIG_ADDRESS_ENABLE | u32::from(bus) << 16 | u32::from(device) << 11 | register;
     let mut config_address_port = PortWriteOnly::<u32>::new(PCI_CONFIG_ADDRESS_PORT);

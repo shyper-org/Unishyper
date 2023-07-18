@@ -15,11 +15,8 @@ extern crate alloc;
 extern "C" fn netdemo_server(_arg: usize) {
     println!("Server for latency test running, listening for connection on 0.0.0.0:4444");
 
-    let listener = TcpListener::bind(SocketAddr::new(
-        IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-        4444,
-    ))
-    .unwrap();
+    let listener =
+        TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 4444)).unwrap();
 
     let n_bytes = 1048576;
     let n_rounds = 1000;
@@ -80,13 +77,6 @@ extern "C" fn netdemo_server(_arg: usize) {
 #[no_mangle]
 fn main() {
     println!("********enter net demo server main******");
-
-    network_init();
-
-    println!("********network_init finished ******");
-
     let tid = thread_spawn(netdemo_server, 123);
     println!("Spawn user network server thread with id {}", tid);
-
-    exit();
 }

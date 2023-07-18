@@ -634,7 +634,7 @@ pub fn current_thread() -> Result<Thread, Error> {
 /// Actively destroy current running thread.
 /// After thread_exit is called, current thread's will be inserted into THREAD_EXIT_QUEUE and be dropped in the future.
 /// This function will call `thread_yield` to schedule to next active thread.
-pub fn thread_exit() {
+pub fn thread_exit() -> !{
     crate::arch::irq::disable();
     let mut t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
     debug!("thread_exit on Thread [{}]", t.tid());
@@ -708,15 +708,14 @@ fn _inner_spawn(
         );
 
         // Use "thread_start" as a wrapper, which automatically calls thread_exit when thread is finished.
-        extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> usize {
+        extern "C" fn thread_start(func: extern "C" fn(usize), arg: usize) -> ! {
             #[cfg(feature = "unwind")]
             {
                 thread_wrapper(func, arg);
             }
             #[cfg(not(feature = "unwind"))]
             func(arg);
-            thread_exit();
-            0
+            thread_exit()
         }
 
         // Choose affinity core according to selector.

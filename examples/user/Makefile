@@ -2,6 +2,8 @@ ARCH ?= aarch64
 PROFILE ?= release
 MACHINE ?= qemu
 
+KVM ?= false
+
 export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
 
 # Cargo flags.
@@ -74,7 +76,7 @@ endif
 
 ifeq ($(ARCH), x86_64)
 QEMU_CMD := ${QEMU_CMD} \
-			-drive if=pflash,format=raw,readonly,file=$(OVMF) \
+			-drive if=pflash,format=raw,readonly=on,file=$(OVMF) \
 			-drive format=raw,file=fat:rw:$(ESP) \
 			-device isa-debug-exit,iobase=0xf4,iosize=0x04
 endif

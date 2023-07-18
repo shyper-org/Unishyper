@@ -4,12 +4,12 @@ use alloc::{fmt, str};
 use core::convert::TryFrom;
 use core::time::Duration;
 use ioslice::{IoSlice, IoSliceMut};
-use no_std_net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+pub use no_std_net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 
 pub type IoResult<T> = core::result::Result<T, &'static str>;
 
 use crate::libs::net::{
-    self, tcplistener, tcpstream, Handle,
+    tcplistener, tcpstream, Handle,
     IpAddress::{Ipv4, Ipv6},
 };
 
@@ -17,10 +17,6 @@ pub use crate::libs::net::Shutdown;
 
 fn unsupported() -> ! {
     panic!("unsupported function!!\n")
-}
-
-pub extern "C" fn network_init() {
-    net::init();
 }
 
 #[derive(Debug, Clone)]

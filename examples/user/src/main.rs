@@ -16,7 +16,5 @@ extern crate alloc;
 #[no_mangle]
 fn main() {
     println!("Hello world!");
-
     // test::run_tests();
-    exit();
 }

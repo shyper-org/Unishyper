@@ -84,12 +84,17 @@ pub use panic::random_panic;
 
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
-    arch::Arch::exception_init();
+    // Init output.
     if core_id == 0 {
         // Init serial output.
         #[cfg(feature = "serial")]
         drivers::uart::init();
         logger::init();
+    }
+
+    arch::Arch::exception_init();
+
+    if core_id == 0 {
         libs::timer::init();
         mm::heap::init();
         mm::allocator_init();
@@ -110,18 +115,26 @@ pub extern "C" fn loader_main(core_id: usize) {
     if core_id == 0 {
         board::init();
         info!("board init ok");
-        // Init user first thread on core 0 by default.
-        extern "C" {
-            #[cfg(not(feature = "std"))]
+        extern "Rust" {
             fn main(arg: usize) -> !;
-            #[cfg(feature = "std")]
-            fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
         }
-        #[cfg(not(feature = "std"))]
-        let start = main as usize;
-        #[cfg(feature = "std")]
-        let start = runtime_entry as usize;
-        let t = libs::thread::thread_alloc(None, Some(core_id), start, 123 as usize, 0, true);
+        let start = if cfg!(feature = "std") {
+            extern "C" {
+                fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
+            }
+            runtime_entry as usize
+        } else {
+            #[cfg(feature = "tcp")]
+            crate::libs::net::network_init();
+            
+            fn main_wrapper(main: extern "C" fn(usize), arg: usize) -> ! {
+                main(arg);
+                exit()
+            }
+            main_wrapper as usize
+        };
+        // Init user first thread on core 0 by default.
+        let t = libs::thread::thread_alloc(None, Some(core_id), start, main as usize, 123, true);
         libs::thread::thread_wake(&t);
         t.set_in_yield_context();
         arch::Arch::set_thread_id(t.tid() as u64);

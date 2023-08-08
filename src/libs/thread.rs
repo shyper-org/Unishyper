@@ -2,6 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::collections::VecDeque;
 use alloc::string::String;
 use alloc::sync::Arc;
+use alloc::boxed::Box;
 use core::fmt;
 use core::mem;
 use core::sync::atomic::AtomicUsize;
@@ -21,7 +22,34 @@ use crate::mm::stack::Stack;
 use crate::mm::paging::MappedRegion;
 use crate::util::{round_up, irqsave};
 
-pub type Tid = usize;
+#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug, Ord, PartialOrd)]
+pub struct Tid(usize);
+
+impl Tid {
+    /// Alloc global unique id for new thread.
+    pub fn new() -> Self {
+        static THREAD_UUID_ALLOCATOR: AtomicUsize = AtomicUsize::new(100);
+        Self(THREAD_UUID_ALLOCATOR.fetch_add(1, Ordering::Relaxed))
+    }
+
+    /// Convert the task ID to a `u64`.
+    pub const fn as_u64(&self) -> u64 {
+        self.0 as u64
+    }
+}
+
+impl From<usize> for Tid {
+    fn from(tid: usize) -> Self {
+        Tid(tid)
+    }
+}
+
+impl core::fmt::Display for Tid {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "T[{}]", self.0)?;
+        Ok(())
+    }
+}
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum PrivilegedLevel {
@@ -59,7 +87,7 @@ impl fmt::Display for Status {
 
 #[derive(Debug)]
 struct Inner {
-    uuid: usize,
+    uuid: Tid,
     level: PrivilegedLevel,
     #[allow(unused)]
     stack: Stack,
@@ -116,7 +144,7 @@ impl PartialEq for Thread {
 impl Eq for Thread {}
 // impl Drop for Thread {
 //     fn drop(&mut self) {
-//         debug!("Drop Thread [{}]'s struct, TCB Arc stong count {}", self.tid(), Arc::strong_count(&self.0));
+//         debug!("Drop Thread [{}]'s struct, TCB Arc stong count {}", self.id(), Arc::strong_count(&self.0));
 //     }
 // }
 
@@ -130,9 +158,64 @@ impl fmt::Debug for Thread {
     }
 }
 
+extern "C" fn thread_entry(entry: usize) -> ! {
+    debug!("thread_entry: {:#x}", entry);
+    unsafe {
+        Box::from_raw(entry as *mut Box<dyn FnOnce()>)();
+    }
+    thread_exit()
+}
+
+/// Spawns a new task with the given parameters.
+///
+/// Returns the task reference.
+pub fn spawn_raw(f: Box<dyn FnOnce()>, name: Option<String>, stack_size: usize) -> Thread {
+    let t = Thread::new(f, name, stack_size);
+    thread_wake(&t);
+    t
+}
+
 impl Thread {
+    pub(crate) fn new(f: Box<dyn FnOnce()>, _name: Option<String>, _stack_size: usize) -> Thread {
+        let entry = Box::into_raw(Box::new(f));
+        thread_alloc(
+            None,
+            Some(0),
+            thread_entry as usize,
+            entry as *mut _ as usize,
+            0,
+            false,
+        )
+    }
+
+    pub(crate) fn join(&self) {
+        let current_thread = cpu().running_thread().unwrap_or_else(|| {
+            panic!("No Running Thread!");
+        });
+        debug!(
+            "Thread [{}] is waiting for thread [{}]",
+            current_thread.id(),
+            self.id()
+        );
+        match THREAD_WAITING_QUEUE.lock().get_mut(&self.id()) {
+            Some(queue) => {
+                let t = &current_thread;
+                let reason = Status::Blocked;
+                assert_ne!(reason, Status::Runnable);
+                let mut status = t.0.inner_mut.status.lock();
+                *status = reason;
+                queue.push_back(t.clone());
+            }
+            None => {
+                warn!("Thread{} have no waiting queue!!!", self.id());
+                return;
+            }
+        }
+        thread_yield();
+    }
+
     /// Get thread tid, which is globally unique.
-    pub fn tid(&self) -> Tid {
+    pub fn id(&self) -> Tid {
         self.0.inner.uuid
     }
 
@@ -218,13 +301,6 @@ impl Thread {
     }
 }
 
-static THREAD_UUID_ALLOCATOR: AtomicUsize = AtomicUsize::new(100);
-
-/// Alloc global unique id for new thread.
-fn new_tid() -> Tid {
-    THREAD_UUID_ALLOCATOR.fetch_add(1, Ordering::Relaxed)
-}
-
 /// Store thread IDs and its corresponding thread struct.
 static THREAD_MAP: Mutex<BTreeMap<Tid, Thread>> = Mutex::new(BTreeMap::new());
 
@@ -293,7 +369,10 @@ pub fn thread_alloc(
 ) -> Thread {
     // Generally it should call the new_tid function to get a newly generated id,
     // During thread_restart, the reallocated thread may use its original id.
-    let id = id.unwrap_or(new_tid());
+    let id = match id {
+        Some(id) => Tid::from(id),
+        None => Tid::new(),
+    };
 
     // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
@@ -326,7 +405,7 @@ pub fn thread_alloc(
             .as_mut_ptr::<ContextFrame>()
             .as_mut()
             .unwrap();
-        context_frame.init(id);
+        context_frame.init(id.as_u64() as usize);
         context_frame.set_exception_pc(start);
         context_frame.set_gpr(0, entry);
         context_frame.set_gpr(1, arg);
@@ -389,17 +468,17 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 /// Remove it from THREAD_NAME_MAP and THREAD_MAP.
 #[inline(always)]
 pub fn thread_destroy(t: &Thread) {
-    debug!("Destroy t{}", t.tid());
+    debug!("Destroy thread {}", t.id());
     if let Some(current_thread) = cpu().running_thread() {
-        if t.tid() == current_thread.tid() {
+        if t.id() == current_thread.id() {
             cpu().set_running_thread(None);
         }
     }
     let mut name_map = THREAD_NAME_MAP.lock();
-    name_map.remove(&t.tid());
+    name_map.remove(&t.id());
     let mut map = THREAD_MAP.lock();
-    map.remove(&t.tid());
-    THREAD_WAITING_QUEUE.lock().remove(&t.tid());
+    map.remove(&t.id());
+    THREAD_WAITING_QUEUE.lock().remove(&t.id());
 }
 
 /// Destory target thread by thread id.
@@ -437,7 +516,7 @@ pub fn thread_wake(t: &Thread) {
     target_cpu.scheduler().add(t.clone());
     trace!(
         "thread_wake set thread [{}] Runnable on core [{}]",
-        t.tid(),
+        t.id(),
         affinity_core_id
     );
 }
@@ -459,7 +538,7 @@ pub fn thread_wake_by_tid(tid: Tid) {
 /// Wake up target thread as the next scheduled thread.
 /// Set its status as Runnable and add it to the front of scheduler's queue.
 pub fn thread_wake_to_front(t: &Thread) {
-    trace!("thread_wake set thread [{}] as next thread", t.tid());
+    trace!("thread_wake set thread [{}] as next thread", t.id());
     let mut status = t.0.inner_mut.status.lock();
     *status = Status::Runnable;
     let affinity_core_id = match t.affinity_core() {
@@ -489,7 +568,7 @@ pub fn thread_wake_to_front_by_tid(tid: Tid) {
 pub fn thread_block_current() {
     if let Some(current_thread) = cpu().running_thread() {
         irqsave(|| {
-            debug!("Thread[{}]  thread_block_current", current_thread.tid());
+            debug!("Thread[{}]  thread_block_current", current_thread.id());
             let t = &current_thread;
             let reason = Status::Blocked;
             assert_ne!(reason, Status::Runnable);
@@ -530,7 +609,7 @@ pub fn thread_block_current_with_timeout(timeout_ms: usize) {
         irqsave(|| {
             warn!(
                 "Thread[{}] thread_block_current_with_timeout {} milliseconds",
-                current_thread.tid(),
+                current_thread.id(),
                 timeout_ms
             );
             let t = &current_thread;
@@ -552,7 +631,7 @@ pub fn thread_join(id: Tid) {
     if let Some(current_thread) = cpu().running_thread() {
         debug!(
             "Thread [{}] is waiting for thread [{}]",
-            current_thread.tid(),
+            current_thread.id(),
             id
         );
         {
@@ -591,7 +670,7 @@ fn handle_waiting_threads(id: Tid) {
 pub fn handle_blocked_threads() {
     use crate::libs::timer::current_ms;
     while let Some(t) = cpu().scheduler().get_wakeup_thread_by_time(current_ms()) {
-        debug!("handle_blocked_threads: thread [{}] is wake up", t.tid());
+        debug!("handle_blocked_threads: thread [{}] is wake up", t.id());
         thread_wake(&t);
     }
 }
@@ -618,8 +697,8 @@ pub fn thread_yield() {
 /// Get current running thread id, return 0 if there is no running thread.
 pub fn current_thread_id() -> Tid {
     match cpu().running_thread() {
-        None => 0,
-        Some(t) => t.tid(),
+        None => Tid::from(0),
+        Some(t) => t.id(),
     }
 }
 
@@ -634,17 +713,17 @@ pub fn current_thread() -> Result<Thread, Error> {
 /// Actively destroy current running thread.
 /// After thread_exit is called, current thread's will be inserted into THREAD_EXIT_QUEUE and be dropped in the future.
 /// This function will call `thread_yield` to schedule to next active thread.
-pub fn thread_exit() -> !{
+pub fn thread_exit() -> ! {
     crate::arch::irq::disable();
     let mut t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
-    debug!("thread_exit on Thread [{}]", t.tid());
+    debug!("thread_exit on Thread [{}]", t.id());
 
-    handle_waiting_threads(t.tid());
+    handle_waiting_threads(t.id());
 
     t.set_exited();
     // cpu().set_running_thread(Some(t.clone()));
     // if let Some(current_thread) = cpu().running_thread() {
-    //     if t.tid() == current_thread.tid() {
+    //     if t.id() == current_thread.id() {
     //         cpu().set_running_thread(None);
     //     }
     // }
@@ -698,7 +777,7 @@ fn _inner_spawn(
     name: Option<String>,
     selector: isize,
 ) -> Tid {
-    let mut tid = 0 as Tid;
+    let mut tid = Tid(0);
     irqsave(|| {
         trace!(
             "thread_spawn func: {:x} arg: {} selector [{}]",
@@ -746,7 +825,7 @@ fn _inner_spawn(
         if running {
             thread_wake(&child_thread);
         }
-        tid = child_thread.tid();
+        tid = child_thread.id();
         // If appointing thread name, insert it into THREAD_NAME_MAP.
         if let Some(name) = name {
             let mut map = THREAD_NAME_MAP.lock();

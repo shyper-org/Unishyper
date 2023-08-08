@@ -50,6 +50,12 @@
 // #![feature(nonnull_slice_from_raw_parts)]
 #![feature(alloc_layout_extra)]
 #![feature(slice_ptr_get)]
+// error[E0658]: use of unstable library feature 'variant_count'
+// note: see issue #73662 <https://github.com/rust-lang/rust/issues/73662> for more information
+#![feature(variant_count)]
+// error[E0658]: use of unstable library feature 'ip_in_core'
+// see issue #108443 <https://github.com/rust-lang/rust/issues/108443> for more information
+#![feature(ip_in_core)]
 
 #[macro_use]
 extern crate log;
@@ -137,7 +143,7 @@ pub extern "C" fn loader_main(core_id: usize) {
         let t = libs::thread::thread_alloc(None, Some(core_id), start, main as usize, 123, true);
         libs::thread::thread_wake(&t);
         t.set_in_yield_context();
-        arch::Arch::set_thread_id(t.tid() as u64);
+        arch::Arch::set_thread_id(t.id().as_u64());
         arch::Arch::set_tls_ptr(t.get_tls_ptr() as u64);
         libs::cpu::cpu().set_running_thread(Some(t));
         // Init fs if configured.

@@ -1,0 +1,30 @@
+[package]
+name = "threading"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.unishyper]
+path = "../../"
+default-features = false
+
+[features]
+default = ["qemu"]
+qemu = [
+    # "alloc",
+    "unishyper/alloc",
+    # "unishyper/smp",
+    # "unishyper/scheduler-percore",
+    "unishyper/qemu",
+    "unishyper/serial",
+    # "unishyper/mpk",
+    # "unishyper/unwind",
+    # "unishyper/terminal",
+    # "unishyper/fs",
+]
+
+# [profile.release]
+# debug = true
+# opt-level = 's'  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
+# lto = true

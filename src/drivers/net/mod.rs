@@ -49,7 +49,7 @@ pub fn network_irqhandler() {
     };
 
     if check_scheduler {
-        crate::libs::net::interface::network_poll();
+        crate::libs::net::network_poll();
         crate::libs::thread::thread_yield();
     }
 }
@@ -72,7 +72,7 @@ pub extern "x86-interrupt" fn network_irqhandler(_stack_frame: InterruptStackFra
     };
 
     if has_packet {
-        crate::libs::net::interface::network_poll();
+        crate::libs::net::network_poll();
         crate::libs::thread::thread_yield();
     }
 }

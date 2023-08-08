@@ -79,7 +79,7 @@ pub fn futex_wait(address: &AtomicU32, expected: u32, timeout: Option<usize>, fl
                 let vec_queue = queue.get_mut();
                 let mut i = 0;
                 while i != vec_queue.len() {
-                    if vec_queue[i].tid() == current_thread.tid() {
+                    if vec_queue[i].id() == current_thread.id() {
                         vec_queue.remove(i);
                         wakeup = false;
                     } else {

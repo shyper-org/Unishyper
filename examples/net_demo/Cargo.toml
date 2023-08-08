@@ -6,9 +6,6 @@ version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-no-std-net = "0.6.0"
-
 [dependencies.unishyper]
 default-features = false
 path = "../../"
@@ -16,7 +13,6 @@ path = "../../"
 [features]
 default = ["qemu"]
 qemu = [
-    "alloc",
     "unishyper/alloc",
     "unishyper/tcp",
     # "unishyper/pci",
@@ -25,7 +21,6 @@ qemu = [
     # "unishyper/unwind",
     ]
 shyper = [
-    "alloc",
     "unishyper/alloc", 
     "unishyper/tcp", 
     "unishyper/shyper",
@@ -49,6 +44,10 @@ path = "src/tcp-latency/server.rs"
 name = "client-latency"
 path = "src/tcp-latency/client.rs"
 
-[profile.release]
-# opt-level = 's'
-lto = true
+[[bin]]
+name = "udp-server"
+path = "src/udp-server.rs"
+
+# [profile.release]
+# # opt-level = 's'
+# lto = true

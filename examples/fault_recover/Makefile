@@ -18,7 +18,7 @@ CARGO_FLAGS := ${CARGO_FLAGS} --features "${MACHINE}"
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/fault_recover
+KERNEL := ../../target/${ARCH}${MACHINE}/${PROFILE}/fault_recover
 
 # Arch-specific tools
 OBJCOPY := aarch64-elf-objcopy

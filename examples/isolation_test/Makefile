@@ -15,7 +15,7 @@ CARGO_FLAGS := ${CARGO_FLAGS} --features "${MACHINE}"
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL_DIR := target/${ARCH}${MACHINE}/${PROFILE}
+KERNEL_DIR := ../../target/${ARCH}${MACHINE}/${PROFILE}
 KERNEL := ${KERNEL_DIR}/isolation_test
 RBOOT_DIR := ../../rboot
 ESP := $(KERNEL_DIR)/esp

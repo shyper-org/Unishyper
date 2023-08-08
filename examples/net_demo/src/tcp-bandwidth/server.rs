@@ -5,9 +5,11 @@
 #![allow(unused_imports)]
 
 use alloc::vec;
-use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 
 use unishyper::*;
+use unishyper::shyperstd as std;
+use std::net::{TcpListener, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 
 #[macro_use]
 extern crate alloc;

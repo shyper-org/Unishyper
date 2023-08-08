@@ -30,7 +30,7 @@ tx2 = [
     # "unishyper/terminal",
     ]
 
-[profile.release]
-debug = true
-opt-level = 3  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
-lto = true
+# [profile.release]
+# debug = true
+# opt-level = 3  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
+# lto = true

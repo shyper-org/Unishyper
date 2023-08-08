@@ -17,7 +17,7 @@ pub fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     //     if current_thread().is_ok() {
     //         error!(
     //             "PANIC on Thread [{}]: {}",
-    //             current_thread().unwrap().tid(),
+    //             current_thread().unwrap().id(),
     //             message
     //         );
     //     } else {

@@ -179,7 +179,7 @@ fn handle_kill(arg: Option<&str>) {
     };
     match arg {
         Ok(tid) => {
-            crate::libs::thread::thread_destroy_by_tid(tid);
+            crate::libs::thread::thread_destroy_by_tid(tid.into());
         }
         Err(_) => {
             println!("[warning] illegal argument in kill, please input \"help\" for more info.");
@@ -199,7 +199,7 @@ fn handle_run(arg: Option<&str>) {
     };
     match arg {
         Ok(tid) => {
-            crate::libs::thread::thread_wake_to_front_by_tid(tid);
+            crate::libs::thread::thread_wake_to_front_by_tid(tid.into());
         }
         Err(_) => {
             println!("[warning] illegal argument in run, please input \"help\" for more info.");

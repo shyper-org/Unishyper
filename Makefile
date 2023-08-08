@@ -2,77 +2,46 @@ ARCH ?= aarch64
 MACHINE ?= qemu
 PROFILE ?= release
 
+LOG ?= info
+
+APP ?= user
+
+APP_BIN ?= ${APP}
+
 # Panic Inject Function
 export PI
 
-# NOTE: this is to deal with `(signal: 11, SIGSEGV: invalid memory reference)`
-# https://github.com/rust-lang/rust/issues/73677
-RUSTFLAGS := -C llvm-args=-global-isel=false
+EXAMPLE_DIRS := $(shell find examples -maxdepth 1 -mindepth 1 -type d)
 
-# NOTE: generate frame pointer for every function
-export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
+ifeq ($(wildcard examples/${APP}),)
+  	$(error Dir "examples/${APP}" not exist, existing examples contain [${EXAMPLE_DIRS}], or you may create your own example using "cargo new --PROJECT_NAME")
+endif
 
-CARGO_FLAGS := ${CARGO_FLAGS} #--features ${MACHINE}
-CARGO_FLAGS := ${CARGO_FLAGS} --release
-
-EXAMPLES_DIR := $(shell find examples -maxdepth 1 -mindepth 1 -type d)
-
-USER_DIR := examples/user
-FS_DEMO_DIR := examples/fs_demo
-NET_DEMO_DIR := examples/net_demo
-HTTPD_DIR := examples/httpd
-LINUX_TEST_DIR := examples/linux_test
+include scripts/build.mk
+include scripts/qemu.mk
 
 .PHONY: all build clean user net_bw_server net_bw_client disk tap_setup linux_test
 
-build: 
-	cargo build --lib --target ./cfg/${ARCH}${MACHINE}.json -Z build-std=core,alloc  ${CARGO_FLAGS}
+all: build
+
+bootloader:
+ifeq ($(ARCH), x86_64)
+	cd ${RBOOT_DIR} && make build
+endif
+
+build:
+	$(call cargo_build)
+ifeq ($(ARCH), x86_64)
+	$(call rboot_pre)
+endif
 
 clean:
 	-cargo clean
-	@for dir in ${EXAMPLES_DIR}; do make -C ./$$dir clean; done
+	@for dir in ${EXAMPLE_DIRS}; do make -C ./$$dir clean; done
 	@echo clean project done!
 
-# rust-objcopy ${KERNEL} -O binary ${KERNEL}.bin
-# rust-objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
-# QEMU_CMD := qemu-system-aarch64 -M virt -cpu cortex-a53 -device loader,file=${KERNEL},addr=0x80000000,force-raw=on
-# QEMU_DISK_OPTIONS := -drive file=disk.img,if=none,format=raw,id=x0 \
-# 					 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
-# 					 -global virtio-mmio.force-legacy=false
-# QEMU_NETWORK_OPTIONS := -netdev tap,id=tap0,ifname=tap0,script=no,downscript=no \
-# 						-device virtio-net-device,mac=48:b0:2d:0e:6e:9e,netdev=tap0 \
-# 						-global virtio-mmio.force-legacy=false
-# QEMU_COMMON_OPTIONS := -serial stdio -display none -smp 4 -m 2048
-
-user:
-	make -C ${USER_DIR} emu
-
-fs:
-	make -C ${FS_DEMO_DIR} emu
-
-net:
-	make -C ${NET_DEMO_DIR} emu
-
-httpd:
-	make -C ${HTTPD_DIR} emu
-
-user_debug:
-	make -C ${USER_DIR} debug
-
-fs_debug:
-	make -C ${FS_DEMO_DIR} debug
-
-net_debug:
-	make -C ${NET_DEMO_DIR} debug
-
-linux_test:
-	make -C ${LINUX_TEST_DIR} build
-
-tx2:
-	MACHINE=tx2 make -C ${USER_DIR} tx2
-
-shyper: 
-	MACHINE=shyper make -C ${USER_DIR} shyper
+run: build
+	$(call qemu_run)
 
 disk:
 	rm -rf disk

@@ -2,6 +2,7 @@ use core::ops::{Deref, DerefMut};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::arch::{PAGE_SIZE, STACK_SIZE};
+use crate::libs::thread::Tid;
 use crate::mm::page_allocator;
 use crate::mm::frame_allocator;
 use crate::mm::frame_allocator::AllocatedFrames;
@@ -63,7 +64,7 @@ impl Drop for Stack {
 /// |-----------------------------------|
 ///
 /// Returns the newly-allocated stack and a VMA to represent its mapping.
-pub fn alloc_stack(size_in_pages: usize, tid: usize) -> Option<Stack> {
+pub fn alloc_stack(size_in_pages: usize, tid: Tid) -> Option<Stack> {
     // Get suggested VAddr for stack.
     let pages: AllocatedPages;
     loop {
@@ -97,7 +98,7 @@ pub fn alloc_stack(size_in_pages: usize, tid: usize) -> Option<Stack> {
 ///
 /// `pages` is the combined `AllocatedPages` object that holds
 ///  the guard page followed by the actual stack pages to be mapped.
-fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames, _tid: usize) -> Option<Stack> {
+fn inner_alloc_stack(pages: AllocatedPages, frames: AllocatedFrames, _tid: Tid) -> Option<Stack> {
     // Split the guard page.
     let start_of_stack_pages = *pages.start() + 1;
     let (guard_page, stack_pages) = pages.split(start_of_stack_pages).ok()?;

@@ -108,7 +108,7 @@ pub fn allocate(size: usize) -> Option<VAddr> {
         Ok(t) => {
             debug!(
                 "allocate(): thread {} alloc size 0x{:x} pages_num {} region start 0x{:x} size 0x{:x}",
-                t.tid(),
+                t.id(),
                 size,
                 size / PAGE_SIZE,
                 addr.value(),
@@ -146,7 +146,7 @@ pub fn deallocate(address: VAddr) {
             t.free_mem_region(address);
             trace!(
                 "deallocate(): Thread [{}] deallocate region addr start 0x{:x}",
-                t.tid(),
+                t.id(),
                 address.value()
             );
         }

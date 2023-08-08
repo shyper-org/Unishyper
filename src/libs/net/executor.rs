@@ -20,7 +20,7 @@ use crate::libs::synch::spinlock::Spinlock;
 static QUEUE: Spinlock<Vec<Runnable>> = Spinlock::new(Vec::new());
 
 pub fn network_delay(timestamp: Instant) -> Option<Duration> {
-    crate::libs::net::interface::NIC
+    crate::libs::net::NIC
         .lock()
         .as_nic_mut()
         .unwrap()
@@ -94,7 +94,7 @@ impl Wake for ThreadNotify {
     }
 }
 
-use crate::libs::net::interface::now;
+use super::now;
 
 /// Blocks the current thread on `f`, running the executor when idling.
 pub fn block_on<F, T>(future: F, timeout: Option<Duration>) -> Result<T, ()>

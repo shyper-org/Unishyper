@@ -40,9 +40,3 @@ shyper = [
     # "unishyper/unilib",
     # "unishyper/fat",
     ]
-alloc = []
-
-[profile.release]
-debug = true
-opt-level = 's'  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
-lto = true

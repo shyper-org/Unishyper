@@ -31,7 +31,7 @@ shyper = [
     ]
 alloc = []
 
-[profile.release]
-opt-level = 's'
-debug = true
-lto = true
+# [profile.release]
+# opt-level = 's'
+# debug = true
+# lto = true

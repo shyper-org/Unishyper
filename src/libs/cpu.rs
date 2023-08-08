@@ -80,7 +80,7 @@ impl Core {
                 );
                 debug!(
                     "Alloc idle thread [{}] on core [{}], context on sp {:x}",
-                    t.tid(),
+                    t.id(),
                     crate::arch::Arch::core_id(),
                     t.last_stack_pointer()
                 );
@@ -152,7 +152,7 @@ impl Core {
             let next_ctx_ptr = next.ctx_mut_ptr();
             // assert!(Arc::strong_count(&prev) > 1);
             // assert!(Arc::strong_count(&next) >= 1);
-            crate::arch::Arch::set_thread_id(next.tid() as u64);
+            crate::arch::Arch::set_thread_id(next.id().as_u64());
             crate::arch::Arch::set_tls_ptr(next.get_tls_ptr() as u64);
             let next_is_not_run = next.in_trap_context();
             if next_is_not_run {

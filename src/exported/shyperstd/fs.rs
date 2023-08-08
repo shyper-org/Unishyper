@@ -7,10 +7,8 @@ use ioslice::{IoSlice, IoSliceMut};
 use crate::libs::fs;
 use crate::libs::fs::interface::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
 
-use crate::exported::io;
-use crate::exported::io::SeekFrom;
-use crate::exported::io::cvt;
-use crate::exported::fd::FileDesc;
+use crate::exported::shyperstd::io::{self, cvt,SeekFrom};
+use crate::exported::shyperstd::fd::FileDesc;
 
 pub struct Path {
     inner: String,

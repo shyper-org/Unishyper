@@ -55,8 +55,8 @@ pub fn shyper_tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16),
 /// When not set, data is buffered until there is a sufficient amount to send out,
 /// thereby avoiding the frequent sending of small packets.
 #[no_mangle]
-pub fn shyper_tcp_set_no_delay(handle: Handle, mode: bool) -> Result<(), ()> {
-    net::tcp_set_no_delay(handle, mode)
+pub fn shyper_tcp_stream_set_no_delay(handle: Handle, mode: bool) -> Result<(), ()> {
+    net::tcp_stream_set_no_delay(handle, mode)
 }
 
 #[no_mangle]

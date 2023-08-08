@@ -48,7 +48,8 @@ const ZONE_ID_MAX: usize = 15;
 /// Get intel-MPK zone id according to thread id.
 /// By default, zone 0 is reserverd as kernel zone.
 /// Thread 100's zone id is 1.
-pub fn thread_id_to_zone_id(tid: usize) -> usize {
+pub fn thread_id_to_zone_id(tid: Tid) -> usize {
+    let tid = tid.as_u64() as usize;
     assert!(tid >= 100, "Invalid tid");
     let zone_id = tid - 99;
     if zone_id > ZONE_ID_MAX {

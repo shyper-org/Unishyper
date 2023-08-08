@@ -15,7 +15,6 @@ pub use cmath::*;
 
 pub use crate::libs::string::{memcmp, memmove, memcpy, memset, strlen};
 
-use crate::libs::thread::Tid;
 use crate::libs::thread::thread_exit;
 
 /// Interface to allocate memory from system heap.
@@ -107,7 +106,7 @@ pub extern "C" fn shyper_futex_wake(address: *mut u32, count: i32) -> i32 {
 
 #[no_mangle]
 pub extern "C" fn shyper_getpid() -> u32 {
-    crate::libs::thread::current_thread_id() as u32
+    crate::libs::thread::current_thread_id().as_u64() as u32
 }
 
 #[no_mangle]
@@ -131,7 +130,7 @@ pub extern "C" fn shyper_usleep(usecs: u64) {
 
 #[no_mangle]
 pub extern "C" fn shyper_spawn(
-    id: *mut Tid,
+    id: *mut u32,
     func: extern "C" fn(usize),
     arg: usize,
     _prio: u8,
@@ -140,7 +139,7 @@ pub extern "C" fn shyper_spawn(
     let new_id = crate::libs::thread::thread_spawn_on_core(func, arg, selector);
     if !id.is_null() {
         unsafe {
-            *id = new_id;
+            *id = new_id.as_u64() as u32;
         }
     }
     0
@@ -153,13 +152,13 @@ pub extern "C" fn shyper_spawn2(
     _prio: u8,
     _stack_size: usize,
     selector: isize,
-) -> Tid {
-    crate::libs::thread::thread_spawn_on_core(func, arg, selector)
+) -> u32 {
+    crate::libs::thread::thread_spawn_on_core(func, arg, selector).as_u64() as u32
 }
 
 #[no_mangle]
-pub extern "C" fn shyper_join(id: Tid) -> i32 {
-    crate::libs::thread::thread_join(id);
+pub extern "C" fn shyper_join(id: u32) -> i32 {
+    crate::libs::thread::thread_join((id as usize).into());
     0 as i32
 }
 

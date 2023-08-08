@@ -19,7 +19,7 @@ endif
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL_DIR := target/${ARCH}${MACHINE}/${PROFILE}
+KERNEL_DIR := ../../target/${ARCH}${MACHINE}/${PROFILE}
 KERNEL := ${KERNEL_DIR}/${APP}
 
 RBOOT_DIR := ../../rboot

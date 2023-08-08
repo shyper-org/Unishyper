@@ -5,9 +5,10 @@
 #![allow(unused_imports)]
 
 use unishyper::*;
-use unishyper::fs;
-use unishyper::io;
-use unishyper::fs::{File, Path};
+use shyperstd as std;
+
+use std::io;
+use std::fs::{self, File, Path};
 
 use alloc::string::String;
 

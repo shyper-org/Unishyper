@@ -4,6 +4,8 @@ MACHINE ?= qemu
 
 KVM ?= false
 
+APP?=user
+
 export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
 
 # Cargo flags.
@@ -17,8 +19,8 @@ CARGO_FLAGS := ${CARGO_FLAGS} --features "${MACHINE}"
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL_DIR := target/${ARCH}${MACHINE}/${PROFILE}
-KERNEL := ${KERNEL_DIR}/user
+KERNEL_DIR := ../../target/${ARCH}${MACHINE}/${PROFILE}
+KERNEL := ${KERNEL_DIR}/${APP}
 RBOOT_DIR := ../../rboot
 ESP := $(KERNEL_DIR)/esp
 OVMF := ${RBOOT_DIR}/OVMF.fd
@@ -112,10 +114,10 @@ tx2: build
 	mkimage -n unishyper -A arm64 -O linux -C none -T kernel -a 0x80080000 -e 0x80080000 -d ${KERNEL}.bin ${KERNEL}.ubi
 	cp ${KERNEL} /tftp/
 	cp ${KERNEL}.ubi /tftp/
-	echo "tftp 0xc0000000 192.168.106.140:user; tftp 0x8a000000 192.168.106.140:user.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"
+	echo "tftp 0xc0000000 192.168.106.140:${APP}; tftp 0x8a000000 192.168.106.140:${APP}.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"
 
 tx2_153: build
 	mkimage -n unishyper -A arm64 -O linux -C none -T kernel -a 0x80080000 -e 0x80080000 -d ${KERNEL}.bin ${KERNEL}.ubi
 	scp ${KERNEL} root@192.168.106.153:/tftp
 	scp ${KERNEL}.ubi root@192.168.106.153:/tftp
-	echo "tftp 0xc0000000 192.168.106.153:user; tftp 0x8a000000 192.168.106.153:user.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"
+	echo "tftp 0xc0000000 192.168.106.153:${APP}; tftp 0x8a000000 192.168.106.153:${APP}.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"

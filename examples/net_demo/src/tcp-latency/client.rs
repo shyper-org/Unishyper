@@ -7,11 +7,13 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use no_std_net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
+use unishyper::*;
+use unishyper::shyperstd as std;
+
+use std::net::{TcpListener, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 
 use net_demo::connection;
-
-use unishyper::*;
 
 #[macro_use]
 extern crate alloc;

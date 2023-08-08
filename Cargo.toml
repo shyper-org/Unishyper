@@ -1,8 +1,25 @@
+[workspace]
+resolver = "2"
+
+members = [
+  "examples/user",
+  "examples/fs_demo",
+  "examples/net_demo",
+  "examples/fault_recover",
+  "examples/isolation_test",
+  "examples/threading",
+  "examples/hello_world",
+  "examples/httpd",
+  "examples/std_test",
+]
+
+exclude = ["rboot", "examples/rust-tcp-io-perf"]
+
 [package]
 authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 edition = "2021"
 name = "unishyper"
-version = "0.1.0"
+version = "0.2.0"
 
 [lib]
 crate-type = ["lib"]
@@ -16,8 +33,9 @@ crossbeam-utils = {version = "0.8.11", default-features = false, features = ["ni
 derive_more = "0.99.17"
 intrusive-collections = "0.9"
 lazy_static = {version = "1.4", features = ["spin_no_std"]}
+log = {version = "0.4.14"}
 # log = {version = "0.4.14", features = ["max_level_trace", "release_max_level_trace"]}
-log = {version = "0.4.14", features = ["max_level_debug", "release_max_level_debug"]}
+# log = {version = "0.4.14", features = ["max_level_debug", "release_max_level_debug"]}
 # log = {version = "0.4.14", features = ["max_level_info", "release_max_level_info"]}
 spin = "0.9.8"
 static_assertions = "1.1.0"
@@ -84,7 +102,7 @@ chrono = "0.4.23"
 
 [features]
 alloc = []
-default = ["tx2", "terminal","tcp", "fat", "fs", "unilib", "unwind-test"]
+default = ["qemu", "terminal", "tcp", "fat", "fs", "unilib", "log-level-info"]
 fat = [
   "fatfs",
   "lru",
@@ -122,6 +140,12 @@ unwind-test = [
   "dep:inject",
   "unwind",
 ]
+log-level-off = ["log/max_level_off", "log/release_max_level_off"]
+log-level-error = ["log/max_level_error", "log/release_max_level_error"]
+log-level-warn = ["log/max_level_warn", "log/release_max_level_warn"]
+log-level-info = ["log/max_level_info", "log/release_max_level_info"]
+log-level-debug = ["log/max_level_debug", "log/release_max_level_debug"]
+log-level-trace = ["log/max_level_trace", "log/release_max_level_trace"]
 
 [profile.release]
 opt-level = 's'

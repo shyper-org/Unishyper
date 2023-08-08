@@ -11,7 +11,7 @@ CARGO_FLAGS =
 endif
 
 # Target directory.
-KERNEL_DIR := target/${ARCH}-unknown-shyper/${PROFILE}
+KERNEL_DIR := ../../target/${ARCH}-unknown-shyper/${PROFILE}
 KERNEL := ${KERNEL_DIR}/httpd
 
 RBOOT_DIR := ../../rboot

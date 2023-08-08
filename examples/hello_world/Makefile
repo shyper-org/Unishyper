@@ -12,7 +12,7 @@ CARGO_FLAGS =
 endif
 
 # Target directory.
-KERNEL := target/${ARCH}-unknown-${MACHINE}/${PROFILE}/hello_world
+KERNEL := ../../target/${ARCH}-unknown-${MACHINE}/${PROFILE}/hello_world
 
 # Arch-specific tools
 OBJCOPY := rust-objcopy

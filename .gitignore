@@ -5,3 +5,7 @@ Cargo.lock
 disk.img
 examples/linux_test/*
 disk.qcow2
+*.asm
+*.bin
+*.elf
+/esp

@@ -22,13 +22,13 @@ impl RoundRobinScheduler {
 
     pub fn show_running_threads(&self) {
         for t in self.running_queue.lock().iter() {
-            debug!("Running Thread[{}]", t.tid());
+            debug!("Running Thread[{}]", t.id());
         }
     }
 
     pub fn show_blocked_threads(&self) {
         for t in self.blocked_queue.lock().iter() {
-            debug!("Blocked Thread[{}], sleep time {}ms", t.1.tid(), t.0);
+            debug!("Blocked Thread[{}], sleep time {}ms", t.1.id(), t.0);
         }
     }
 }
@@ -44,7 +44,7 @@ impl Scheduler for RoundRobinScheduler {
 
     fn pop(&self) -> Option<Thread> {
         // for t in self.running_queue.lock().clone().into_iter() {
-        //     println!("running queue: thread [{}]", t.tid());
+        //     println!("running queue: thread [{}]", t.id());
         // }
         self.running_queue.lock().pop_front()
     }
@@ -54,7 +54,7 @@ impl Scheduler for RoundRobinScheduler {
         let wakeup_time = timeout.map(|t| current_ms() + t);
         debug!(
             "Thread[{}] blocked, timeout: {:?} wakeup_time: {:?}",
-            thread.tid(),
+            thread.id(),
             timeout,
             wakeup_time
         );
@@ -71,7 +71,7 @@ impl Scheduler for RoundRobinScheduler {
             if *nearest_wakeup_time < current_ms {
                 debug!(
                     "Thread[{}] is removed from blocked queue, wakeuptime: {} current time: {}",
-                    nearest_wakeup_thread.tid(),
+                    nearest_wakeup_thread.id(),
                     nearest_wakeup_time,
                     current_ms
                 );
@@ -80,7 +80,7 @@ impl Scheduler for RoundRobinScheduler {
             }
             // debug!(
             //     "Thread[{}] is first on blocked queue, wakeuptime: {} current time: {}",
-            //     nearest_wakeup_thread.tid(),
+            //     nearest_wakeup_thread.id(),
             //     nearest_wakeup_time,
             //     current_ms
             // );

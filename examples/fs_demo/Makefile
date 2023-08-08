@@ -17,7 +17,7 @@ endif
 
 # Target directory.
 TARGET_CFG := ../../cfg/${ARCH}${MACHINE}.json
-KERNEL := target/${ARCH}${MACHINE}/${PROFILE}/fs_demo
+KERNEL := ../../target/${ARCH}${MACHINE}/${PROFILE}/fs_demo
 
 # Arch-specific tools
 OBJCOPY := rust-objcopy

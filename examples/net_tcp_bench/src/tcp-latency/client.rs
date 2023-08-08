@@ -13,7 +13,7 @@ use unishyper::shyperstd as std;
 use std::net::{TcpListener, TcpStream};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 
-use net_demo::connection;
+use net_tcp_bench::connection;
 
 #[macro_use]
 extern crate alloc;

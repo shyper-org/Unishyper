@@ -6,7 +6,7 @@
 
 use alloc::vec;
 
-use net_demo::connection;
+use net_tcp_bench::connection;
 
 use unishyper::*;
 use unishyper::shyperstd as std;

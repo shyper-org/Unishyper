@@ -22,30 +22,38 @@ impl RoundRobinScheduler {
 
     pub fn show_running_threads(&self) {
         for t in self.running_queue.lock().iter() {
-            debug!("Running Thread[{}]", t.id());
+            println!("Running Thread {:?}", t);
         }
     }
 
     pub fn show_blocked_threads(&self) {
         for t in self.blocked_queue.lock().iter() {
-            debug!("Blocked Thread[{}], sleep time {}ms", t.1.id(), t.0);
+            println!("Blocked Thread {:?}, sleep time {}ms", t.1, t.0);
         }
     }
 }
 
 impl Scheduler for RoundRobinScheduler {
     fn add_front(&self, thread: Thread) {
+        // debug!("RoundRobinScheduler add_front()");
+        // self.show_running_threads();
         self.running_queue.lock().push_front(thread);
     }
 
     fn add(&self, thread: Thread) {
+        // debug!("RoundRobinScheduler add {}", thread.id());
+        // self.show_running_threads();
+
+        // if self.running_queue.lock().contains(&thread) {
+        //     warn!("RoundRobinScheduler running contains {}, checkout why!\n!\n!\n", thread.id());
+        //     return;
+        // }
         self.running_queue.lock().push_back(thread);
     }
 
     fn pop(&self) -> Option<Thread> {
-        // for t in self.running_queue.lock().clone().into_iter() {
-        //     println!("running queue: thread [{}]", t.id());
-        // }
+        // debug!("RoundRobinScheduler pop()");
+        // self.show_running_threads();
         self.running_queue.lock().pop_front()
     }
 

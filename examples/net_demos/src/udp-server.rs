@@ -37,6 +37,6 @@ fn receive_loop() -> io::Result<()> {
 
 #[no_mangle]
 fn main() {
-    println!("Hello, simple udp client!");
-    receive_loop().expect("test udp client failed");
+    println!("Unishyper Udp server demo");
+    receive_loop().expect("test udp server failed");
 }

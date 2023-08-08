@@ -150,16 +150,19 @@ impl Eq for Thread {}
 
 impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Thread")
-            .field("id", &self.0.inner.uuid)
-            .field("stack", &self.0.inner.stack.start_address())
-            .field("state", &self.status())
-            .finish()
+        let status = self.status();
+        write!(
+            f,
+            "Thread {{\n id: {:?},\n stack: {:?}\n state: {:?}\n}}",
+            self.0.inner.uuid,
+            self.0.inner.stack.start_address(),
+            status
+        )
     }
 }
 
 extern "C" fn thread_entry(entry: usize) -> ! {
-    debug!("thread_entry: {:#x}", entry);
+    // debug!("thread_entry: {:#x}", entry);
     unsafe {
         Box::from_raw(entry as *mut Box<dyn FnOnce()>)();
     }
@@ -202,8 +205,7 @@ impl Thread {
                 let t = &current_thread;
                 let reason = Status::Blocked;
                 assert_ne!(reason, Status::Runnable);
-                let mut status = t.0.inner_mut.status.lock();
-                *status = reason;
+                t.set_status(reason);
                 queue.push_back(t.clone());
             }
             None => {
@@ -232,6 +234,12 @@ impl Thread {
     pub fn status(&self) -> Status {
         let lock = self.0.inner_mut.status.lock();
         lock.clone()
+    }
+
+    /// Set thread status.
+    pub fn set_status(&self, status: Status) {
+        let mut lock = self.0.inner_mut.status.lock();
+        *lock = status
     }
 
     /// Get if thread is runnable.
@@ -504,8 +512,8 @@ static CORE_COUNTER: AtomicUsize = AtomicUsize::new(1);
 /// Wake up target thread.
 /// Set its status as Runnable and add it to target cpu's scheduler.
 pub fn thread_wake(t: &Thread) {
-    let mut status = t.0.inner_mut.status.lock();
-    *status = Status::Runnable;
+    debug!("thread_wake {}", t.id());
+    t.set_status(Status::Runnable);
 
     let affinity_core_id = match t.affinity_core() {
         Some(affinity_core_id) => affinity_core_id,
@@ -529,6 +537,10 @@ pub fn thread_wake_by_tid(tid: Tid) {
         return;
     }
     if let Some(t) = thread_lookup(tid) {
+        if t.runnable() {
+            debug!("thread_wake runnable thread {}, just return", t.id());
+            return;
+        }
         thread_wake(&t);
     } else {
         warn!("Thread [{}] not exist!!!", tid);
@@ -538,9 +550,8 @@ pub fn thread_wake_by_tid(tid: Tid) {
 /// Wake up target thread as the next scheduled thread.
 /// Set its status as Runnable and add it to the front of scheduler's queue.
 pub fn thread_wake_to_front(t: &Thread) {
-    trace!("thread_wake set thread [{}] as next thread", t.id());
-    let mut status = t.0.inner_mut.status.lock();
-    *status = Status::Runnable;
+    debug!("thread_wake set thread {} as next thread", t.id());
+    t.set_status(Status::Runnable);
     let affinity_core_id = match t.affinity_core() {
         Some(affinity_core_id) => affinity_core_id,
         None => CORE_COUNTER.fetch_add(1, Ordering::SeqCst) % crate::board::BOARD_CORE_NUMBER,
@@ -572,9 +583,7 @@ pub fn thread_block_current() {
             let t = &current_thread;
             let reason = Status::Blocked;
             assert_ne!(reason, Status::Runnable);
-            let mut status = t.0.inner_mut.status.lock();
-            *status = reason;
-            drop(status);
+            t.set_status(reason);
         });
     } else {
         warn!("No Running Thread!");
@@ -615,9 +624,7 @@ pub fn thread_block_current_with_timeout(timeout_ms: usize) {
             let t = &current_thread;
             let reason = Status::Blocked;
             assert_ne!(reason, Status::Runnable);
-            let mut status = t.0.inner_mut.status.lock();
-            *status = reason;
-            drop(status);
+            t.set_status(reason);
             cpu().scheduler().blocked(t.clone(), Some(timeout_ms));
         });
     } else {
@@ -640,8 +647,7 @@ pub fn thread_join(id: Tid) {
                     let t = &current_thread;
                     let reason = Status::Blocked;
                     assert_ne!(reason, Status::Runnable);
-                    let mut status = t.0.inner_mut.status.lock();
-                    *status = reason;
+                    t.set_status(reason);
                     queue.push_back(t.clone());
                 }
                 None => {
@@ -716,11 +722,11 @@ pub fn current_thread() -> Result<Thread, Error> {
 pub fn thread_exit() -> ! {
     crate::arch::irq::disable();
     let mut t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
+    t.set_exited();
     debug!("thread_exit on Thread [{}]", t.id());
 
     handle_waiting_threads(t.id());
 
-    t.set_exited();
     // cpu().set_running_thread(Some(t.clone()));
     // if let Some(current_thread) = cpu().running_thread() {
     //     if t.id() == current_thread.id() {

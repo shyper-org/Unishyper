@@ -84,10 +84,10 @@ impl Wake for ThreadNotify {
     fn wake_by_ref(self: &Arc<Self>) {
         // Make sure the wakeup is remembered until the next `park()`.
         let unparked = self.unparked.swap(true, Ordering::AcqRel);
-        // info!(
-        //     "Thread [{}] wake by ref: unparked {}",
-        //     self.thread, unparked
-        // );
+        debug!(
+            "Thread {} wake by ref: unparked {}",
+            self.thread, unparked
+        );
         if !unparked {
             thread_wake_by_tid(self.thread);
         }
@@ -101,7 +101,7 @@ pub fn block_on<F, T>(future: F, timeout: Option<Duration>) -> Result<T, ()>
 where
     F: Future<Output = T>,
 {
-    debug!("block_on is called");
+    // debug!("block_on is called");
     // Polling mode => no NIC interrupts => NIC thread should not run
     set_polling_mode(true);
     let start = now();
@@ -131,7 +131,7 @@ where
 
             // allow interrupts => NIC thread is able to run
             set_polling_mode(false);
-            debug!("block on return ok");
+            // debug!("block on return ok");
             return Ok(t);
         }
 

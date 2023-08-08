@@ -1,5 +1,6 @@
 QEMU_CMD := sudo qemu-system-$(ARCH)
 
+GDB ?= gdb-multiarch
 ## Set machine type.
 
 ifeq ($(ARCH), aarch64)

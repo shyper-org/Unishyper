@@ -4,7 +4,8 @@ resolver = "2"
 members = [
   "examples/user",
   "examples/fs_demo",
-  "examples/net_demo",
+  "examples/net_demos",
+  "examples/net_tcp_bench",
   "examples/fault_recover",
   "examples/isolation_test",
   "examples/threading",

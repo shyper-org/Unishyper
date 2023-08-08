@@ -132,7 +132,7 @@ pub extern "C" fn loader_main(core_id: usize) {
         } else {
             #[cfg(feature = "tcp")]
             crate::libs::net::network_init();
-            
+
             fn main_wrapper(main: extern "C" fn(usize), arg: usize) -> ! {
                 main(arg);
                 exit()

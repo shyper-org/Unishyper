@@ -109,28 +109,20 @@ impl Core {
     }
 
     pub fn schedule(&mut self) {
-        // let start = crate::libs::timer::current_cycle();
         // Get prev thread.
-        // let prev = self.running_thread_ref().unwrap_or_else(|| {
-        //     panic!(
-        //         "No running thread on core [{}], something is wrong!!!",
-        //         crate::arch::Arch::core_id()
-        //     )
-        // });
-        let prev = self.running_thread_ref().unwrap();
-        // let end = crate::libs::timer::current_cycle();
-        // debug!("get prev thread cycle {}", end - start);
+        let prev = self.running_thread_ref().unwrap_or_else(|| {
+            panic!(
+                "No running thread on core [{}], something is wrong!!!",
+                crate::arch::Arch::core_id()
+            )
+        });
 
-        // let start = crate::libs::timer::current_cycle();
         // Add prev thread back to scheduler queue.
         if prev.runnable() {
             self.scheduler().add(prev.clone());
         }
-        // let end = crate::libs::timer::current_cycle();
-        // debug!("add prev to scheduler cycle {}", end - start);
 
         // Get next thread from scheduler.
-        // let start = crate::libs::timer::current_cycle();
         let next = self.scheduler().pop().unwrap_or_else(|| {
             if prev.runnable() {
                 prev.clone()
@@ -138,16 +130,14 @@ impl Core {
                 self.idle_thread()
             }
         });
-        // let end = crate::libs::timer::current_cycle();
-        // debug!("pop next to scheduler cycle {}", end - start);
 
-        // trace!("cpu schedule\nprev {:?}\nnext {:?}", prev, next);
+        trace!("cpu schedule\nprev {} to next {}", prev.id(), next.id());
 
         if prev.eq(&next) {
             return;
         }
 
-        unsafe {         
+        unsafe {
             let prev_ctx_ptr = prev.ctx_mut_ptr();
             let next_ctx_ptr = next.ctx_mut_ptr();
             // assert!(Arc::strong_count(&prev) > 1);

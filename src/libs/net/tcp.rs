@@ -173,13 +173,13 @@ impl AsyncTcpSocket {
 
     pub async fn write(&self, buffer: &[u8]) -> Result<usize, Error> {
         let len = buffer.len();
-        info!("write !!! len {}", len);
+        // info!("write !!! len {}", len);
         let mut pos: usize = 0;
 
         while pos < len {
             let n = future::poll_fn(|cx| {
                 self.with(|socket| {
-                    info!("write !!! socket state {}", socket.state());
+                    // info!("write !!! socket state {}", socket.state());
                     if socket.can_send() {
                         return Poll::Ready(socket.send_slice(&buffer[pos..]).map_err(|err| {
                             warn!("write: socket send_slice err {}", err);
@@ -314,8 +314,8 @@ pub fn tcp_stream_connect(ip: &[u8], port: u16, timeout: Option<u64>) -> Result<
 pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ()> {
     let socket = AsyncTcpSocket::from(handle);
     let peer_addr = tcp_stream_peer_addr(handle)?;
-    info!(
-        "tcp_stream_read T[{}] from {}:{}",
+    debug!(
+        "tcp_stream_read on Thread {} from {}:{}",
         crate::libs::thread::current_thread_id(),
         peer_addr.0,
         peer_addr.1
@@ -451,16 +451,11 @@ pub fn tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ()> {
 #[inline(always)]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ()> {
     let local_endpoint = port;
-    debug!(
-        "tcp_listener_accept T[{}] on local endpoint {}",
-        crate::libs::thread::current_thread_id(),
-        local_endpoint
-    );
     let socket = AsyncTcpSocket::new();
     let (addr, port) = block_on(socket.accept(port), None)?.map_err(|_| ())?;
 
-    info!(
-        "tcp_listener_accept T[{}] success on ip {} port {}, local_endpoint {}",
+    debug!(
+        "tcp_listener_accept on Thread {} success on ip {} port {}, local_endpoint {}",
         crate::libs::thread::current_thread_id(),
         addr,
         port,

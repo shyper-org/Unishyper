@@ -1,10 +1,9 @@
 [package]
 authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 edition = "2021"
-name = "net_demo"
+name = "net_tcp_bench"
 version = "0.1.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "A Rust program to measure bandwidth or latency over a Rust TCP connection, ported from https://github.com/hky1999/rust-tcp-io-perf.git"
 
 [dependencies.unishyper]
 default-features = false
@@ -43,10 +42,6 @@ path = "src/tcp-latency/server.rs"
 [[bin]]
 name = "client-latency"
 path = "src/tcp-latency/client.rs"
-
-[[bin]]
-name = "udp-server"
-path = "src/udp-server.rs"
 
 # [profile.release]
 # # opt-level = 's'

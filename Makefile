@@ -20,7 +20,7 @@ endif
 include scripts/build.mk
 include scripts/qemu.mk
 
-.PHONY: all build clean user net_bw_server net_bw_client disk tap_setup linux_test
+.PHONY: all build clean run gdb
 
 all: build
 
@@ -42,6 +42,17 @@ clean:
 
 run: build
 	$(call qemu_run)
+
+debug: build
+	$(call qemu_debug)
+
+gdb:
+	$(GDB) $(OUT_ELF) \
+	  -ex 'target remote localhost:1234' \
+	  -ex 'b rust_entry' \
+	  -ex 'continue' \
+	  -ex 'disp /16i $$pc' \
+	  -ex 'set print asm-demangle on'
 
 disk:
 	rm -rf disk

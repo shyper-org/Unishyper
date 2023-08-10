@@ -32,7 +32,7 @@ ifeq ($(ARCH), x86_64)
 endif
 
 build: #bootloader
-	cargo +stage1 build -Zbuild-std=std,panic_unwind --target ${ARCH}-unknown-shyper ${CARGO_FLAGS} 
+	cargo +shyper build -Zbuild-std=std,panic_unwind --target ${ARCH}-unknown-shyper ${CARGO_FLAGS} 
 	${OBJCOPY} ${KERNEL} -O binary ${KERNEL}.bin
 	${OBJDUMP} --demangle -d ${KERNEL} > ${KERNEL}.asm
 ifeq ($(ARCH), x86_64)

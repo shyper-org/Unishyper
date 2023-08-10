@@ -1,4 +1,4 @@
-ARCH ?= x86_64
+ARCH ?= aarch64
 MACHINE ?= qemu
 PROFILE ?= release
 KVM ?= true

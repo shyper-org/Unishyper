@@ -149,20 +149,20 @@ impl AsyncTcpSocket {
 
     pub async fn read(&self, buffer: &mut [u8]) -> Result<usize, Error> {
         future::poll_fn(|cx| {
-            self.with(|socket| match socket.state() {
-                TcpState::FinWait1
-                | TcpState::FinWait2
-                | TcpState::Closed
-                | TcpState::Closing
-                | TcpState::TimeWait => Poll::Ready(Err(Error::Illegal)),
-                _ => {
-                    if socket.may_recv() {
-                        let n = socket.recv_slice(buffer).map_err(|_| Error::Illegal)?;
-                        if n > 0 || buffer.is_empty() {
-                            return Poll::Ready(Ok(n));
-                        }
-                    }
-
+            self.with(|socket| {
+                if !socket.is_active() {
+                    Poll::Ready(Err(Error::Illegal))
+                } else if socket.can_recv() {
+                    Poll::Ready(
+                        socket
+                            .recv(|data| {
+                                let len = core::cmp::min(buffer.len(), data.len());
+                                buffer[..len].copy_from_slice(&data[..len]);
+                                (len, len)
+                            })
+                            .map_err(|_| Error::Illegal),
+                    )
+                } else {
                     socket.register_recv_waker(cx.waker());
                     Poll::Pending
                 }
@@ -172,39 +172,27 @@ impl AsyncTcpSocket {
     }
 
     pub async fn write(&self, buffer: &[u8]) -> Result<usize, Error> {
-        let len = buffer.len();
-        // info!("write !!! len {}", len);
         let mut pos: usize = 0;
 
-        while pos < len {
+        while pos < buffer.len() {
             let n = future::poll_fn(|cx| {
                 self.with(|socket| {
-                    // info!("write !!! socket state {}", socket.state());
-                    if socket.can_send() {
-                        return Poll::Ready(socket.send_slice(&buffer[pos..]).map_err(|err| {
-                            warn!("write: socket send_slice err {}", err);
-                            Error::Illegal
-                        }));
-                    }
-
-                    if pos > 0 {
+                    if !socket.is_active() {
+                        warn!("socket is not actived");
+                        Poll::Ready(Err(Error::Illegal))
+                    } else if socket.can_send() {
+                        Poll::Ready(
+                            socket
+                                .send_slice(&buffer[pos..])
+                                .map_err(|_| Error::Illegal),
+                        )
+                    } else if pos > 0 {
                         // we already send some data => return 0 as signal to stop the
                         // async write
-                        return Poll::Ready(Ok(0));
-                    }
-                    match socket.state() {
-                        TcpState::FinWait1
-                        | TcpState::FinWait2
-                        | TcpState::Closed
-                        | TcpState::Closing
-                        | TcpState::TimeWait => {
-                            warn!("write: ellegal on state {}", socket.state());
-                            Poll::Ready(Err(Error::Illegal))
-                        }
-                        _ => {
-                            socket.register_send_waker(cx.waker());
-                            Poll::Pending
-                        }
+                        Poll::Ready(Ok(0))
+                    } else {
+                        socket.register_send_waker(cx.waker());
+                        Poll::Pending
                     }
                 })
             })
@@ -331,13 +319,13 @@ pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ()> {
     //     Ok(v) => v,
     //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
     // };
-    // info!(
-    //     "tcp_stream_write T[{}] to {}:{}, len {},\n{:?}\n{}",
+    // debug!(
+    //     "tcp_stream_write T[{}] to {}:{}, len {},\n{}",
     //     crate::libs::thread::current_thread_id(),
     //     peer_addr.0,
     //     peer_addr.1,
     //     buffer.len(),
-    //     buffer,
+    //     // buffer,
     //     s
     // );
     block_on(socket.write(buffer), None)?.map_err(|err| {
@@ -393,16 +381,15 @@ impl Shutdown {
 }
 
 #[inline(always)]
-pub fn tcp_stream_shutdown(handle: Handle, _how: Shutdown) -> Result<(), ()> {
-    // match how {
-    //     Shutdown::Read => {
-    //         warn!("Shutdown::Read is not implemented");
-    //         Ok(())
-    //     }
-    //     Shutdown::Write => tcp_stream_close(handle),
-    //     Shutdown::Both => tcp_stream_close(handle),
-    // }
-    tcp_stream_close(handle)
+pub fn tcp_stream_shutdown(handle: Handle, how: Shutdown) -> Result<(), ()> {
+    match how {
+        Shutdown::Read => {
+            // warn!("Shutdown::Read is not implemented");
+            Ok(())
+        }
+        Shutdown::Write => tcp_stream_close(handle),
+        Shutdown::Both => tcp_stream_close(handle),
+    }
 }
 
 #[inline(always)]

@@ -2,6 +2,8 @@ ARCH ?= aarch64
 MACHINE ?= qemu
 PROFILE ?= release
 
+CARGO_TOOLCHAIN ?= 
+
 LOG ?= info
 
 APP ?= user
@@ -20,7 +22,7 @@ endif
 include scripts/build.mk
 include scripts/qemu.mk
 
-.PHONY: all build clean run gdb
+.PHONY: all bootloader build clean run debug gdb disk tap_setup
 
 all: build
 
@@ -49,7 +51,7 @@ debug: build
 gdb:
 	$(GDB) $(OUT_ELF) \
 	  -ex 'target remote localhost:1234' \
-	  -ex 'b rust_entry' \
+	  -ex 'b _start' \
 	  -ex 'continue' \
 	  -ex 'disp /16i $$pc' \
 	  -ex 'set print asm-demangle on'
@@ -65,6 +67,3 @@ tap_setup:
 	sudo ip addr add 10.0.0.1/24 broadcast 10.0.0.255 dev tap0
 	sudo ip link set dev tap0 up
 	sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
-
-dependencies:
-	rustup component add rust-src

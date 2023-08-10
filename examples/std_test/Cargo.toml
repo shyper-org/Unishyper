@@ -7,7 +7,7 @@ authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [target.'cfg(target_os = "shyper")'.dependencies]
-unishyper = {path = "../../", default-features = false, features = ["tx2", "std", "serial"]} 
+unishyper = {path = "../../", default-features = false, features = ["std", "serial"]} 
 
 [features]
 default = ["qemu"]

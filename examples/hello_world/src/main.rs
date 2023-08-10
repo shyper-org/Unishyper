@@ -1,3 +1,5 @@
+#![feature(restricted_std)]
+
 #[cfg(target_os = "shyper")]
 use unishyper as _;
 

@@ -52,6 +52,7 @@ gdb:
 	$(GDB) $(OUT_ELF) \
 	  -ex 'target remote localhost:1234' \
 	  -ex 'b _start' \
+	  -ex 'b *0x40080000' \
 	  -ex 'continue' \
 	  -ex 'disp /16i $$pc' \
 	  -ex 'set print asm-demangle on'

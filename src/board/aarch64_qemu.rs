@@ -49,6 +49,19 @@ pub fn init() {
     crate::drivers::init_devices();
 }
 
+#[no_mangle]
+pub fn pmu_init() {
+    // Init PMU.
+    let pmcr = 1u64;
+    let pmcntenset = 1u64 << 32;
+    let pmuserenr = 1u64 << 2 | 1u64;
+    unsafe {
+        core::arch::asm!("msr pmcr_el0, {}", in(reg) pmcr);
+        core::arch::asm!("msr pmcntenset_el0, {}", in(reg) pmcntenset);
+        core::arch::asm!("msr pmuserenr_el0, {}", in(reg) pmuserenr);
+    }
+}
+
 pub fn init_per_core() {
     // Init interrupt controller.
     use cortex_a::registers::*;
@@ -61,15 +74,7 @@ pub fn init_per_core() {
     // Init page table.
     crate::arch::page_table::install_page_table();
 
-    // Init PMU.
-    let pmcr = 1u64;
-    let pmcntenset = 1u64 << 32;
-    let pmuserenr = 1u64 << 2 | 1u64;
-    unsafe {
-        core::arch::asm!("msr pmcr_el0, {}", in(reg) pmcr);
-        core::arch::asm!("msr pmcntenset_el0, {}", in(reg) pmcntenset);
-        core::arch::asm!("msr pmuserenr_el0, {}", in(reg) pmuserenr);
-    }
+    pmu_init();
 }
 
 #[cfg(feature = "smp")]

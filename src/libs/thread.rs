@@ -22,13 +22,18 @@ use crate::mm::stack::Stack;
 use crate::mm::paging::MappedRegion;
 use crate::util::{round_up, irqsave};
 
+#[cfg(feature = "mpk")]
+use crate::libs::zone::ZoneKeys;
+
+pub const MAIN_THREAD_ID: usize = 100;
+
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug, Ord, PartialOrd)]
 pub struct Tid(usize);
 
 impl Tid {
     /// Alloc global unique id for new thread.
     pub fn new() -> Self {
-        static THREAD_UUID_ALLOCATOR: AtomicUsize = AtomicUsize::new(100);
+        static THREAD_UUID_ALLOCATOR: AtomicUsize = AtomicUsize::new(MAIN_THREAD_ID);
         Self(THREAD_UUID_ALLOCATOR.fetch_add(1, Ordering::Relaxed))
     }
 
@@ -103,6 +108,10 @@ struct InnerMut {
     in_trap_context: Mutex<bool>,
     ctx: UnsafeCell<ThreadContext>,
     mem_regions: Mutex<BTreeMap<VAddr, MappedRegion>>,
+    #[cfg(feature = "mpk")]
+    zone_id: Mutex<crate::libs::zone::ZoneId>,
+    #[cfg(feature = "mpk")]
+    zone_keys: Mutex<crate::libs::zone::ZoneKeys>,
 }
 
 unsafe impl Send for InnerMut {}
@@ -209,7 +218,7 @@ impl Thread {
                 queue.push_back(t.clone());
             }
             None => {
-                warn!("Thread{} have no waiting queue!!!", self.id());
+                // warn!("Thread{} have no waiting queue!!!", self.id());
                 return;
             }
         }
@@ -307,6 +316,18 @@ impl Thread {
     pub fn get_tls_ptr(&self) -> *const u8 {
         self.0.inner.tls.get_tls_start().as_ptr::<u8>()
     }
+
+    #[cfg(feature = "mpk")]
+    pub fn zone_id(&self) -> crate::libs::zone::ZoneId {
+        let zone_id = self.0.inner_mut.zone_id.lock();
+        *zone_id
+    }
+
+    #[cfg(feature = "mpk")]
+    pub fn zone_keys(&self) -> crate::libs::zone::ZoneKeys {
+        let zone_keys = self.0.inner_mut.zone_keys.lock();
+        *zone_keys
+    }
 }
 
 /// Store thread IDs and its corresponding thread struct.
@@ -367,6 +388,7 @@ pub fn list_threads() {
 /// * `privilege` - Thread's privilige level, if true the thread is set as KERNEL thread, which can not be killed by user.
 ///
 /// Notes: the generated thread is at Ready state, you need to wake it up.
+#[allow(unused_assignments)]
 pub fn thread_alloc(
     id: Option<usize>,
     affinity_core: Option<CoreId>,
@@ -382,10 +404,47 @@ pub fn thread_alloc(
         None => Tid::new(),
     };
 
+    #[cfg(feature = "mpk")]
+    let ori_pkru = crate::libs::zone::switch_to_privilege_pkru();
+
     // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
 
-    let stack_region = crate::mm::stack::alloc_stack(stack_size / PAGE_SIZE, id)
+    let mut zone_id = 0;
+
+    // By default, zone is set as SHARED.
+    #[cfg(feature = "mpk")]
+    use crate::libs::zone::ZONE_ID_SHARED;
+    #[cfg(feature = "mpk")] {
+        zone_id = match current_thread() {
+            Ok(father_thread) => {
+                if father_thread.id().0 == MAIN_THREAD_ID {
+                    crate::libs::zone::zone_alloc().unwrap_or(ZONE_ID_SHARED)
+                } else {
+                    father_thread.zone_id()
+                }
+            }
+            Err(_) => {
+                if id < Tid(MAIN_THREAD_ID) {
+                    ZONE_ID_SHARED
+                } else {
+                    crate::libs::zone::zone_alloc().unwrap_or(ZONE_ID_SHARED)
+                }
+            }
+        };
+    }
+    
+
+    #[cfg(feature = "mpk")]
+    let zone_keys = ZoneKeys::from(zone_id);
+
+    #[cfg(feature = "mpk")]
+    debug!(
+        "{} get zone id {} with zone_keys {:x}",
+        id, zone_id, zone_keys.as_pkru()
+    );
+
+    let stack_region = crate::mm::stack::alloc_stack(stack_size / PAGE_SIZE, zone_id)
         .expect("fail to allocate user thread stack");
     let stack_start = stack_region.start_address();
 
@@ -401,9 +460,6 @@ pub fn thread_alloc(
     );
     // Init thread context in stack region.
     unsafe {
-        #[cfg(all(target_arch = "x86_64", feature = "mpk"))]
-        let ori_pkru = crate::arch::mpk::swicth_to_kernel_pkru();
-
         core::ptr::write_bytes(
             last_stack_pointer.as_mut_ptr::<u8>(),
             0,
@@ -418,17 +474,17 @@ pub fn thread_alloc(
         context_frame.set_gpr(0, entry);
         context_frame.set_gpr(1, arg);
         context_frame.set_stack_pointer(sp.value());
+        #[cfg(feature = "mpk")]
+        context_frame.set_pkru(zone_keys.as_pkru());
         trace!(
             "NEW context_frame: on {:#p} \n{}",
             context_frame,
             context_frame
         );
-        #[cfg(all(target_arch = "x86_64", feature = "mpk"))]
-        crate::arch::mpk::switch_from_kernel_pkru(ori_pkru);
     }
 
     // Init thread local storage region.
-    let tls = crate::libs::tls::alloc_thread_local_storage_region();
+    let tls = crate::libs::tls::alloc_thread_local_storage_region(zone_id);
     debug!("tls_region alloc at {}", tls.get_tls_start());
 
     let t = Thread(Arc::new(ControlBlock {
@@ -449,6 +505,10 @@ pub fn thread_alloc(
             ctx: UnsafeCell::new(ThreadContext::new()),
             in_trap_context: Mutex::new(true),
             mem_regions: Mutex::new(BTreeMap::new()),
+            #[cfg(feature = "mpk")]
+            zone_id: Mutex::new(zone_id),
+            #[cfg(feature = "mpk")]
+            zone_keys: Mutex::new(zone_keys),
         },
     }));
     let mut map = THREAD_MAP.lock();
@@ -458,6 +518,8 @@ pub fn thread_alloc(
         .lock()
         .insert(id, VecDeque::with_capacity(1));
 
+    #[cfg(feature = "mpk")]
+    crate::libs::zone::switch_from_privilege_pkru(ori_pkru);
     debug!(
         "thread_alloc success id [{}]\n\t\t\t\t\t\tsp [{} to 0x{:016x}]",
         id, stack_start, sp
@@ -695,8 +757,10 @@ pub fn handle_exit_threads() {
 // #[inline(always)]
 pub fn thread_yield() {
     irqsave(|| {
-        // debug!("call cpu schedule");
+        // debug!("{} call cpu schedule", current_thread_id());
         cpu().schedule();
+
+        // debug!("back to thread {}", current_thread_id());
     });
 }
 

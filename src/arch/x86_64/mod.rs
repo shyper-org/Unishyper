@@ -22,7 +22,8 @@ pub const MAX_USER_VIRTUAL_ADDRESS: usize = 0x0000_007F_FFFF_FFFF;
 
 pub const MAX_PAGE_NUMBER: usize = MAX_VIRTUAL_ADDRESS / PAGE_SIZE;
 
-pub const STACK_SIZE: usize = 2_097_152; // PAGE_SIZE * 512
+// pub const STACK_SIZE: usize = 2_097_152; // PAGE_SIZE * 512
+pub const STACK_SIZE: usize = PAGE_SIZE * 64;
 
 /// The virtual address offset from which physical memory is mapped, as described in
 /// https://os.phil-opp.com/paging-implementation/#map-the-complete-physical-memory
@@ -64,16 +65,23 @@ pub fn cpu_id() -> usize {
 #[no_mangle]
 #[link_section = ".text.start"]
 pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
-    println!("\nentering x86_64 entry...\n");
+    // println!("\nentering x86_64 entry...\n");
     // dump_boot_info_memory_layout(boot_info);
 
+    // Test boot time
+    // unsafe {
+    //     let start_cycle = core::arch::x86_64::_rdtsc();
+    //     // println!("\n start cycle {start_cycle}");
+    //     crate::START_CYCLE = start_cycle;
+    // }
+    
     unsafe {
         BOOT_INFO = Some(boot_info);
     }
 
     // Jump to loader main.
     let core_id = cpu_id();
-    println!("\nentering loader_main on cpu {}\n", core_id);
+    // println!("\nentering loader_main on cpu {}\n", core_id);
     crate::loader_main(core_id);
     loop {}
 }
@@ -164,8 +172,8 @@ impl ArchTrait for Arch {
     }
     #[inline(always)]
     fn pop_context_first(ctx: usize) -> ! {
-        #[cfg(feature = "mpk")]
-        mpk::wrpkru(mpk::pkru_of_zone_id(1));
+        // #[cfg(feature = "mpk")]
+        // mpk::wrpkru(mpk::pkru_of_zone_id(1));
         unsafe { context_frame::_pop_context_first(ctx) }
         loop {}
     }

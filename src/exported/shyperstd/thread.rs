@@ -136,7 +136,6 @@ pub fn sleep(dur: core::time::Duration) {
 
 pub type ThreadId = crate::libs::thread::Tid;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // JoinHandle
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +158,9 @@ impl<T> JoinInner<T> {
     fn join(&mut self) -> io::Result<T> {
         self.native.take().unwrap().join();
         Arc::get_mut(&mut self.packet)
-            .unwrap()
+            .unwrap_or(&mut Packet {
+                result: UnsafeCell::new(None),
+            })
             .result
             .get_mut()
             .take()

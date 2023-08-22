@@ -675,6 +675,7 @@ pub fn allocate_frames(num_frames: usize) -> Option<AllocatedFrames> {
 /// Allocates the given number of frames
 /// with no constraints on the starting physical address.
 /// with constraints on the physical address alignment.
+#[allow(unused)]
 pub fn allocate_frames_alignment(num_frames: usize, alignment: usize) -> Option<AllocatedFrames> {
     // trace!("allocate {} frames", num_frames);
     allocate_frames_deferred(None, Some(alignment), num_frames)

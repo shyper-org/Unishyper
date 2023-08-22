@@ -34,8 +34,8 @@ pub trait PageTableEntryAttrTrait {
 
 #[cfg(target_arch = "x86_64")]
 pub trait PageTableEntryAttrZoneTrait {
-    fn set_zone(&self, zone_id: u16) -> Self;
-    fn get_zone_key(&self) -> u16;
+    fn set_zone(&mut self, zone_id: usize);
+    fn get_zone_id(&self) -> usize;
 }
 
 pub type Error = usize;

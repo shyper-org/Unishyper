@@ -1,0 +1,30 @@
+#![no_std]
+#![no_main]
+#![feature(format_args_nl)]
+#![feature(alloc_error_handler)]
+#![allow(unused_imports)]
+
+extern crate alloc;
+
+extern crate ring;
+extern crate data_encoding;
+
+use unishyper::*;
+// use unishyper::shyperstd as std;
+
+mod hmac;
+mod pbkdf2;
+mod sha256;
+
+
+#[no_mangle]
+fn main() {
+    println!("Hello! Unishyper crypto demos based on ring[https://crates.io/crates/ring]");
+
+    sha256::sha256_test();
+
+    hmac::hmac_sign_and_verify();
+    hmac::hmac_sign_and_verify_one_shot();
+
+    pbkdf2::pbkdf2_test();
+}

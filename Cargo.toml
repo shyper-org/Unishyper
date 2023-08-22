@@ -12,6 +12,8 @@ members = [
   "examples/hello_world",
   "examples/httpd",
   "examples/std_test",
+  "examples/benches",
+  "examples/crypto_demos"
 ]
 
 exclude = ["rboot", "examples/rust-tcp-io-perf"]
@@ -29,6 +31,7 @@ name = "unishyper"
 [dependencies]
 bit_field = "0.7.0"
 buddy_system_allocator = "0.8.0"
+bitmaps = {version = "3.2.0", default-features = false}
 cfg-if = "1.0.0"
 crossbeam-utils = {version = "0.8.11", default-features = false, features = ["nightly"]}
 derive_more = "0.99.17"
@@ -103,7 +106,7 @@ chrono = "0.4.23"
 
 [features]
 alloc = []
-default = ["qemu", "terminal", "tcp", "fat", "fs", "unilib", "log-level-info"]
+default = ["qemu", "terminal", "tcp", "fat", "fs", "unilib", "log-level-info", "mpk"]
 fat = [
   "fatfs",
   "lru",

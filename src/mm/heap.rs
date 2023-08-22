@@ -64,6 +64,11 @@ impl SpinlockIrqSaveHeapAllocator {
 
     /// Add a range of memory [start, end) to the heap.
     pub unsafe fn init(&self, start: usize, size: usize) {
+        println!(
+            "HEAP_ALLOCATOR init range [{:#x} - {:#x}]",
+            start,
+            start + size
+        );
         unsafe {
             self.0.lock().init(start, size);
         }
@@ -72,14 +77,23 @@ impl SpinlockIrqSaveHeapAllocator {
 
 unsafe impl GlobalAlloc for SpinlockIrqSaveHeapAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.0
+        // println!(
+        //     "GlobalAlloc alloc {:?} with pkru {:#x}",
+        //     layout,
+        //     crate::arch::mpk::rdpkru()
+        // );
+        let res = self
+            .0
             .lock()
             .alloc(layout)
             .ok()
-            .map_or(0 as *mut u8, |allocation| allocation.as_ptr())
+            .map_or(0 as *mut u8, |allocation| allocation.as_ptr());
+        // println!("GlobalAlloc alloc success at {:#x}", res as usize);
+        res
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        // println!("GlobalAlloc dealloc at {:#x} {:?}", ptr as usize, layout);
         self.0.lock().dealloc(NonNull::new_unchecked(ptr), layout)
     }
 }

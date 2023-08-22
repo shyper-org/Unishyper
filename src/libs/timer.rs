@@ -44,7 +44,7 @@ pub fn current_us() -> usize {
 /// Get current time in millisecond(10 ^ -3 second).
 pub fn current_ms() -> usize {
     let count = crate::drivers::timer::counter();
-    let freq = crate::drivers::timer::frequency();
+    let freq: usize = crate::drivers::timer::frequency();
     count * TIMER_SEC_TO_MS / freq
 }
 
@@ -71,7 +71,7 @@ pub fn boot_time() -> usize {
 }
 
 pub fn init() {
-    println!(
+    info!(
         "Unishyper built at [{}]\nUnishyper starts at [{} (UTC)]",
         env!("BUILD_TIME"),
         rtc_time64_to_tm(crate::drivers::timer::timestamp_sec() as u64)

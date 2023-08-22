@@ -12,6 +12,11 @@ use crate::mm::paging::{map_allocated_pages, EntryAttribute, MappedRegion};
 use crate::mm::address::VAddr;
 use crate::mm::interface::PageTableEntryAttrTrait;
 
+use crate::libs::zone::ZoneId;
+
+#[cfg(feature = "mpk")]
+use crate::mm::interface::PageTableEntryAttrZoneTrait;
+
 static GLOBAL_MM_MAP: Mutex<BTreeMap<VAddr, AllocatedFrames>> = Mutex::new(BTreeMap::new());
 
 /// Special function for kernel page alloc.
@@ -48,8 +53,9 @@ pub fn kallocate(size: usize) -> Option<VAddr> {
     Some(kaddr)
 }
 
-pub fn allocate_region(size: usize) -> Result<MappedRegion, &'static str> {
-    trace!("user allocate region size {:#x}", size);
+#[allow(unused_mut)]
+pub fn allocate_region(size: usize, zone_id: Option<ZoneId>) -> Result<MappedRegion, &'static str> {
+    debug!("user allocate region size {:#x} zone {:?}", size, zone_id);
     assert!(size > 0);
     assert_eq!(
         size % PAGE_SIZE,
@@ -65,7 +71,13 @@ pub fn allocate_region(size: usize) -> Result<MappedRegion, &'static str> {
             return Err("allocate_region(): Failed to allocate");
         }
     };
-    let attr = EntryAttribute::user_default();
+    let mut attr = EntryAttribute::user_default();
+
+    #[cfg(feature = "mpk")]
+    if zone_id.is_some() {
+        attr.set_zone(zone_id.unwrap());
+    }
+
     map_allocated_pages(pages, attr)
 }
 

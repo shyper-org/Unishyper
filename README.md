@@ -12,11 +12,11 @@ Unishyper  now supports following platforms:
 
 | MACHINE | ARCH                    | Description                             |
 |---------|-------------------------|-----------------------------------------|
-| qemu    | **aarch64**  | QEMU (qemu-system-aarch64) |
+| qemu    | **aarch64**  | QEMU/KVM (qemu-system-aarch64) |
 | shyper  | **aarch64**  |  Type-1 Hypervisor         |
 | tx2     | **aarch64**  | NVIDIA TX2                 |
-| qemu    | **x86_64**   | QEMU (qemu-system-x86_64)  |
-| qemu    | ~~**riscv64**~~  | ~~QEMU (qemu-system-riscv64)~~  comming soon|
+| qemu    | **x86_64**   | QEMU/KVM (qemu-system-x86_64)  |
+| qemu    | **riscv64**  | QEMU/KVM (qemu-system-riscv64)|
 
 
 ## Features
@@ -59,9 +59,9 @@ use this lines to build and emulate:
 
 ```
 # for examples/user
-make user
-# for examples/fs
-make fs
+ARCH=x86_64 APP=user make run
+# for examples/net_tcp_bench
+ARCH=aarch64 APP=net_tcp_bench APP_BIN=server-bw NET=y make run
 ```
 
 ## Terminal Support

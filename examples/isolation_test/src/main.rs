@@ -4,60 +4,136 @@
 #![feature(alloc_error_handler)]
 #![allow(unused_imports)]
 
-use unishyper::*;
+extern crate alloc;
 
-extern "C" fn test_thread_write(test_var_addr: usize) {
-    unsafe {
+extern crate ring;
+extern crate data_encoding;
+
+use ring::digest::{Context, Digest, SHA256};
+use data_encoding::HEXUPPER;
+
+use alloc::vec::Vec;
+
+use unishyper::*;
+use unishyper::shyperstd as std;
+
+use std::io::{BufReader, Read, Write};
+
+protected_global_var!(static mut TEST_PROTECTED_GLOCAL: usize = 123);
+static mut TEST_SHARED_GLOCAL: usize = 456;
+
+fn test_stack_var_rw() {
+    // Test write isolation for stack data.
+    let test_var = 123 as usize;
+
+    println!(
+        "\n\nMain thread test_stack_var_rw, test var is {} at {:#p}",
+        test_var, &test_var
+    );
+
+    let test_var_addr = &test_var as *const _ as usize;
+
+    std::thread::spawn(move || {
+        let test;
+        unsafe {
+            let test_var = test_var_addr as *mut usize;
+
+            println!(
+                "\n\nOn test_thread_read, try to read test var on {:#x}",
+                test_var_addr
+            );
+
+            test = *test_var;
+        }
+        println!("\n\nOn test_thread_read, test var is {:#x}", test);
+    });
+
+    std::thread::spawn(move || unsafe {
         let test_var = test_var_addr as *mut usize;
 
         println!(
-            "On test_thread, try to write test var on {:#x}",
+            "\n\nOn test_thread_write, try to write test var on {:#x}",
             test_var_addr,
         );
 
         *test_var = 321;
 
         println!(
-            "On test_thread, test var changed to {:?}",
+            "\n\nOn test_thread_write, test var changed to {:?}",
             test_var.as_mut()
         );
-    }
-
-    thread_yield();
-    loop {}
+    });
+    println!("\n\nBack to main thread, test var changed to {}", test_var);
 }
 
-extern "C" fn test_thread_read(test_var_addr: usize) {
-    let test;
+fn test_global_var_rw() {
     unsafe {
-        let test_var = test_var_addr as *mut usize;
+        println!(
+            "On main thread, protected global var is {} at {:#p}",
+            TEST_PROTECTED_GLOCAL, &TEST_PROTECTED_GLOCAL
+        );
+        println!(
+            "On main thread, shared global var is {} at {:#p}",
+            TEST_SHARED_GLOCAL, &TEST_SHARED_GLOCAL
+        );
+    }
+
+    let mut joinhandles = Vec::new();
+
+    joinhandles.push(std::thread::spawn(move || unsafe {
+        println!(
+            "On test thread 1, try to read shared global var at {:#p}",
+            &TEST_SHARED_GLOCAL
+        );
+        let global_var = TEST_SHARED_GLOCAL;
+        println!(
+            "On test thread 1, protected shared var is {} at {:#p}",
+            global_var, &TEST_SHARED_GLOCAL
+        );
+        TEST_SHARED_GLOCAL = 654;
+        let global_var = TEST_SHARED_GLOCAL;
 
         println!(
-            "On test_thread, try to read test var on {:#x}",
-            test_var_addr
+            "\n\nOn On test thread 1, protected shared var changed to {:?}",
+            global_var
         );
+    }));
 
-        test = *test_var;
+    joinhandles.push(std::thread::spawn(move || unsafe {
+        println!(
+            "On test thread 2, try to read protected global var at {:#p}",
+            &TEST_PROTECTED_GLOCAL
+        );
+        let global_var = TEST_PROTECTED_GLOCAL;
+        println!(
+            "On test thread 2, protected global var is {} at {:#p}",
+            global_var, &TEST_PROTECTED_GLOCAL
+        );
+    }));
+
+    for j in joinhandles {
+        j.join().unwrap_or_else(|_| {
+            println!("The thread being joined has panicked");
+        });
     }
-    println!("On test_thread, test var is {:?}", test);
 
-    thread_yield();
-    loop {}
+    unsafe {
+        println!(
+            "\n\nBack to main thread, global protected var is {} at {:#p}",
+            TEST_PROTECTED_GLOCAL, &TEST_PROTECTED_GLOCAL
+        );
+        println!(
+            "\n\nBack to main thread, global shared var is {} at {:#p}",
+            TEST_SHARED_GLOCAL, &TEST_SHARED_GLOCAL
+        );
+    }
 }
 
 #[no_mangle]
 fn main() {
     println!("Hello, world!");
 
-    let test_var = 123 as usize;
+    // test_stack_var_rw();
 
-    println!("On main thread, test var is {}", test_var);
-
-    thread_spawn(test_thread_write, &test_var as *const _ as usize);
-    // thread_spawn(test_thread_read, &test_var as *const _ as usize);
-
-    loop {
-        thread_yield();
-        println!("Back to main thread, test var is {}", test_var);
-    }
+    test_global_var_rw();
 }

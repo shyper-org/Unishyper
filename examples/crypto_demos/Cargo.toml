@@ -1,0 +1,24 @@
+[package]
+name = "crypto_demos"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.unishyper]
+path = "../../"
+default-features = false
+
+[dependencies]
+ring = { path = "../../../Rust_cryptography/ring"}
+# ring = { git = "https://gitee.com/unishyper/ring.git"}
+data-encoding = {version = "2.4.0", default-features = false, features = ["alloc"]}
+
+[features]
+default = ["qemu"]
+qemu = [
+    "unishyper/alloc",
+    "unishyper/qemu",
+    "unishyper/serial",
+    "unishyper/mpk"
+]

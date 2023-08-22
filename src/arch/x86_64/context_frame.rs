@@ -3,9 +3,6 @@ use core::arch::asm;
 
 use crate::libs::traits::ContextFrameTrait;
 
-#[cfg(feature = "mpk")]
-use super::mpk::pkru_of_thread_id;
-
 #[repr(C, align(16))]
 #[derive(Copy, Clone, Debug)]
 pub struct X86_64TrapContextFrame {
@@ -86,16 +83,9 @@ impl core::fmt::Display for X86_64TrapContextFrame {
     }
 }
 
-impl ContextFrameTrait for X86_64TrapContextFrame {
-    #[cfg(not(feature = "mpk"))]
+impl ContextFrameTrait for X86_64TrapContextFrame { 
     fn init(&mut self, _tid: usize) {
         self.gpr.rflags = 0x1202;
-    }
-
-    #[cfg(feature = "mpk")]
-    fn init(&mut self, tid: usize) {
-        self.gpr.rflags = 0x1202;
-        self.gpr.pkru = pkru_of_thread_id(tid) as usize;
     }
 
     fn exception_pc(&self) -> usize {
@@ -147,6 +137,16 @@ impl ContextFrameTrait for X86_64TrapContextFrame {
                 );
             }
         }
+    }
+
+    #[cfg(feature = "mpk")]
+    fn set_pkru(&mut self, value: u32) {
+        self.gpr.pkru = value as usize;
+    }
+
+    #[cfg(feature = "mpk")]
+    fn pkru(&self) -> u32 {
+        self.gpr.pkru as u32
     }
 }
 

@@ -57,6 +57,7 @@
 // see issue #108443 <https://github.com/rust-lang/rust/issues/108443> for more information
 #![feature(ip_in_core)]
 
+#![feature(stmt_expr_attributes)]
 #[macro_use]
 extern crate log;
 // #[macro_use]
@@ -87,6 +88,8 @@ pub use arch::irq::disable as irq_disable;
 pub use mm::heap::Global;
 
 pub use panic::random_panic;
+
+// pub static mut START_CYCLE: u64 = 0;
 
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
@@ -120,6 +123,11 @@ pub extern "C" fn loader_main(core_id: usize) {
 
     if core_id == 0 {
         board::init();
+
+        #[cfg(feature = "mpk")]
+        crate::libs::zone::zone_init();
+
+
         info!("board init ok");
         extern "Rust" {
             fn main(arg: usize) -> !;

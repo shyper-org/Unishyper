@@ -62,18 +62,8 @@ pub fn init() {
     crate::drivers::init_devices();
 }
 
-pub fn init_per_core() {
-    // Init interrupt controller.
-    use cortex_a::registers::*;
-    use tock_registers::interfaces::Writeable;
-    DAIF.write(DAIF::I::Masked);
-    crate::drivers::INTERRUPT_CONTROLLER.init();
-    crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
-    crate::drivers::timer::init();
-
-    // Init page table.
-    crate::arch::page_table::install_page_table();
-
+#[no_mangle]
+pub fn pmu_init() {
     // Init PMU.
     let mut pmcr: u32;
     // Performance Monitors Count Enable Clear register.
@@ -98,6 +88,21 @@ pub fn init_per_core() {
         core::arch::asm!("msr pmcntenset_el0, {}", in(reg) pmcntenset);
         core::arch::asm!("msr pmuserenr_el0, {}", in(reg) pmuserenr);
     }
+}
+
+pub fn init_per_core() {
+    // Init interrupt controller.
+    use cortex_a::registers::*;
+    use tock_registers::interfaces::Writeable;
+    DAIF.write(DAIF::I::Masked);
+    crate::drivers::INTERRUPT_CONTROLLER.init();
+    crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
+    crate::drivers::timer::init();
+
+    // Init page table.
+    crate::arch::page_table::install_page_table();
+
+    pmu_init();
 }
 
 #[cfg(feature = "smp")]

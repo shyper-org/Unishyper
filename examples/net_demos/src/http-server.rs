@@ -26,21 +26,23 @@ Connection: close\r\n\
     };
 }
 
-const CONTENT: &str = r#"<html>
-<head>
-  <title>Hello world from Unishyper! 💙</title>
-</head>
-<body>
-  <center>
-    <h1>Hello, <a href="https://gitee.com/unishyper">Unishyper Unikernel</a></h1>
-  </center>
-  <hr>
-  <center>
-    <i>Powered by <a href="https://gitee.com/unishyper/unishyper/tree/master/examples/net_demos/src/http-server.rs">Unishyper Http server demo</a> v0.1.0</i>
-  </center>
-</body>
-</html>
-"#;
+// const CONTENT: &str = r#"<html>
+// <head>
+//   <title>Hello world from Unishyper! 💙</title>
+// </head>
+// <body>
+//   <center>
+//     <h1>Hello, <a href="https://gitee.com/unishyper">Unishyper Unikernel</a></h1>
+//   </center>
+//   <hr>
+//   <center>
+//     <i>Powered by <a href="https://gitee.com/unishyper/unishyper/tree/master/examples/net_demos/src/http-server.rs">Unishyper Http server demo</a> v0.1.0</i>
+//   </center>
+// </body>
+// </html>
+// "#;
+
+const CONTENT: &str = r#"hello"#;
 
 fn http_server(mut stream: TcpStream) -> io::Result<()> {
     let mut buf = [0u8; 1024];
@@ -68,10 +70,11 @@ fn accept_loop() -> io::Result<usize> {
     loop {
         match listener.accept() {
             Ok((stream, addr)) => {
-                println!("new client {}: {}", i, addr);
+                // println!("new client {}: {}", i, addr);
                 thread::spawn(move || match http_server(stream) {
                     Err(e) => println!("client connection error: {:?}", e),
-                    Ok(()) => println!("client {} closed successfully", i),
+                    // Ok(()) => println!("client {} closed successfully", i),
+                    Ok(()) => {},
                 });
             }
             Err(e) => return Err(e),

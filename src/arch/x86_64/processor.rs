@@ -17,14 +17,14 @@ pub fn configure() {
     debug!("Processor CR4 flags [{:?}]", cr4_flags);
 
     if extended_feature_info.has_pku() {
-        debug!("Processor [{}] supports pku", core_id);
+        info!("Processor [{}] supports pku", core_id);
         unsafe {
             Cr4::update(|f| f.insert(Cr4Flags::PROTECTION_KEY_USER));
             // Cr4::update(|f| f.insert(Cr4Flags::PROTECTION_KEY_SUPERVISOR));
         }
     }
     if extended_feature_info.has_fsgsbase() {
-        debug!("Processor [{}] supports fsgsbase", core_id);
+        info!("Processor [{}] supports fsgsbase", core_id);
         unsafe {
             Cr4::update(|f| f.insert(Cr4Flags::FSGSBASE));
         }

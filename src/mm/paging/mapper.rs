@@ -91,10 +91,11 @@ pub fn map_allocated_pages(
         }
     };
     trace!(
-        "map_allocated_pages(): {} pages:{} frames:{}",
+        "map_allocated_pages(): {} pages:{} frames:{} attr: {:?}",
         pages.size_in_pages(),
         pages.start().start_address(),
-        frames.start().start_address()
+        frames.start().start_address(),
+        attr
     );
 
     let mut page_table = crate::arch::page_table::page_table().lock();

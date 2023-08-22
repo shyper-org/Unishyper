@@ -1,0 +1,30 @@
+[package]
+name = "benches"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.unishyper]
+default-features = false
+path = "../../"
+
+[dependencies]
+hashbrown = "0"
+
+[features]
+default = ["qemu"]
+qemu = [
+  "unishyper/qemu",
+  "unishyper/serial",
+  # "unishyper/fs",
+  # "unishyper/fat",
+]
+
+[[bin]]
+name = "knucleotide"
+path = "src/knucleotide/8.rs"
+
+[[bin]]
+name = "knucleotide_m"
+path = "src/knucleotide/8_m.rs"

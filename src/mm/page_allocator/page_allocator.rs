@@ -569,10 +569,10 @@ fn inner_allocate_pages(
 
     let mut locked_list = FREE_PAGE_LIST.lock();
 
-    // debug!(
-    //     "inner_allocate_pages num_pages {:?} {:?} {:?}",
-    //     num_pages, requested_vaddr, requested_alignment
-    // );
+    trace!(
+        "inner_allocate_pages num_pages {:?} {:?} {:?}",
+        num_pages, requested_vaddr, requested_alignment
+    );
     // The main logic of the allocator is to find an appropriate chunk that can satisfy the allocation request.
     // An appropriate chunk satisfies the following conditions:
     // - Can fit the requested size (starting at the requested address) within the chunk.
@@ -643,6 +643,7 @@ pub fn allocate_pages_alignment(num_pages: usize, alignment: usize) -> Option<Al
 }
 
 /// Allocates the given number of pages starting at (inclusive of) the page containing the given `VAddr`.
+#[allow(unused)]
 pub fn allocate_pages_at(vaddr: VAddr, num_pages: usize) -> Option<AllocatedPages> {
     inner_allocate_pages(Some(vaddr), None, num_pages)
 }

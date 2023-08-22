@@ -131,7 +131,7 @@ impl Core {
             }
         });
 
-        trace!("cpu schedule\nprev {} to next {}", prev.id(), next.id());
+        // debug!("cpu schedule\nprev {} to next {}", prev.id(), next.id());
 
         if prev.eq(&next) {
             return;
@@ -152,7 +152,7 @@ impl Core {
             self.set_running_thread(Some(next));
 
             if next_is_not_run {
-                // debug!("cswitch_to_trap_ctx on {:#x}", next_stack_pointer);
+                // debug!("switch_to_trap_ctx on {:#x}", next_stack_pointer);
                 (*prev_ctx_ptr).switch_to_trap_ctx(next_stack_pointer);
             } else {
                 // debug!("switch_to_yield_ctx on {:#p}", next_ctx_ptr);
@@ -165,8 +165,8 @@ impl Core {
 /// Get current CPU structure.
 #[inline(always)]
 pub fn cpu() -> &'static mut Core {
-    // let core_id = crate::arch::Arch::core_id();
-    unsafe { &mut CORES[0] }
+    let core_id = crate::arch::Arch::core_id();
+    unsafe { &mut CORES[core_id] }
 }
 
 /// Get target CPU structure of given cpu id.

@@ -36,4 +36,12 @@ SECTIONS
         *(.stack)
     }
     KERNEL_END = .;
+    . = ALIGN(4096);
+    PROTECTED_DATA_START = .;
+    .protected_data : {
+		*(.protected_data)
+		*(.protected_data.*)
+	}
+    . = ALIGN(4096);
+    PROTECTED_DATA_END = .;
 }

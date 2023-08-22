@@ -53,17 +53,15 @@ impl log::Log for SimpleLogger {
 static LOGGER: SimpleLogger = SimpleLogger;
 
 pub fn init() {
-    print_logo();
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Trace))
-        .expect("Panic on logger init failed")
+        .expect("Panic on logger init failed");
+    print_logo();
 }
 
 pub fn print_logo() {
-    println!(concat!(
-        "-----------------------------------------------------------\n\n",
-    ));
-    println!(concat!(
+    info!(concat!(
+        "-----------------------------\n\n",
         "     __  __      _      __                         \n",
         "    / / / /___  (_)____/ /_  __  ______  ___  _____\n",
         "   / / / / __ \\/ / ___/ __ \\/ / / / __ \\/ _ \\/ ___/\n",
@@ -71,7 +69,7 @@ pub fn print_logo() {
         "  \\____/_/ /_/_/____/_/ /_/\\__, / .___/\\___/_/\n",
         "                          /____/_/\n"
     ));
-    println!(concat!(
-        "-----------------------------------------------------------\n",
+    info!(concat!(
+        "-----------------------------\n",
     ));
 }

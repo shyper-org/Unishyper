@@ -13,8 +13,8 @@ pub struct EntryAttribute {
     copy_on_write: bool,
     shared: bool,
     block: bool,
-    #[cfg(target_arch = "x86_64")]
-    zone_key: u16,
+    #[cfg(feature = "mpk")]
+    zone_id: usize,
 }
 
 impl PageTableEntryAttrTrait for EntryAttribute {
@@ -59,8 +59,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: self.u_executable,
             copy_on_write: self.copy_on_write,
             shared: self.shared,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: self.zone_key,
+            #[cfg(feature = "mpk")]
+            zone_id: self.zone_id,
             block: true,
         }
     }
@@ -87,8 +87,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable,
             copy_on_write,
             shared,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block,
         }
     }
@@ -102,8 +102,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block: false,
         }
     }
@@ -117,8 +117,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block: false,
         }
     }
@@ -132,8 +132,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block: true,
         }
     }
@@ -147,8 +147,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block: false,
         }
     }
@@ -162,8 +162,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block: false,
         }
     }
@@ -177,8 +177,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block: false,
         }
     }
@@ -192,8 +192,8 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block: false,
         }
     }
@@ -207,30 +207,20 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: self.u_executable,
             copy_on_write: self.copy_on_write,
             shared: self.shared,
-            #[cfg(target_arch = "x86_64")]
-            zone_key: 0,
+            #[cfg(feature = "mpk")]
+            zone_id: 0,
             block: false,
         }
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(feature = "mpk")]
 impl PageTableEntryAttrZoneTrait for EntryAttribute {
-    fn set_zone(&self, zone_id: u16) -> Self {
-        EntryAttribute {
-            writable: self.writable,
-            user: self.user,
-            device: self.device,
-            k_executable: self.k_executable,
-            u_executable: self.u_executable,
-            copy_on_write: self.copy_on_write,
-            shared: self.shared,
-            zone_key: zone_id,
-            block: self.block,
-        }
+    fn set_zone(&mut self, zone_id: usize) {
+        self.zone_id = zone_id;
     }
-    fn get_zone_key(&self) -> u16 {
-        self.zone_key & 15 as u16
+    fn get_zone_id(&self) -> usize {
+        self.zone_id as usize
     }
 }
 

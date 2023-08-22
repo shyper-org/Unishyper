@@ -13,12 +13,13 @@ use x86_64::structures::paging::{
     FrameAllocator, FrameDeallocator,
 };
 
-use crate::arch::x86_64::{MACHINE_SIZE, PHYSICAL_MEMORY_OFFSET};
+use crate::arch::x86_64::{MACHINE_SIZE, PHYSICAL_MEMORY_OFFSET, PAGE_SIZE};
 use crate::libs::error::{ERROR_INVARG, ERROR_INTERNAL};
 use crate::libs::traits::*;
 use crate::mm::frame_allocator;
 use crate::mm::frame_allocator::AllocatedFrames;
 use crate::mm::interface::{PageTableEntryAttrTrait, PageTableTrait, Error, MapGranularity};
+#[cfg(feature = "mpk")]
 use crate::mm::interface::PageTableEntryAttrZoneTrait;
 use crate::mm::paging::{Entry, EntryAttribute};
 use crate::libs::synch::spinlock::SpinlockIrqSave;
@@ -89,10 +90,10 @@ static PAGE_TABLE: Once<SpinlockIrqSave<X86_64PageTable>> = Once::new();
 
 fn frame_to_page_table(frame: Frame) -> *mut x86PageTable {
     let vaddr = (frame.start_address().as_u64() as usize).pa2kva();
-    debug!(
-        "frame_to_page_table , frame {:#?}, page_table at {:#x}",
-        frame, vaddr
-    );
+    // debug!(
+    //     "frame_to_page_table , frame {:#?}, page_table at {:#x}",
+    //     frame, vaddr
+    // );
     vaddr as *mut x86PageTable
 }
 
@@ -104,6 +105,81 @@ pub fn init() {
     let frame = Cr3::read().0;
     debug!("page table init, frame {:#?}", frame);
     let table = unsafe { &mut *frame_to_page_table(frame) };
+
+    for (_l4_idx, l4_entry) in table.iter_mut().enumerate() {
+        if !l4_entry.is_unused() {
+            l4_entry.set_flags(l4_entry.flags() | PageTableFlags::USER_ACCESSIBLE);
+            debug!("page table dir entry {} flags {:?}", _l4_idx, l4_entry);
+            let l3_page_table = unsafe { &mut *frame_to_page_table(l4_entry.frame().unwrap()) };
+            for (_l3_idx, l3_entry) in l3_page_table.iter_mut().enumerate() {
+                if !l3_entry.is_unused() {
+                    l3_entry.set_flags(l3_entry.flags() | PageTableFlags::USER_ACCESSIBLE);
+
+                    if l3_entry.flags().contains(PageTableFlags::HUGE_PAGE) {
+                        continue;
+                    }
+
+                    let l2_page_table =
+                        unsafe { &mut *frame_to_page_table(l3_entry.frame().unwrap()) };
+                    for (_l2_idx, l2_entry) in l2_page_table.iter_mut().enumerate() {
+                        if !l2_entry.is_unused() {
+                            l2_entry.set_flags(l2_entry.flags() | PageTableFlags::USER_ACCESSIBLE);
+
+                            if l2_entry.flags().contains(PageTableFlags::HUGE_PAGE) {
+                                // debug!(
+                                //     "[{}][{}] l2 page table entry {} map huge page, continue",
+                                //     idx, l3_idx, l2_idx,
+                                // );
+                                continue;
+                            }
+                            // let l1_page_table =
+                            //     unsafe { &mut *frame_to_page_table(l2_entry.frame().unwrap()) };
+                            // for (_l1_idx, l1_entry) in l1_page_table.iter_mut().enumerate() {
+                            //     if !l1_entry.is_unused()
+                            //         && l1_entry.flags().contains(PageTableFlags::NO_EXECUTE)
+                            //     // && l1_entry.flags().contains(PageTableFlags::ACCESSED)
+                            //     {
+                            //         // l1_entry.set_flags(
+                            //         //     l1_entry.flags() | PageTableFlags::USER_ACCESSIBLE,
+                            //         // );
+                            //         println!(
+                            //             "[{}][{}][{}][{}] l1 vaddr {:#x}'s entry {:?}",
+                            //             _l4_idx,
+                            //             _l3_idx,
+                            //             _l2_idx,
+                            //             _l1_idx,
+                            //             0xffff << 12 << 9 << 9 << 9 << 9
+                            //                 | _l4_idx << 12 << 9 << 9 << 9
+                            //                 | _l3_idx << 12 << 9 << 9
+                            //                 | _l2_idx << 12 << 9
+                            //                 | _l1_idx << 12,
+                            //             l1_entry
+                            //         );
+                            //     }
+                            // }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // let demo_vaddr = 0xffffff000001951a as u64;
+    // let page_4kb = Page::<Size4KiB>::containing_address(VirtAddr::new(demo_vaddr));
+    // let l4_index = page_4kb.p4_index();
+    // let l3_index = page_4kb.p3_index();
+    // let l2_index = page_4kb.p2_index();
+    // let l1_index = page_4kb.p1_index();
+    // println!("==============================================================");
+    // debug!(
+    //     "demo_vaddr {:?} l4_index {:?} l3_index {:?} l2_index {:?} l1_index {:?}",
+    //     page_4kb,
+    //     usize::from(l4_index),
+    //     usize::from(l3_index),
+    //     usize::from(l2_index),
+    //     usize::from(l1_index),
+    // );
+
     let physical_memory_offset = VirtAddr::new(PHYSICAL_MEMORY_OFFSET);
     PAGE_TABLE.call_once(|| {
         SpinlockIrqSave::new(X86_64PageTable {
@@ -116,6 +192,8 @@ pub fn init() {
         "Page table init ok, dir at {:#x}",
         page_table().lock().base_pa()
     );
+
+    page_table().lock().init_main_zone_flags();
 }
 
 /// Todo: this seems awkward.
@@ -158,6 +236,146 @@ impl FrameDeallocator<Size4KiB> for FrameAllocatorForX86 {
 
 #[allow(unused)]
 impl X86_64PageTable {
+    pub fn dump_entry_flags_of_va(&mut self, va: usize) {
+        let page_4kb = Page::<Size4KiB>::containing_address(VirtAddr::new(va as u64));
+        let l4_index = page_4kb.p4_index();
+        let l3_index = page_4kb.p3_index();
+        let l2_index = page_4kb.p2_index();
+        let l1_index = page_4kb.p1_index();
+        let l4_entry = &self.page_table.level_4_table()[usize::from(l4_index)];
+        let l3_page_table = unsafe { &*frame_to_page_table(l4_entry.frame().unwrap()) };
+        let l3_entry = &l3_page_table[l3_index];
+        let l2_page_table = unsafe { &*frame_to_page_table(l3_entry.frame().unwrap()) };
+        let l2_entry = &l2_page_table[l2_index];
+        if l2_entry.flags().contains(PageTableFlags::HUGE_PAGE) {
+            println!(
+                "va {:#x} mapped as 2MB Huge page with flags {:?}",
+                va,
+                l2_entry.flags()
+            );
+            return;
+        }
+        let l1_page_table = unsafe { &*frame_to_page_table(l2_entry.frame().unwrap()) };
+        let l1_entry = &l1_page_table[l1_index];
+        println!(
+            "va {:#x} mapped as 4KB page with flags {:?}",
+            va,
+            l1_entry.flags()
+        );
+    }
+
+    fn init_main_zone_flags(&mut self) {
+        extern "C" {
+            fn PROTECTED_DATA_START();
+            fn PROTECTED_DATA_END();
+        }
+        let protected_data_start = PROTECTED_DATA_START as usize;
+        let protected_data_end = PROTECTED_DATA_END as usize;
+
+        info!(
+            "Protected data region [{:#x} to {:#x}]",
+            protected_data_start, protected_data_end
+        );
+
+        assert_eq!(protected_data_start % PAGE_SIZE, 0);
+        assert_eq!(protected_data_end % PAGE_SIZE, 0);
+
+        for va in (protected_data_start..protected_data_end).step_by(PAGE_SIZE) {
+            let page_4kb = Page::<Size4KiB>::containing_address(VirtAddr::new(va as u64));
+            let l4_index = page_4kb.p4_index();
+            let l3_index = page_4kb.p3_index();
+            let l2_index = page_4kb.p2_index();
+            let l1_index = page_4kb.p1_index();
+            let l4_entry = &self.page_table.level_4_table()[usize::from(l4_index)];
+            debug!(
+                "get l4 pte of index {}, {:?}",
+                usize::from(l4_index),
+                l4_entry.flags()
+            );
+            let l3_page_table = unsafe { &*frame_to_page_table(l4_entry.frame().unwrap()) };
+            let l3_entry = &l3_page_table[l3_index];
+            debug!(
+                "get l3 pte of index {}, {:?}",
+                usize::from(l3_index),
+                l3_entry.flags()
+            );
+            let l2_page_table = unsafe { &*frame_to_page_table(l3_entry.frame().unwrap()) };
+            let l2_entry = &l2_page_table[l2_index];
+            debug!(
+                "get l2 pte of index {}, {:?}",
+                usize::from(l2_index),
+                l2_entry.flags()
+            );
+            if l2_entry.flags().contains(PageTableFlags::HUGE_PAGE) {
+                panic!("va {:#x} mapped as 2MB Huge page", va);
+                return;
+            }
+            let l1_page_table = unsafe { &mut *frame_to_page_table(l2_entry.frame().unwrap()) };
+            let mut l1_entry = &mut l1_page_table[l1_index];
+            debug!(
+                "get l1 pte of index {}, {:?}",
+                usize::from(l1_index),
+                l1_entry.flags()
+            );
+            l1_entry.set_flags(
+                l1_entry.flags() | PageTableFlags::BIT_59 | PageTableFlags::USER_ACCESSIBLE,
+            );
+            debug!("va {:#x} mapped as flags {:?}", va, l1_entry.flags());
+            println!("==============================================================");
+        }
+        x86_64::instructions::tlb::flush_all();
+    }
+
+    pub fn dump_entry(&mut self, va: usize) {
+        let page_4kb = Page::<Size4KiB>::containing_address(VirtAddr::new(va as u64));
+        let l4_index = page_4kb.p4_index();
+        let l3_index = page_4kb.p3_index();
+        let l2_index = page_4kb.p2_index();
+        let l1_index = page_4kb.p1_index();
+        println!("==============================================================");
+        debug!(
+            "l4_index {:?} l3_index {:?} l2_index {:?} l1_index {:?}",
+            usize::from(l4_index),
+            usize::from(l3_index),
+            usize::from(l2_index),
+            usize::from(l1_index),
+        );
+        let l4_entry = &self.page_table.level_4_table()[usize::from(l4_index)];
+        debug!(
+            "get l4 pte of index {}, {:?}",
+            usize::from(l4_index),
+            l4_entry.flags()
+        );
+        let l3_page_table = unsafe { &*frame_to_page_table(l4_entry.frame().unwrap()) };
+        let l3_entry = &l3_page_table[l3_index];
+        debug!(
+            "get l3 pte of index {}, {:?}",
+            usize::from(l3_index),
+            l3_entry.flags()
+        );
+        let l2_page_table = unsafe { &*frame_to_page_table(l3_entry.frame().unwrap()) };
+        let l2_entry = &l2_page_table[l2_index];
+        debug!(
+            "get l2 pte of index {}, {:?}",
+            usize::from(l2_index),
+            l2_entry.flags()
+        );
+        if l2_entry.flags().contains(PageTableFlags::HUGE_PAGE) {
+            debug!("va {:#x} mapped as 2MB Huge page", va);
+            return;
+        }
+        let l1_page_table = unsafe { &*frame_to_page_table(l2_entry.frame().unwrap()) };
+        let l1_entry = &l1_page_table[l1_index];
+        debug!(
+            "get l1 pte of index {}, {:?}",
+            usize::from(l1_index),
+            l1_entry.flags()
+        );
+        let frame = self.page_table.translate_page(page_4kb.clone());
+        debug!("after map_4kb , get frame {:?}", frame);
+        println!("==============================================================");
+    }
+
     fn dump_entry_2mb(&mut self, va: usize) {
         let page_2mb = Page::<Size2MiB>::containing_address(VirtAddr::new(va as u64));
         let l4_index = page_2mb.p4_index();
@@ -172,26 +390,26 @@ impl X86_64PageTable {
         );
         let l4_entry = &self.page_table.level_4_table()[usize::from(l4_index)];
         debug!(
-            "get l4 page table entry of index {}, {:?}",
+            "get l4 pte of index {}, {:?}",
             usize::from(l4_index),
             l4_entry.flags()
         );
         let l3_page_table = unsafe { &*frame_to_page_table(l4_entry.frame().unwrap()) };
         let l3_entry = &l3_page_table[l3_index];
         debug!(
-            "get l3 page table entry of index {}, {:?}",
+            "get l3 pte of index {}, {:?}",
             usize::from(l3_index),
             l3_entry.flags()
         );
         let l2_page_table = unsafe { &*frame_to_page_table(l3_entry.frame().unwrap()) };
         let l2_entry = &l2_page_table[l2_index];
         debug!(
-            "get l2 page table entry of index {}, {:?}",
+            "get l2 pte of index {}, {:?}",
             usize::from(l2_index),
             l2_entry.flags()
         );
         let frame = self.page_table.translate_page(page_2mb.clone());
-        debug!("after map , get frame {:?}", frame);
+        debug!("after map_2mb , get frame {:?}", frame);
         println!("==============================================================");
     }
 }
@@ -204,7 +422,7 @@ impl PageTableTrait for X86_64PageTable {
 
     fn map(&mut self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
         // let mut flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE;
-        let mut flags = PageTableFlags::PRESENT;
+        let mut flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE;
         if attr.writable() {
             flags |= PageTableFlags::WRITABLE;
         }
@@ -215,7 +433,26 @@ impl PageTableTrait for X86_64PageTable {
             flags |= PageTableFlags::NO_EXECUTE;
         }
 
-        trace!(
+        #[cfg(feature = "mpk")]
+        {
+            // (the protection key located in bits 62:59 of the paging-structure entry that mapped the page containing the linear address.
+            let zone_id = attr.get_zone_id();
+
+            if zone_id & 1 == 1 {
+                flags |= PageTableFlags::BIT_59;
+            }
+            if zone_id & 2 == 2 {
+                flags |= PageTableFlags::BIT_60;
+            }
+            if zone_id & 4 == 4 {
+                flags |= PageTableFlags::BIT_61;
+            }
+            if zone_id & 8 == 8 {
+                flags |= PageTableFlags::BIT_62;
+            }
+        }
+
+        debug!(
             "page table map va 0x{:016x} pa: 0x{:016x}, flags {:?}",
             va,
             pa,
@@ -239,6 +476,7 @@ impl PageTableTrait for X86_64PageTable {
                 return Err(ERROR_INTERNAL);
             }
         }
+        // self.dump_entry(va);
         Ok(())
     }
 
@@ -249,33 +487,37 @@ impl PageTableTrait for X86_64PageTable {
             warn!("map_2mb: required block attribute");
             return Err(ERROR_INVARG);
         }
-        trace!(
-            "page table map_2mb va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
+
+        let mut flags =
+            PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_EXECUTE;
+
+        // MPK only works for user pages.
+        flags |= PageTableFlags::USER_ACCESSIBLE;
+
+        #[cfg(feature = "mpk")]
+        {
+            let zone_id = attr.get_zone_id();
+            // (the protection key located in bits 62:59 of the paging-structure entry that mapped the page containing the linear address.
+            if zone_id & 1 == 1 {
+                flags |= PageTableFlags::BIT_59;
+            }
+            if zone_id & 2 == 2 {
+                flags |= PageTableFlags::BIT_60;
+            }
+            if zone_id & 4 == 4 {
+                flags |= PageTableFlags::BIT_61;
+            }
+            if zone_id & 8 == 8 {
+                flags |= PageTableFlags::BIT_62;
+            }
+        }
+
+        debug!(
+            "page table map_2mb va 0x{:016x} pa: 0x{:016x}, flags {:?}",
             va,
             pa,
-            self.base_pa()
+            flags.clone()
         );
-
-        let mut flags = PageTableFlags::PRESENT
-            | PageTableFlags::WRITABLE
-            | PageTableFlags::NO_EXECUTE
-            | PageTableFlags::USER_ACCESSIBLE;
-
-        // (the protection key located in bits 62:59 of the paging-structure entry that mapped the page containing the linear address.
-        let zone_key = attr.get_zone_key();
-
-        if zone_key & 1 == 1 {
-            flags |= PageTableFlags::BIT_59;
-        }
-        if zone_key & 2 == 2 {
-            flags |= PageTableFlags::BIT_60;
-        }
-        if zone_key & 4 == 4 {
-            flags |= PageTableFlags::BIT_61;
-        }
-        if zone_key & 8 == 8 {
-            flags |= PageTableFlags::BIT_62;
-        }
 
         let page_2mb = Page::<Size2MiB>::containing_address(VirtAddr::new(va as u64));
         let frame_2mb = Frame::<Size2MiB>::containing_address(PhysAddr::new(pa as u64));

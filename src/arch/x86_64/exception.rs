@@ -7,16 +7,16 @@ pub static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::new();
 
 pub fn load_idt() {
     unsafe {
-		IDT.load_unsafe();
-	}
+        IDT.load_unsafe();
+    }
 }
 
 pub fn init_idt() {
     let idt = unsafe { &mut *(&mut IDT as *mut _ as *mut InterruptDescriptorTable) };
 
     set_general_handler!(idt, abort, 0..32);
-	set_general_handler!(idt, unhandle, 32..64);
-	set_general_handler!(idt, unknown, 64..);
+    set_general_handler!(idt, unhandle, 32..64);
+    set_general_handler!(idt, unknown, 64..);
 
     // Set breakpoint handler, caused by `x86_64::instructions::interrupts::int3();`
     idt.breakpoint.set_handler_fn(breakpoint_handler);
@@ -43,23 +43,22 @@ pub fn init_idt() {
     // idt.load();
 }
 
-
 fn abort(stack_frame: InterruptStackFrame, index: u8, error_code: Option<u64>) {
-	error!("Exception {index}");
-	error!("Error code: {error_code:?}");
-	error!("Stack frame: {stack_frame:#?}");
-	// scheduler::abort();
+    error!("Exception {index}");
+    error!("Error code: {error_code:?}");
+    error!("Stack frame: {stack_frame:#?}");
+    // scheduler::abort();
 }
 
 fn unhandle(_stack_frame: InterruptStackFrame, index: u8, _error_code: Option<u64>) {
-	warn!("received unhandled irq {index}");
-	// apic::eoi();
-	// increment_irq_counter(index.into());
+    warn!("received unhandled irq {index}");
+    // apic::eoi();
+    // increment_irq_counter(index.into());
 }
 
 fn unknown(_stack_frame: InterruptStackFrame, index: u8, _error_code: Option<u64>) {
-	warn!("unknown interrupt {index}");
-	// apic::eoi();
+    warn!("unknown interrupt {index}");
+    // apic::eoi();
 }
 
 pub fn irq_install_handler(irq_number: u32, handler: usize) {
@@ -68,7 +67,8 @@ pub fn irq_install_handler(irq_number: u32, handler: usize) {
     let idt = unsafe { &mut *(&mut IDT as *mut _ as *mut InterruptDescriptorTable) };
     unsafe {
         idt[apic::IRQ_MIN + irq_number as usize]
-            .set_handler_addr(x86_64::VirtAddr::new(handler as u64)).set_stack_index(0);
+            .set_handler_addr(x86_64::VirtAddr::new(handler as u64))
+            .set_stack_index(0);
     }
 }
 
@@ -144,20 +144,44 @@ extern "x86-interrupt" fn page_fault_handler(
     error_code: PageFaultErrorCode,
 ) {
     use x86_64::registers::control::Cr2;
+    #[cfg(feature = "mpk")]
+    let cur_pkru = crate::libs::zone::rdpkru();
+    #[cfg(feature = "mpk")]
+    let _ = crate::libs::zone::switch_to_privilege_pkru();
 
     println!("EXCEPTION: PAGE FAULT");
     println!("Accessed Address: {:?}", Cr2::read());
     println!("Error Code: {:?}", error_code);
+    #[cfg(feature = "mpk")]
+    if error_code.contains(PageFaultErrorCode::PROTECTION_KEY) {
+        println!(
+            "\nMEMORY PROTECTION KEY VIOLATION on {}!!! current PKRU {:#x}\n",
+            crate::libs::thread::current_thread_id(),
+            cur_pkru,
+        );
+
+        crate::arch::page_table::page_table()
+            .lock()
+            .dump_entry_flags_of_va(Cr2::read().as_u64() as usize);
+    }
     println!("{:#?}", stack_frame);
-    hlt_loop();
+
+    crate::libs::thread::thread_exit();
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    #[cfg(feature = "mpk")]
+    let ori_pkru = crate::libs::zone::switch_to_privilege_pkru();
+
     // trace!("timer interrupt");
     // trace!("stack frame:\n{:#?}", _stack_frame);
     crate::libs::timer::interrupt();
     // Finished interrupt before switching
     apic::INTERRUPT_CONTROLLER.finish(apic::INT_TIMER);
+
+    #[cfg(feature = "mpk")]
+    crate::libs::zone::switch_from_privilege_pkru(ori_pkru);
+
     // Give up CPU actively.
     crate::libs::thread::thread_yield();
 }

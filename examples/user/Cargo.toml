@@ -13,25 +13,21 @@ default-features = false
 [features]
 default = ["qemu"]
 qemu = [
-    # "alloc",
-    "unishyper/alloc",
     # "unishyper/smp",
     # "unishyper/scheduler-percore",
     "unishyper/qemu",
     "unishyper/serial",
-    # "unishyper/mpk",
+    # "unishyper/zone",
     # "unishyper/unwind",
-    "unishyper/terminal",
+    # "unishyper/terminal",
     # "unishyper/fs",
     ]
 tx2 = [
-    "unishyper/alloc",
     "unishyper/tx2",
     "unishyper/serial",
     # "unishyper/terminal",
     ]
 shyper = [
-    # "unishyper/alloc",
     # "unishyper/smp",
     "unishyper/shyper",
     "unishyper/serial",

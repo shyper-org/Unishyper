@@ -4,7 +4,7 @@ MACHINE ?= qemu
 
 KVM ?= false
 
-APP?=user
+APP?=no_std_test
 
 export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
 

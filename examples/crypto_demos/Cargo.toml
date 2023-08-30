@@ -20,5 +20,5 @@ qemu = [
     "unishyper/alloc",
     "unishyper/qemu",
     "unishyper/serial",
-    "unishyper/mpk"
+    "unishyper/zone"
 ]

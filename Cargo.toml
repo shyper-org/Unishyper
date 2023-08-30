@@ -2,7 +2,8 @@
 resolver = "2"
 
 members = [
-  "examples/user",
+  "examples/no_std_test",
+  "examples/std_test",
   "examples/fs_demo",
   "examples/net_demos",
   "examples/net_tcp_bench",
@@ -11,7 +12,6 @@ members = [
   "examples/threading",
   "examples/hello_world",
   "examples/httpd",
-  "examples/std_test",
   "examples/benches",
   "examples/crypto_demos"
 ]
@@ -106,7 +106,7 @@ chrono = "0.4.23"
 
 [features]
 alloc = []
-default = ["qemu", "terminal", "tcp", "fat", "fs", "unilib", "log-level-info", "mpk"]
+default = ["qemu", "terminal", "tcp", "fat", "fs", "unilib", "log-level-info", "zone"]
 fat = [
   "fatfs",
   "lru",
@@ -115,7 +115,7 @@ fs = [
   "ioslice",
   "libm",
 ]
-mpk = []
+zone = []
 pci = []
 qemu = []
 scheduler-global = ["smp"]

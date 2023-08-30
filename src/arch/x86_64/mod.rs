@@ -5,7 +5,7 @@ mod context_frame;
 mod exception;
 mod gdt;
 pub mod irq;
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 pub mod mpk;
 pub mod page_table;
 mod processor;
@@ -23,7 +23,8 @@ pub const MAX_USER_VIRTUAL_ADDRESS: usize = 0x0000_007F_FFFF_FFFF;
 pub const MAX_PAGE_NUMBER: usize = MAX_VIRTUAL_ADDRESS / PAGE_SIZE;
 
 // pub const STACK_SIZE: usize = 2_097_152; // PAGE_SIZE * 512
-pub const STACK_SIZE: usize = PAGE_SIZE * 64;
+// pub const STACK_SIZE: usize = PAGE_SIZE * 64;
+pub const STACK_SIZE: usize = PAGE_SIZE * 2;
 
 /// The virtual address offset from which physical memory is mapped, as described in
 /// https://os.phil-opp.com/paging-implementation/#map-the-complete-physical-memory
@@ -172,7 +173,7 @@ impl ArchTrait for Arch {
     }
     #[inline(always)]
     fn pop_context_first(ctx: usize) -> ! {
-        // #[cfg(feature = "mpk")]
+        // #[cfg(feature = "zone")]
         // mpk::wrpkru(mpk::pkru_of_zone_id(1));
         unsafe { context_frame::_pop_context_first(ctx) }
         loop {}

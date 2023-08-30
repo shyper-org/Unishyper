@@ -129,11 +129,112 @@ fn test_global_var_rw() {
     }
 }
 
+fn test_heap_var_rw() {
+    let num_pages = 1;
+    use std::mm;
+    let shared_addr = mm::allocate(1 << 12 * num_pages);
+    let shared_var = shared_addr.as_mut_ptr::<i32>();
+
+    let private_addr = mm::allocate_zone(1 << 12 * num_pages);
+    let private_var = private_addr.as_mut_ptr::<i32>();
+
+    unsafe {
+        (*shared_var) = 1;
+        println!("test_heap_var_rw is {} at {:p}", *shared_var, shared_var);
+
+        (*private_var) = 1;
+        println!("test_heap_var_rw is {} at {:p}", *private_var, private_var);
+    }
+
+    let shared_addr = shared_var as *const _ as usize;
+    let private_addr = private_var as *const _ as usize;
+
+    let mut joinhandles = Vec::new();
+
+    joinhandles.push(std::thread::spawn(move || unsafe {
+        let shared_var = shared_addr as *mut i32;
+        println!(
+            "On test thread 1, try to read shared_var var at {:#p}",
+            shared_var
+        );
+        let test = *shared_var;
+        println!(
+            "On test thread 1, shared_var is {} at {:#p}",
+            test, shared_var
+        );
+    }));
+
+    joinhandles.push(std::thread::spawn(move || unsafe {
+        let private_var = private_addr as *mut i32;
+
+        println!(
+            "On test thread 2, try to read private_var var at {:#p}",
+            private_var
+        );
+        let test = *private_var;
+        println!(
+            "On test thread 2, private_var is {} at {:#p}",
+            test, private_var
+        );
+    }));
+
+    for j in joinhandles {
+        j.join().unwrap_or_else(|_| {
+            println!("The thread being joined has panicked");
+        });
+    }
+}
+
+// fn test_kernel_var_rw() {
+
+//     let kernel_var = 
+
+//     let mut joinhandles = Vec::new();
+
+//     joinhandles.push(std::thread::spawn(move || unsafe {
+//         let shared_var = shared_addr as *mut i32;
+//         println!(
+//             "On test_kernel_var_rw, try to read kernel_var at {:#p}",
+//             shared_var
+//         );
+//         let test = *shared_var;
+//         println!(
+//             "On test_kernel_var_rw, kernel_var is {} at {:#p}",
+//             test, shared_var
+//         );
+//     }));
+
+//     joinhandles.push(std::thread::spawn(move || unsafe {
+//         let private_var = private_addr as *mut i32;
+
+//         println!(
+//             "On test thread 2, try to read private_var var at {:#p}",
+//             private_var
+//         );
+//         let test = *private_var;
+//         println!(
+//             "On test thread 2, private_var is {} at {:#p}",
+//             test, private_var
+//         );
+//     }));
+
+//     for j in joinhandles {
+//         j.join().unwrap_or_else(|_| {
+//             println!("The thread being joined has panicked");
+//         });
+//     }
+// }
+
+
 #[no_mangle]
 fn main() {
-    println!("Hello, world!");
+    println!("Hello, world! Unishyper memory isolation bench");
 
-    // test_stack_var_rw();
+    test_stack_var_rw();
 
     test_global_var_rw();
+
+    test_heap_var_rw();
+
+    println!("Memory isolation bench finished");
 }

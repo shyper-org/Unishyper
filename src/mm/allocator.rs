@@ -14,7 +14,7 @@ use crate::mm::interface::PageTableEntryAttrTrait;
 
 use crate::libs::zone::ZoneId;
 
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 use crate::mm::interface::PageTableEntryAttrZoneTrait;
 
 static GLOBAL_MM_MAP: Mutex<BTreeMap<VAddr, AllocatedFrames>> = Mutex::new(BTreeMap::new());
@@ -73,7 +73,7 @@ pub fn allocate_region(size: usize, zone_id: Option<ZoneId>) -> Result<MappedReg
     };
     let mut attr = EntryAttribute::user_default();
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     if zone_id.is_some() {
         attr.set_zone(zone_id.unwrap());
     }
@@ -81,8 +81,16 @@ pub fn allocate_region(size: usize, zone_id: Option<ZoneId>) -> Result<MappedReg
     map_allocated_pages(pages, attr)
 }
 
-pub fn allocate(size: usize) -> Option<VAddr> {
-    debug!("user allocate size {:x}", size);
+pub fn allocate(size: usize, _protected: bool) -> Option<VAddr> {
+    let t = match current_thread() {
+        Ok(t) => t,
+        Err(_) => {
+            warn!("allocate(): BUG,Illegal allocate , only kernel virtual address can be allocated without current thread");
+            return None;
+        }
+    };
+
+    debug!("user allocate size {:#x}", size);
     assert!(size > 0);
     assert_eq!(
         size % PAGE_SIZE,
@@ -100,7 +108,18 @@ pub fn allocate(size: usize) -> Option<VAddr> {
         }
     };
 
+    #[cfg(not(feature = "zone"))]
     let attr = EntryAttribute::user_default();
+
+    #[cfg(feature = "zone")]
+    let mut attr = EntryAttribute::user_default();
+
+    #[cfg(feature = "zone")]
+    if _protected {
+        attr.set_zone(t.zone_id());
+    } else {
+        attr.set_zone(crate::libs::zone::ZONE_ID_SHARED);
+    }
 
     let region = match map_allocated_pages(pages, attr) {
         Ok(region) => region,
@@ -116,22 +135,14 @@ pub fn allocate(size: usize) -> Option<VAddr> {
 
     let addr = region.start_address();
 
-    match current_thread() {
-        Ok(t) => {
-            debug!(
-                "allocate(): thread {} alloc size 0x{:x} pages_num {} region start 0x{:x} size 0x{:x}",
-                t.id(),
-                size,
-                size / PAGE_SIZE,
-                addr.value(),
-                region.size_in_bytes()
-            );
-            t.add_mem_region(addr, region);
-        }
-        Err(_) => {
-            warn!("allocate(): BUG,Illegal dellocate {}, only kernel virtual address can be allocated without current thread", addr);
-        }
-    };
+    debug!(
+        "allocate(): thread {} alloc num {} pages region start 0x{:x} size 0x{:x}",
+        t.id(),
+        size / PAGE_SIZE,
+        addr.value(),
+        region.size_in_bytes()
+    );
+    t.add_mem_region(addr, region);
 
     Some(addr)
 }
@@ -141,7 +152,7 @@ pub fn deallocate(address: VAddr) {
     if address.is_kernel_address() {
         match GLOBAL_MM_MAP.lock().remove(&address) {
             Some(_) => {
-                trace!("deallocate(): drop kernel virtual address {}", address);
+                debug!("deallocate(): drop kernel virtual address {}", address);
             }
             None => {
                 warn!(
@@ -155,12 +166,12 @@ pub fn deallocate(address: VAddr) {
     // Handle user virtual address deallocation.
     match current_thread() {
         Ok(t) => {
-            t.free_mem_region(address);
-            trace!(
-                "deallocate(): Thread [{}] deallocate region addr start 0x{:x}",
+            debug!(
+                "deallocate(): {} deallocate region addr start 0x{:x}",
                 t.id(),
                 address.value()
             );
+            t.free_mem_region(address);
         }
         Err(_) => {
             warn!("deallocate(): BUG, no current thread!");

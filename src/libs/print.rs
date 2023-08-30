@@ -66,8 +66,7 @@ pub fn getchar() -> u8 {
 use alloc::string::String;
 #[cfg(feature = "terminal")]
 pub fn getline() -> String {
-    use alloc::vec::Vec;
-    let mut v = Vec::new();
+    let mut v = alloc::vec::Vec::new();
     loop {
         let c = getchar();
         if c == b'\r' || c == b'\n' {

@@ -17,9 +17,14 @@ default = ["qemu"]
 qemu = [
   "unishyper/qemu",
   "unishyper/serial",
+  "unishyper/zone",
   # "unishyper/fs",
   # "unishyper/fat",
 ]
+
+[[bin]]
+name = "memory_bench"
+path = "src/memory.rs"
 
 [[bin]]
 name = "knucleotide"

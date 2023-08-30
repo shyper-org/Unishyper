@@ -11,7 +11,7 @@ use crate::mm::paging::{MappedRegion, map_allocated_pages_to, EntryAttribute};
 // use crate::mm::address::VAddr;
 use crate::mm::interface::PageTableEntryAttrTrait;
 // use crate::mm::interface::MapGranularity;
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 use crate::mm::interface::PageTableEntryAttrZoneTrait;
 use crate::libs::zone::ZoneId;
 
@@ -113,7 +113,7 @@ fn inner_alloc_stack(
 
     let mut attr = EntryAttribute::user_default();
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     attr.set_zone(zone_id);
 
     // Map stack pages to physical frames, leave the guard page unmapped.
@@ -129,7 +129,7 @@ fn inner_alloc_stack(
     };
     // trace!("guard_page {:?}", &stack_pages);
     // trace!("stack_pages {:?}", &stack_pages);
-    trace!(
+    debug!(
         "stack_region {:#?} mapped success with zone_id {}",
         &stack_region,
         zone_id

@@ -44,9 +44,9 @@ pub trait ContextFrameTrait {
     /// Set context frame's general purpose register value of given index.
     /// Note: the callee may check the index's legality(x0-x30 on aarch 64).
     fn set_gpr(&mut self, index: usize, value: usize);
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     fn set_pkru(&mut self, value: u32);
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     fn pkru(&self) -> u32;
 }
 

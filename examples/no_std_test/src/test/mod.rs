@@ -15,7 +15,7 @@ pub fn run_tests() {
     // thread_spawn(thread::test_thread_switch, 1);
     // thread_spawn(thread::test_thread_create, 1);
     // thread_spawn(mm::test_allocator_thread, 1);
-    thread_spawn(mm::test_mm_alloc, 1);
+    thread_spawn(mm::test_mm_thread, 1);
     // thread_spawn_bg(sem::semaphore_test, 1, "semaphore_test");
     // thread_spawn(thread::test_thread_getid, 1);
     // thread_spawn(schedule::test_thread_schedule, 4);

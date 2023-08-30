@@ -144,15 +144,15 @@ extern "x86-interrupt" fn page_fault_handler(
     error_code: PageFaultErrorCode,
 ) {
     use x86_64::registers::control::Cr2;
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     let cur_pkru = crate::libs::zone::rdpkru();
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     let _ = crate::libs::zone::switch_to_privilege_pkru();
 
     println!("EXCEPTION: PAGE FAULT");
     println!("Accessed Address: {:?}", Cr2::read());
     println!("Error Code: {:?}", error_code);
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     if error_code.contains(PageFaultErrorCode::PROTECTION_KEY) {
         println!(
             "\nMEMORY PROTECTION KEY VIOLATION on {}!!! current PKRU {:#x}\n",
@@ -170,7 +170,7 @@ extern "x86-interrupt" fn page_fault_handler(
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     let ori_pkru = crate::libs::zone::switch_to_privilege_pkru();
 
     // trace!("timer interrupt");
@@ -179,7 +179,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     // Finished interrupt before switching
     apic::INTERRUPT_CONTROLLER.finish(apic::INT_TIMER);
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     crate::libs::zone::switch_from_privilege_pkru(ori_pkru);
 
     // Give up CPU actively.

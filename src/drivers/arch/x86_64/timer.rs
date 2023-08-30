@@ -5,8 +5,8 @@ pub const TIMER_TICK_US: u64 = TIMER_TICK_MS * 1000;
 use core::sync::atomic::{AtomicU64, Ordering};
 
 static INIT_TICK: AtomicU64 = AtomicU64::new(0);
-static TSC_FREQUENCY_MHZ: AtomicU64 = AtomicU64::new(2600);
-static TSC_FREQUENCY_HZ: AtomicU64 = AtomicU64::new(2600_000_000);
+static TSC_FREQUENCY_MHZ: AtomicU64 = AtomicU64::new(5000);
+static TSC_FREQUENCY_HZ: AtomicU64 = AtomicU64::new(5000_000_000);
 
 pub fn next() {}
 
@@ -21,6 +21,12 @@ pub fn counter() -> usize {
 
 pub fn init() {
     let cpuid = raw_cpuid::CpuId::new();
+
+    info!(
+        "Init timer on CPU {}",
+        cpuid.get_processor_brand_string().unwrap().as_str()
+    );
+
     // Detect from CpuId info.
     if let Some(freq) = cpuid
         .get_processor_frequency_info()
@@ -77,6 +83,12 @@ pub fn init() {
         let freq = TSC_FREQUENCY_MHZ.load(Ordering::Relaxed);
         warn!("Could not determine the processor frequency! Guess a frequency of {freq}MHZ!");
     }
+
+    let freq_hz = TSC_FREQUENCY_HZ.load(Ordering::Relaxed);
+    let freq_mhz = TSC_FREQUENCY_MHZ.load(Ordering::Relaxed);
+
+    info!("CPU frequency {} Hz, {} MHZ", freq_hz, freq_mhz);
+
     INIT_TICK.store(unsafe { core::arch::x86_64::_rdtsc() }, Ordering::Relaxed);
 }
 

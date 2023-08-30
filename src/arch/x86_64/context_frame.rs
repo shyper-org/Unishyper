@@ -14,7 +14,7 @@ pub struct X86_64TrapContextFrame {
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub struct GeneralRegs {
     /// PKRU, for Intel MPK support.
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     pub pkru: usize,
     /// FS register for TLS support.
     pub fsbase: usize,
@@ -58,7 +58,7 @@ pub struct GeneralRegs {
 
 impl core::fmt::Display for X86_64TrapContextFrame {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
-        #[cfg(feature = "mpk")]
+        #[cfg(feature = "zone")]
         write!(f, "pkru: {:016x} ", self.gpr.pkru)?;
         writeln!(f, "fsbase:{:016x}", self.gpr.fsbase)?;
         write!(f, "r15: {:016x} ", self.gpr.r15)?;
@@ -139,12 +139,12 @@ impl ContextFrameTrait for X86_64TrapContextFrame {
         }
     }
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     fn set_pkru(&mut self, value: u32) {
         self.gpr.pkru = value as usize;
     }
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     fn pkru(&self) -> u32 {
         self.gpr.pkru as u32
     }
@@ -154,7 +154,7 @@ impl ContextFrameTrait for X86_64TrapContextFrame {
 #[repr(C)]
 #[derive(Debug, Default)]
 struct YieldContextFrame {
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     pkru: u64,
     r15: u64,
     r14: u64,
@@ -262,7 +262,7 @@ macro_rules! restore_trap_context {
 }
 
 /// Save pkru register into current stack.
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 macro_rules! save_pkru {
     () => {
         concat!(
@@ -277,7 +277,7 @@ macro_rules! save_pkru {
 }
 
 /// Restore pkru register from current stack.
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 macro_rules! restore_pkru {
     () => {
         concat!(
@@ -300,7 +300,7 @@ macro_rules! restore_pkru {
 /// ## Arguments
 /// * `_current_stack`  - the pointer to prev stack pointer(rsp), on `rdi`.
 /// * `_next_stack`     - next stack pointer(rsp), on `rsi`.
-#[cfg(not(feature = "mpk"))]
+#[cfg(not(feature = "zone"))]
 #[naked]
 unsafe extern "C" fn context_switch_to_yield(_current_stack: &mut u64, _next_stack: u64) {
     asm!(
@@ -318,7 +318,7 @@ unsafe extern "C" fn context_switch_to_yield(_current_stack: &mut u64, _next_sta
     )
 }
 
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 #[naked]
 unsafe extern "C" fn context_switch_to_yield(_current_stack: &mut u64, _next_stack: u64) {
     asm!(
@@ -333,9 +333,9 @@ unsafe extern "C" fn context_switch_to_yield(_current_stack: &mut u64, _next_sta
         "mov    [rdi], rsp",
         "mov    rsp, rsi",
         // Set task switched flag, CR0 bit 3
-        "mov rax, cr0",
-        "or rax, 8",
-        "mov cr0, rax",
+        // "mov rax, cr0",
+        // "or rax, 8",
+        // "mov cr0, rax",
         restore_pkru!(),
         restore_yield_context!(),
         "ret",
@@ -352,7 +352,7 @@ unsafe extern "C" fn context_switch_to_yield(_current_stack: &mut u64, _next_sta
 /// ## Arguments
 /// * `_current_stack`  - the pointer to prev stack pointer(rsp), on `rdi`.
 /// * `_next_sp`     - next stack pointer(rsp), on `rsi`.
-#[cfg(not(feature = "mpk"))]
+#[cfg(not(feature = "zone"))]
 #[naked]
 unsafe extern "C" fn context_switch_to_trap(_current_stack: &mut u64, _next_sp: usize) {
     asm!(
@@ -370,7 +370,7 @@ unsafe extern "C" fn context_switch_to_trap(_current_stack: &mut u64, _next_sp: 
     )
 }
 
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 #[naked]
 unsafe extern "C" fn context_switch_to_trap(_current_stack: &mut u64, _next_sp: usize) {
     asm!(
@@ -397,7 +397,7 @@ unsafe extern "C" fn context_switch_to_trap(_current_stack: &mut u64, _next_sp: 
 
 /// Pop first thread's context frame and jump to it.
 /// Called by `pop_context_first`.
-#[cfg(not(feature = "mpk"))]
+#[cfg(not(feature = "zone"))]
 #[naked]
 pub(super) unsafe extern "C" fn _pop_context_first(_next_stack: usize) {
     // `_next_stack` is in `rdi` register
@@ -409,7 +409,7 @@ pub(super) unsafe extern "C" fn _pop_context_first(_next_stack: usize) {
         options(noreturn),
     )
 }
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 #[naked]
 pub(super) unsafe extern "C" fn _pop_context_first(_next_stack: usize) {
     // `_next_stack` is in `rdi` register

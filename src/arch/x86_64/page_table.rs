@@ -19,7 +19,7 @@ use crate::libs::traits::*;
 use crate::mm::frame_allocator;
 use crate::mm::frame_allocator::AllocatedFrames;
 use crate::mm::interface::{PageTableEntryAttrTrait, PageTableTrait, Error, MapGranularity};
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 use crate::mm::interface::PageTableEntryAttrZoneTrait;
 use crate::mm::paging::{Entry, EntryAttribute};
 use crate::libs::synch::spinlock::SpinlockIrqSave;
@@ -132,53 +132,12 @@ pub fn init() {
                                 // );
                                 continue;
                             }
-                            // let l1_page_table =
-                            //     unsafe { &mut *frame_to_page_table(l2_entry.frame().unwrap()) };
-                            // for (_l1_idx, l1_entry) in l1_page_table.iter_mut().enumerate() {
-                            //     if !l1_entry.is_unused()
-                            //         && l1_entry.flags().contains(PageTableFlags::NO_EXECUTE)
-                            //     // && l1_entry.flags().contains(PageTableFlags::ACCESSED)
-                            //     {
-                            //         // l1_entry.set_flags(
-                            //         //     l1_entry.flags() | PageTableFlags::USER_ACCESSIBLE,
-                            //         // );
-                            //         println!(
-                            //             "[{}][{}][{}][{}] l1 vaddr {:#x}'s entry {:?}",
-                            //             _l4_idx,
-                            //             _l3_idx,
-                            //             _l2_idx,
-                            //             _l1_idx,
-                            //             0xffff << 12 << 9 << 9 << 9 << 9
-                            //                 | _l4_idx << 12 << 9 << 9 << 9
-                            //                 | _l3_idx << 12 << 9 << 9
-                            //                 | _l2_idx << 12 << 9
-                            //                 | _l1_idx << 12,
-                            //             l1_entry
-                            //         );
-                            //     }
-                            // }
                         }
                     }
                 }
             }
         }
     }
-
-    // let demo_vaddr = 0xffffff000001951a as u64;
-    // let page_4kb = Page::<Size4KiB>::containing_address(VirtAddr::new(demo_vaddr));
-    // let l4_index = page_4kb.p4_index();
-    // let l3_index = page_4kb.p3_index();
-    // let l2_index = page_4kb.p2_index();
-    // let l1_index = page_4kb.p1_index();
-    // println!("==============================================================");
-    // debug!(
-    //     "demo_vaddr {:?} l4_index {:?} l3_index {:?} l2_index {:?} l1_index {:?}",
-    //     page_4kb,
-    //     usize::from(l4_index),
-    //     usize::from(l3_index),
-    //     usize::from(l2_index),
-    //     usize::from(l1_index),
-    // );
 
     let physical_memory_offset = VirtAddr::new(PHYSICAL_MEMORY_OFFSET);
     PAGE_TABLE.call_once(|| {
@@ -193,6 +152,7 @@ pub fn init() {
         page_table().lock().base_pa()
     );
 
+    #[cfg(feature = "zone")]
     page_table().lock().init_main_zone_flags();
 }
 
@@ -433,7 +393,7 @@ impl PageTableTrait for X86_64PageTable {
             flags |= PageTableFlags::NO_EXECUTE;
         }
 
-        #[cfg(feature = "mpk")]
+        #[cfg(feature = "zone")]
         {
             // (the protection key located in bits 62:59 of the paging-structure entry that mapped the page containing the linear address.
             let zone_id = attr.get_zone_id();
@@ -461,21 +421,25 @@ impl PageTableTrait for X86_64PageTable {
 
         let page_4kb = Page::<Size4KiB>::containing_address(VirtAddr::new(va as u64));
         let frame_4kb = Frame::<Size4KiB>::containing_address(PhysAddr::new(pa as u64));
-        match unsafe {
-            self.page_table
-                .map_to(page_4kb, frame_4kb, flags, &mut FrameAllocatorForX86)
-        } {
-            Ok(mapper_flush) => {
-                mapper_flush.flush();
+
+        crate::libs::zone::protected_function_wrapper(|| {
+            match unsafe {
+                self.page_table
+                    .map_to(page_4kb, frame_4kb, flags, &mut FrameAllocatorForX86)
+            } {
+                Ok(mapper_flush) => {
+                    mapper_flush.flush();
+                }
+                Err(err) => {
+                    panic!(
+                        "x86_64 map 4KB page {:#x} failed of pa {:#x}, err {:?}",
+                        va, pa, err
+                    );
+                    // return Err(ERROR_INTERNAL);
+                }
             }
-            Err(err) => {
-                warn!(
-                    "x86_64 map 4KB page {:#x} failed of pa {:#x}, err {:?}",
-                    va, pa, err
-                );
-                return Err(ERROR_INTERNAL);
-            }
-        }
+        });
+
         // self.dump_entry(va);
         Ok(())
     }
@@ -494,7 +458,7 @@ impl PageTableTrait for X86_64PageTable {
         // MPK only works for user pages.
         flags |= PageTableFlags::USER_ACCESSIBLE;
 
-        #[cfg(feature = "mpk")]
+        #[cfg(feature = "zone")]
         {
             let zone_id = attr.get_zone_id();
             // (the protection key located in bits 62:59 of the paging-structure entry that mapped the page containing the linear address.
@@ -542,13 +506,16 @@ impl PageTableTrait for X86_64PageTable {
 
     fn unmap(&mut self, va: usize) {
         debug!("unmap va {:x}", va);
-        self.page_table
-            .unmap(Page::<Size4KiB>::containing_address(VirtAddr::new(
-                va as u64,
-            )))
-            .unwrap()
-            .1
-            .flush();
+        crate::libs::zone::protected_function_wrapper(|| {
+            // self.dump_entry_flags_of_va(va);
+            self.page_table
+                .unmap(Page::<Size4KiB>::containing_address(VirtAddr::new(
+                    va as u64,
+                )))
+                .unwrap()
+                .1
+                .flush();
+        })
     }
 
     fn unmap_2mb(&mut self, va: usize) {

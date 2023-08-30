@@ -13,7 +13,7 @@ pub struct EntryAttribute {
     copy_on_write: bool,
     shared: bool,
     block: bool,
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     zone_id: usize,
 }
 
@@ -59,7 +59,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: self.u_executable,
             copy_on_write: self.copy_on_write,
             shared: self.shared,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: self.zone_id,
             block: true,
         }
@@ -87,7 +87,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable,
             copy_on_write,
             shared,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block,
         }
@@ -102,7 +102,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block: false,
         }
@@ -117,7 +117,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block: false,
         }
@@ -132,7 +132,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block: true,
         }
@@ -147,7 +147,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block: false,
         }
@@ -162,7 +162,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: true,
             copy_on_write: false,
             shared: false,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block: false,
         }
@@ -177,7 +177,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block: false,
         }
@@ -192,7 +192,7 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: false,
             copy_on_write: false,
             shared: false,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block: false,
         }
@@ -207,14 +207,14 @@ impl PageTableEntryAttrTrait for EntryAttribute {
             u_executable: self.u_executable,
             copy_on_write: self.copy_on_write,
             shared: self.shared,
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: 0,
             block: false,
         }
     }
 }
 
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 impl PageTableEntryAttrZoneTrait for EntryAttribute {
     fn set_zone(&mut self, zone_id: usize) {
         self.zone_id = zone_id;

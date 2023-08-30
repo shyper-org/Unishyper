@@ -10,7 +10,7 @@ use unishyper::*;
 #[macro_use]
 extern crate alloc;
 
-// mod test;
+mod test;
 
 // use unishyper::START_CYCLE;
 
@@ -24,5 +24,5 @@ fn main() {
     //     println!("\n cycles  {}", current_cycle - start_cycle);
     // }
     println!("Hello world!");
-    // test::run_tests();
+    test::run_tests();
 }

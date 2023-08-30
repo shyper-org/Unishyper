@@ -8,7 +8,9 @@ pub const BOARD_CORE_NUMBER: usize = 1;
 #[cfg(feature = "smp")]
 pub const BOARD_CORE_NUMBER: usize = 2;
 
-pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024; // 64 MB
+// pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
+pub const GLOBAL_HEAP_SIZE: usize = 16 * 1024 * 1024; // 16 MB
+// pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024; // 64 KB
 
 pub const ELF_IMAGE_LOAD_ADDR: usize = 0xdeafbeef;
 

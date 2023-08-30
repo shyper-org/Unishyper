@@ -2,11 +2,11 @@ ARCH ?= aarch64
 MACHINE ?= qemu
 PROFILE ?= release
 
-CARGO_TOOLCHAIN ?= 
+TOOLCHAIN ?= 
 
 LOG ?= info
 
-APP ?= user
+APP ?= hello_world
 
 APP_BIN ?= ${APP}
 
@@ -40,6 +40,7 @@ endif
 clean:
 	-cargo clean
 	@for dir in ${EXAMPLE_DIRS}; do make -C ./$$dir clean; done
+	@for dir in ${EXAMPLE_DIRS}; do rm ./$$dir/*.elf ./$$dir/*.bin ./$$dir/*.asm 2> /dev/null || true; done
 	@echo clean project done!
 
 run: build
@@ -52,7 +53,7 @@ gdb:
 	$(GDB) $(OUT_ELF) \
 	  -ex 'target remote localhost:1234' \
 	  -ex 'b _start' \
-	  -ex 'b *0x40080000' \
+	  -ex 'b _pop_context_first' \
 	  -ex 'continue' \
 	  -ex 'disp /16i $$pc' \
 	  -ex 'set print asm-demangle on'

@@ -165,8 +165,12 @@ impl Core {
 /// Get current CPU structure.
 #[inline(always)]
 pub fn cpu() -> &'static mut Core {
-    let core_id = crate::arch::Arch::core_id();
-    unsafe { &mut CORES[core_id] }
+    // On x86_64, currently we use raw_cpuid::CpuId::new() to get CPU id.
+    // But it takes a lot of clock cycle overhead.
+    // Todo: we need to find a better way to store core id in x86.
+    // let core_id = crate::arch::Arch::core_id();
+    // unsafe { &mut CORES[core_id] }
+    unsafe { &mut CORES[0] }
 }
 
 /// Get target CPU structure of given cpu id.

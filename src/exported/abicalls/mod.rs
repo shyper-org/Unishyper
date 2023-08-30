@@ -25,7 +25,7 @@ pub extern "C" fn shyper_malloc(size: usize, align: usize) -> *mut u8 {
     if true {
         crate::mm::heap::malloc(size, align)
     } else {
-        crate::mm::allocate(size).map_or(core::ptr::null_mut() as *mut u8, |vaddr| {
+        crate::mm::allocate(size, false).map_or(core::ptr::null_mut() as *mut u8, |vaddr| {
             vaddr.as_mut_ptr::<u8>()
         })
     }

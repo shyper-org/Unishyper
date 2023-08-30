@@ -31,7 +31,7 @@ impl Cpu {
         let stack_top = VirtAddr::new(self.double_fault_stack.as_ptr() as u64 + 0x100);
         self.tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = stack_top;
 
-        debug!(
+        trace!(
             "DOUBLE_FAULT_STACK stack_start {:#x} stack_end {:#x}",
             self.double_fault_stack.as_ptr() as u64,
             stack_top
@@ -41,9 +41,9 @@ impl Cpu {
         let data_selector = self.gdt.add_entry(Descriptor::kernel_data_segment());
         let tss_selector = self.gdt.add_entry(Descriptor::tss_segment(&self.tss));
 
-        debug!("code_selector {:?}", code_selector);
-        debug!("data_selector {:?}", data_selector);
-        debug!("tss_selector {:?}", tss_selector);
+        trace!("code_selector {:?}", code_selector);
+        trace!("data_selector {:?}", data_selector);
+        trace!("tss_selector {:?}", tss_selector);
 
         self.gdt.load();
         unsafe {

@@ -4,8 +4,6 @@ Unishyper is a research unikernel, targeting a scalable and predictable runtime 
 
 Unikernel means, you bundle your application directly with the kernel library, so that it can run without any installed operating system.
 
-🚧 Working In Progress.
-
 ## Boards and Platforms
 
 Unishyper  now supports following platforms:
@@ -23,12 +21,12 @@ Unishyper  now supports following platforms:
 
 1. Singal address space, singal priveledge level.
 2. SMP support, multi-thread support.
-3. Semaphores and synchronization mechanisms support.
-4. Network stack and file system support.
-5. Virtio drivers (virtio-net, virtio-blk).
-6. Terminal support.
-7. Unilib-fs support.
-8. Rust-std support, with modified [rust-toolchain](https://gitee.com/unishyper/rust) 
+3. Network stack and file system support.
+4. Virtio drivers (virtio-net, virtio-blk).
+5. Terminal support.
+6. Unilib-fs support.
+7. Zone, thread grained memory isolation mechanism.
+8. Rust-std support, with modified [rust-toolchain](https://gitee.com/unishyper/rust).
 ## Toolchains
 
 1. Nightly Rust (`nightly-2022-09-14` tested)
@@ -48,7 +46,7 @@ Install [cargo-binutils](https://github.com/rust-embedded/cargo-binutils) to use
 cargo install cargo-binutils
 ```
 
-For bootloader on x86_64, [rboot](https://github.com/hky1999/rboot.git) is required.
+[Rboot](https://github.com/hky1999/rboot.git) for bootloader on x86_64.
 
 ```
 # See .gitmodules for details
@@ -58,8 +56,10 @@ git submodule update --init --recursive
 use this lines to build and emulate:
 
 ```
-# for examples/user
-ARCH=x86_64 APP=user make run
+make ARCH=<arch> APP=<app_dir> APP_BIN=<app_bin> LOG=<log_level> run
+
+# for examples/hello_world
+ARCH=x86_64 APP=hello_world make run
 # for examples/net_tcp_bench
 ARCH=aarch64 APP=net_tcp_bench APP_BIN=server-bw NET=y make run
 ```

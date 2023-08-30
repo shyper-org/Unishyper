@@ -22,7 +22,7 @@ use crate::mm::stack::Stack;
 use crate::mm::paging::MappedRegion;
 use crate::util::{round_up, irqsave};
 
-#[cfg(feature = "mpk")]
+#[cfg(feature = "zone")]
 use crate::libs::zone::ZoneKeys;
 
 pub const MAIN_THREAD_ID: usize = 100;
@@ -108,9 +108,9 @@ struct InnerMut {
     in_trap_context: Mutex<bool>,
     ctx: UnsafeCell<ThreadContext>,
     mem_regions: Mutex<BTreeMap<VAddr, MappedRegion>>,
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     zone_id: Mutex<crate::libs::zone::ZoneId>,
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     zone_keys: Mutex<crate::libs::zone::ZoneKeys>,
 }
 
@@ -298,6 +298,7 @@ impl Thread {
     /// The ownership of region is token over by this thread.
     /// The region is automitically dropped(unmapped) when thread is destroied.
     pub fn add_mem_region(&self, addr: VAddr, region: MappedRegion) {
+        debug!("{} add addr {}", self.id(), addr);
         let mut addr_space = self.0.inner_mut.mem_regions.lock();
         addr_space.insert(addr, region);
     }
@@ -317,13 +318,13 @@ impl Thread {
         self.0.inner.tls.get_tls_start().as_ptr::<u8>()
     }
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     pub fn zone_id(&self) -> crate::libs::zone::ZoneId {
         let zone_id = self.0.inner_mut.zone_id.lock();
         *zone_id
     }
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     pub fn zone_keys(&self) -> crate::libs::zone::ZoneKeys {
         let zone_keys = self.0.inner_mut.zone_keys.lock();
         *zone_keys
@@ -404,18 +405,23 @@ pub fn thread_alloc(
         None => Tid::new(),
     };
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     let ori_pkru = crate::libs::zone::switch_to_privilege_pkru();
 
     // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
 
+    #[cfg(feature = "zone")]
     let mut zone_id = 0;
 
+    #[cfg(not(feature = "zone"))]
+    let zone_id = 0;
+
     // By default, zone is set as SHARED.
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     use crate::libs::zone::ZONE_ID_SHARED;
-    #[cfg(feature = "mpk")] {
+    #[cfg(feature = "zone")]
+    {
         zone_id = match current_thread() {
             Ok(father_thread) => {
                 if father_thread.id().0 == MAIN_THREAD_ID {
@@ -433,15 +439,16 @@ pub fn thread_alloc(
             }
         };
     }
-    
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     let zone_keys = ZoneKeys::from(zone_id);
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     debug!(
         "{} get zone id {} with zone_keys {:x}",
-        id, zone_id, zone_keys.as_pkru()
+        id,
+        zone_id,
+        zone_keys.as_pkru()
     );
 
     let stack_region = crate::mm::stack::alloc_stack(stack_size / PAGE_SIZE, zone_id)
@@ -453,7 +460,8 @@ pub fn thread_alloc(
     let last_stack_pointer = sp - mem::size_of::<ContextFrame>();
 
     debug!(
-        "thread alloc sp {:#x} last_stack_pointer {:#x} size of ContextFrame {:#x}",
+        "thread alloc start {:#x} entry {:#x} sp {:#x} last_stack_pointer {:#x} size of ContextFrame {:#x}",
+        start, entry,
         sp,
         last_stack_pointer,
         mem::size_of::<ContextFrame>()
@@ -474,7 +482,7 @@ pub fn thread_alloc(
         context_frame.set_gpr(0, entry);
         context_frame.set_gpr(1, arg);
         context_frame.set_stack_pointer(sp.value());
-        #[cfg(feature = "mpk")]
+        #[cfg(feature = "zone")]
         context_frame.set_pkru(zone_keys.as_pkru());
         trace!(
             "NEW context_frame: on {:#p} \n{}",
@@ -505,9 +513,9 @@ pub fn thread_alloc(
             ctx: UnsafeCell::new(ThreadContext::new()),
             in_trap_context: Mutex::new(true),
             mem_regions: Mutex::new(BTreeMap::new()),
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_id: Mutex::new(zone_id),
-            #[cfg(feature = "mpk")]
+            #[cfg(feature = "zone")]
             zone_keys: Mutex::new(zone_keys),
         },
     }));
@@ -518,7 +526,7 @@ pub fn thread_alloc(
         .lock()
         .insert(id, VecDeque::with_capacity(1));
 
-    #[cfg(feature = "mpk")]
+    #[cfg(feature = "zone")]
     crate::libs::zone::switch_from_privilege_pkru(ori_pkru);
     debug!(
         "thread_alloc success id [{}]\n\t\t\t\t\t\tsp [{} to 0x{:016x}]",

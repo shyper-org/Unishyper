@@ -12,8 +12,8 @@ else
 CARGO_FLAGS =  --no-default-features
 endif
 
-ifneq ($(CARGO_TOOLCHAIN),)
-CARGO_TOOLCHAIN := +${CARGO_TOOLCHAIN}
+ifneq ($(TOOLCHAIN),)
+TOOLCHAIN := +${TOOLCHAIN}
 TARGET_DESC := ${ARCH}-unknown-shyper
 TARGET_CFG := ${TARGET_DESC}
 CARGO_FLAGS := ${CARGO_FLAGS} \
@@ -66,7 +66,7 @@ define rboot_pre
 endef
 
 define cargo_build
-	cargo ${CARGO_TOOLCHAIN} build $(CARGO_ARGS) --features "${FEATURES}"
+	cargo ${TOOLCHAIN} build $(CARGO_ARGS) --features "${FEATURES}"
 	@cp $(BUILD_ELF) $(OUT_ELF)
 	${OBJCOPY} ${OUT_ELF} -O binary ${OUT_BIN}
 	${OBJDUMP} --demangle -d ${OUT_ELF} > ${OUT_ASM}

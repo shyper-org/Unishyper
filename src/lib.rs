@@ -124,7 +124,7 @@ pub extern "C" fn loader_main(core_id: usize) {
     if core_id == 0 {
         board::init();
 
-        #[cfg(feature = "mpk")]
+        #[cfg(feature = "zone")]
         crate::libs::zone::zone_init();
 
 

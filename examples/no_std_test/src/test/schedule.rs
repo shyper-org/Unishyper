@@ -3,9 +3,8 @@ use unishyper::*;
 #[allow(dead_code)]
 extern "C" fn test_spawned_thread(index: usize) {
     println!(
-        "------------ test_spawned_thread [{}] on core [{}]",
-        index,
-        core_id()
+        "------------ test_spawned_thread [{}]",
+        index
     );
     loop {}
 }

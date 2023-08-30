@@ -4,14 +4,10 @@
 use unishyper as _;
 
 use std::sync::Arc;
-use std::thread;
 
 fn main() {
-    println!("Hello!");
-
     let server = Arc::new(tiny_http::Server::http("0.0.0.0:4444").unwrap());
-    println!("Now listening on {}", server.server_addr());
-
+    
     let heart = vec![240, 159, 146, 151];
     let text = format!(
         "Hello from Unishyper {}",

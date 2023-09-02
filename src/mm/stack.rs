@@ -13,7 +13,7 @@ use crate::mm::interface::PageTableEntryAttrTrait;
 // use crate::mm::interface::MapGranularity;
 #[cfg(feature = "zone")]
 use crate::mm::interface::PageTableEntryAttrZoneTrait;
-use crate::libs::zone::ZoneId;
+use zone::ZoneId;
 
 // static COUNT: AtomicUsize = AtomicUsize::new(1);
 
@@ -130,7 +130,7 @@ fn inner_alloc_stack(
     // trace!("guard_page {:?}", &stack_pages);
     // trace!("stack_pages {:?}", &stack_pages);
     debug!(
-        "stack_region {:#?} mapped success with zone_id {}",
+        "stack_region {:#?}\n mapped success with zone_id {}",
         &stack_region,
         zone_id
     );

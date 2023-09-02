@@ -1,0 +1,14 @@
+[package]
+name = "zone"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+spin = "0.9.8"
+cfg-if = "1.0.0"
+bitflags = { version = "1.3.2", default-features = false }
+bitmaps = { version = "3.2.0", default-features = false }
+
+[features]

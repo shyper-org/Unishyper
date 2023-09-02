@@ -275,7 +275,7 @@ impl PageTableTrait for Aarch64PageTable {
     }
 
     fn unmap(&mut self, va: usize) {
-        debug!("unmap va {:x}", va);
+        trace!("unmap va {:x}", va);
         let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
         let l1e = directory.entry(va.l1x());
         assert!(l1e.valid());
@@ -285,7 +285,7 @@ impl PageTableTrait for Aarch64PageTable {
     }
 
     fn unmap_2mb(&mut self, va: usize) {
-        debug!("unmap_2mb va {:x}", va);
+        trace!("unmap_2mb va {:x}", va);
         assert!(va % MapGranularity::Page2MB as usize == 0);
         let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
         let l1e = directory.entry(va.l1x());

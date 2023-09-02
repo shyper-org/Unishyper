@@ -13,7 +13,10 @@ members = [
   "examples/hello_world",
   "examples/httpd",
   "examples/benches",
-  "examples/crypto_demos"
+  "examples/crypto_demos",
+  "crates/reliability/inject",
+  "crates/reliability/zone_protected",
+  "crates/reliability/zone",
 ]
 
 exclude = ["rboot", "examples/rust-tcp-io-perf"]
@@ -98,8 +101,14 @@ optional = true
 version = "0.4"
 
 [dependencies.inject]
-path = "inject"
+path = "crates/reliability/inject"
 optional = true
+
+[dependencies.zone_protected]
+path = "crates/reliability/zone_protected"
+
+[dependencies.zone]
+path = "crates/reliability/zone"
 
 [build-dependencies]
 chrono = "0.4.23"

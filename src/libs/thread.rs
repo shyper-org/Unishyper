@@ -23,7 +23,7 @@ use crate::mm::paging::MappedRegion;
 use crate::util::{round_up, irqsave};
 
 #[cfg(feature = "zone")]
-use crate::libs::zone::ZoneKeys;
+use zone::ZoneKeys;
 
 pub const MAIN_THREAD_ID: usize = 100;
 
@@ -109,9 +109,9 @@ struct InnerMut {
     ctx: UnsafeCell<ThreadContext>,
     mem_regions: Mutex<BTreeMap<VAddr, MappedRegion>>,
     #[cfg(feature = "zone")]
-    zone_id: Mutex<crate::libs::zone::ZoneId>,
+    zone_id: Mutex<zone::ZoneId>,
     #[cfg(feature = "zone")]
-    zone_keys: Mutex<crate::libs::zone::ZoneKeys>,
+    zone_keys: Mutex<zone::ZoneKeys>,
 }
 
 unsafe impl Send for InnerMut {}
@@ -319,13 +319,13 @@ impl Thread {
     }
 
     #[cfg(feature = "zone")]
-    pub fn zone_id(&self) -> crate::libs::zone::ZoneId {
+    pub fn zone_id(&self) -> zone::ZoneId {
         let zone_id = self.0.inner_mut.zone_id.lock();
         *zone_id
     }
 
     #[cfg(feature = "zone")]
-    pub fn zone_keys(&self) -> crate::libs::zone::ZoneKeys {
+    pub fn zone_keys(&self) -> zone::ZoneKeys {
         let zone_keys = self.0.inner_mut.zone_keys.lock();
         *zone_keys
     }
@@ -406,7 +406,7 @@ pub fn thread_alloc(
     };
 
     #[cfg(feature = "zone")]
-    let ori_pkru = crate::libs::zone::switch_to_privilege_pkru();
+    let ori_pkru = zone::switch_to_privilege();
 
     // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
@@ -419,13 +419,13 @@ pub fn thread_alloc(
 
     // By default, zone is set as SHARED.
     #[cfg(feature = "zone")]
-    use crate::libs::zone::ZONE_ID_SHARED;
+    use zone::ZONE_ID_SHARED;
     #[cfg(feature = "zone")]
     {
         zone_id = match current_thread() {
             Ok(father_thread) => {
                 if father_thread.id().0 == MAIN_THREAD_ID {
-                    crate::libs::zone::zone_alloc().unwrap_or(ZONE_ID_SHARED)
+                    zone::zone_alloc().unwrap_or(ZONE_ID_SHARED)
                 } else {
                     father_thread.zone_id()
                 }
@@ -434,7 +434,7 @@ pub fn thread_alloc(
                 if id < Tid(MAIN_THREAD_ID) {
                     ZONE_ID_SHARED
                 } else {
-                    crate::libs::zone::zone_alloc().unwrap_or(ZONE_ID_SHARED)
+                    zone::zone_alloc().unwrap_or(ZONE_ID_SHARED)
                 }
             }
         };
@@ -527,7 +527,7 @@ pub fn thread_alloc(
         .insert(id, VecDeque::with_capacity(1));
 
     #[cfg(feature = "zone")]
-    crate::libs::zone::switch_from_privilege_pkru(ori_pkru);
+    zone::switch_from_privilege(ori_pkru);
     debug!(
         "thread_alloc success id [{}]\n\t\t\t\t\t\tsp [{} to 0x{:016x}]",
         id, stack_start, sp

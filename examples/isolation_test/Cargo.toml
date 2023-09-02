@@ -11,9 +11,11 @@ path = "../../"
 default-features = false
 
 [dependencies]
-inject = { path = "../../inject" }
 ring = { path = "../../../Rust_cryptography/ring"}
 data-encoding = {version = "2.4.0", default-features = false, features = ["alloc"]}
+
+[dependencies.zone_protected]
+path = "../../crates/reliability/zone_protected"
 
 [features]
 default = ["qemu"]

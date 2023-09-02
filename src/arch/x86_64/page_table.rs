@@ -412,7 +412,7 @@ impl PageTableTrait for X86_64PageTable {
             }
         }
 
-        debug!(
+        trace!(
             "page table map va 0x{:016x} pa: 0x{:016x}, flags {:?}",
             va,
             pa,
@@ -422,7 +422,7 @@ impl PageTableTrait for X86_64PageTable {
         let page_4kb = Page::<Size4KiB>::containing_address(VirtAddr::new(va as u64));
         let frame_4kb = Frame::<Size4KiB>::containing_address(PhysAddr::new(pa as u64));
 
-        crate::libs::zone::protected_function_wrapper(|| {
+        zone::protected_function_wrapper(|| {
             match unsafe {
                 self.page_table
                     .map_to(page_4kb, frame_4kb, flags, &mut FrameAllocatorForX86)
@@ -476,7 +476,7 @@ impl PageTableTrait for X86_64PageTable {
             }
         }
 
-        debug!(
+        trace!(
             "page table map_2mb va 0x{:016x} pa: 0x{:016x}, flags {:?}",
             va,
             pa,
@@ -505,27 +505,33 @@ impl PageTableTrait for X86_64PageTable {
     }
 
     fn unmap(&mut self, va: usize) {
-        debug!("unmap va {:x}", va);
-        crate::libs::zone::protected_function_wrapper(|| {
+        trace!("unmap va {:x}", va);
+        zone::protected_function_wrapper(|| {
             // self.dump_entry_flags_of_va(va);
             self.page_table
                 .unmap(Page::<Size4KiB>::containing_address(VirtAddr::new(
                     va as u64,
                 )))
-                .unwrap()
+                .unwrap_or_else(|e| {
+                    self.dump_entry(va);
+                    panic!("unmap va {:#x} error {:?}", va, e);
+                })
                 .1
                 .flush();
         })
     }
 
     fn unmap_2mb(&mut self, va: usize) {
-        debug!("unmap_2mb va {:x}", va);
+        trace!("unmap_2mb va {:x}", va);
         assert!(va % MapGranularity::Page2MB as usize == 0);
         self.page_table
             .unmap(Page::<Size2MiB>::containing_address(VirtAddr::new(
                 va as u64,
             )))
-            .unwrap()
+            .unwrap_or_else(|e| {
+                self.dump_entry_2mb(va);
+                panic!("unmap va {:#x} error {:?}", va, e);
+            })
             .1
             .flush();
     }

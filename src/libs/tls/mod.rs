@@ -115,7 +115,7 @@ impl Drop for ThreadTls {
     }
 }
 
-pub fn alloc_thread_local_storage_region(zone_id: crate::libs::zone::ZoneId) -> ThreadTls {
+pub fn alloc_thread_local_storage_region(zone_id: zone::ZoneId) -> ThreadTls {
     let tls_size = round_up(core::mem::size_of::<Tls>(), PAGE_SIZE);
     let region = crate::mm::allocate_region(tls_size, Some(zone_id))
         .expect("failed to alloc region for tls");

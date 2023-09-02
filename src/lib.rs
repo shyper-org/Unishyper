@@ -125,7 +125,7 @@ pub extern "C" fn loader_main(core_id: usize) {
         board::init();
 
         #[cfg(feature = "zone")]
-        crate::libs::zone::zone_init();
+        zone::zone_init();
 
 
         info!("board init ok");

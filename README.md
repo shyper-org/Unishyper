@@ -1,6 +1,6 @@
 # Unishyper
 
-Unishyper is a research unikernel, targeting a scalable and predictable runtime for embedded devices. 
+Unishyper: A Rust-based Unikernel Enhancing Reliability and Efficiency of Embedded Systems. 
 
 Unikernel means, you bundle your application directly with the kernel library, so that it can run without any installed operating system.
 
@@ -27,6 +27,7 @@ Unishyper  now supports following platforms:
 6. Unilib-fs support.
 7. Zone, thread grained memory isolation mechanism.
 8. Rust-std support, with modified [rust-toolchain](https://gitee.com/unishyper/rust).
+9. Unwind based fault tolerance.
 ## Toolchains
 
 1. Nightly Rust (`nightly-2022-09-14` tested)

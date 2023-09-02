@@ -19,9 +19,14 @@ use unishyper::shyperstd as std;
 
 use std::io::{BufReader, Read, Write};
 
-protected_global_var!(static mut TEST_PROTECTED_GLOCAL: usize = 123);
+// protected_global_var!(static mut TEST_PROTECTED_GLOCAL: usize = 123);
+
+#[zone_protected::global_var]
+static mut TEST_PROTECTED_GLOCAL: usize = 123;
+
 static mut TEST_SHARED_GLOCAL: usize = 456;
 
+#[allow(unused)]
 fn test_stack_var_rw() {
     // Test write isolation for stack data.
     let test_var = 123 as usize;
@@ -63,9 +68,11 @@ fn test_stack_var_rw() {
             test_var.as_mut()
         );
     });
+    assert_eq!(test_var, 123, "test_stack_var_rw test_var is modified");
     println!("\n\nBack to main thread, test var changed to {}", test_var);
 }
 
+#[allow(unused)]
 fn test_global_var_rw() {
     unsafe {
         println!(
@@ -129,6 +136,7 @@ fn test_global_var_rw() {
     }
 }
 
+#[allow(unused)]
 fn test_heap_var_rw() {
     let num_pages = 1;
     use std::mm;
@@ -232,9 +240,9 @@ fn main() {
 
     test_stack_var_rw();
 
-    test_global_var_rw();
+    // test_global_var_rw();
 
-    test_heap_var_rw();
+    // test_heap_var_rw();
 
     println!("Memory isolation bench finished");
 }

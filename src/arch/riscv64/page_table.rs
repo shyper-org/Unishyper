@@ -182,7 +182,7 @@ impl PageTableTrait for RISCV64PageTable {
     }
 
     fn map(&mut self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
-        debug!(
+        trace!(
             "page table map va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
             va,
             pa,
@@ -228,7 +228,7 @@ impl PageTableTrait for RISCV64PageTable {
     fn map_2mb(&mut self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
         assert!(va % MapGranularity::Page2MB as usize == 0);
         assert!(pa % MapGranularity::Page2MB as usize == 0);
-        debug!(
+        trace!(
             "page table map_2mb va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
             va,
             pa,
@@ -267,7 +267,7 @@ impl PageTableTrait for RISCV64PageTable {
     }
 
     fn unmap(&mut self, va: usize) {
-        debug!("unmap va {:x}", va);
+        trace!("unmap va {:x}", va);
         let directory = self.directory_entry;
         let l1e = directory.entry(va.l1x());
         assert!(l1e.valid());
@@ -277,7 +277,7 @@ impl PageTableTrait for RISCV64PageTable {
     }
 
     fn unmap_2mb(&mut self, va: usize) {
-        debug!("unmap_2mb va {:x}", va);
+        trace!("unmap_2mb va {:x}", va);
         assert!(va % MapGranularity::Page2MB as usize == 0);
         let directory = self.directory_entry;
         let l1e = directory.entry(va.l1x());

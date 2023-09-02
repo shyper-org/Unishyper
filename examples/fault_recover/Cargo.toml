@@ -10,7 +10,7 @@ default-features = false
 path = "../../"
 
 [dependencies]
-inject = { path = "../../inject" }
+inject = { path = "../../crates/reliability/inject" }
 
 [features]
 default = ["qemu"]

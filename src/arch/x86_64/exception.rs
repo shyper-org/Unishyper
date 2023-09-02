@@ -145,9 +145,9 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
     #[cfg(feature = "zone")]
-    let cur_pkru = crate::libs::zone::rdpkru();
+    let cur_pkru = zone::rdpkru();
     #[cfg(feature = "zone")]
-    let _ = crate::libs::zone::switch_to_privilege_pkru();
+    let _ = zone::switch_to_privilege();
 
     println!("EXCEPTION: PAGE FAULT");
     println!("Accessed Address: {:?}", Cr2::read());
@@ -171,7 +171,7 @@ extern "x86-interrupt" fn page_fault_handler(
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     #[cfg(feature = "zone")]
-    let ori_pkru = crate::libs::zone::switch_to_privilege_pkru();
+    let ori_pkru = zone::switch_to_privilege();
 
     // trace!("timer interrupt");
     // trace!("stack frame:\n{:#?}", _stack_frame);
@@ -180,7 +180,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     apic::INTERRUPT_CONTROLLER.finish(apic::INT_TIMER);
 
     #[cfg(feature = "zone")]
-    crate::libs::zone::switch_from_privilege_pkru(ori_pkru);
+    zone::switch_from_privilege(ori_pkru);
 
     // Give up CPU actively.
     crate::libs::thread::thread_yield();

@@ -62,41 +62,41 @@ macro_rules! infofooter {
 
 // macro rules for mpk,
 
-#[macro_export]
-macro_rules! protected_global_var {
-	/* immutable */
-	(static $name:ident: $var_type:ty = $val:expr) => {
-                #[link_section = ".protected_data"]
-                static $name: $var_type = $val;
-        };
-        (static $name:ident: $var_type:ty) => {
-                #[link_section = ".protected_data"]
-                static $name: $var_type = 0;
-        };
-        (pub static $name:ident: $var_type:ty = $val:expr) => {
-                #[link_section = ".protected_data"]
-                pub static $name: $var_type = $val;
-        };
-        (pub static $name:ident: $var_type:ty) => {
-                #[link_section = ".protected_data"]
-                pub static $name: $var_type = 0;
-	};
+// #[macro_export]
+// macro_rules! protected_global_var {
+// 	/* immutable */
+// 	(static $name:ident: $var_type:ty = $val:expr) => {
+//                 #[link_section = ".protected_data"]
+//                 static $name: $var_type = $val;
+//         };
+//         (static $name:ident: $var_type:ty) => {
+//                 #[link_section = ".protected_data"]
+//                 static $name: $var_type = 0;
+//         };
+//         (pub static $name:ident: $var_type:ty = $val:expr) => {
+//                 #[link_section = ".protected_data"]
+//                 pub static $name: $var_type = $val;
+//         };
+//         (pub static $name:ident: $var_type:ty) => {
+//                 #[link_section = ".protected_data"]
+//                 pub static $name: $var_type = 0;
+// 	};
 
-	/* mutable */
-        (static mut $name:ident: $var_type:ty = $val:expr) => {
-                #[link_section = ".protected_data"]
-                static mut $name: $var_type = $val;
-        };
-        (static mut $name:ident: $var_type:ty) => {
-                #[link_section = ".protected_data"]
-                static mut $name: $var_type = 0;
-        };
-        (pub static mut $name:ident: $var_type:ty = $val:expr) => {
-                #[link_section = ".protected_data"]
-                pub static mut $name: $var_type = $val;
-        };
-        (pub static mut $name:ident: $var_type:ty) => {
-                #[link_section = ".protected_data"]
-                pub static mut $name: $var_type = 0;
-        };
-}
+// 	/* mutable */
+//         (static mut $name:ident: $var_type:ty = $val:expr) => {
+//                 #[link_section = ".protected_data"]
+//                 static mut $name: $var_type = $val;
+//         };
+//         (static mut $name:ident: $var_type:ty) => {
+//                 #[link_section = ".protected_data"]
+//                 static mut $name: $var_type = 0;
+//         };
+//         (pub static mut $name:ident: $var_type:ty = $val:expr) => {
+//                 #[link_section = ".protected_data"]
+//                 pub static mut $name: $var_type = $val;
+//         };
+//         (pub static mut $name:ident: $var_type:ty) => {
+//                 #[link_section = ".protected_data"]
+//                 pub static mut $name: $var_type = 0;
+//         };
+// }

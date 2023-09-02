@@ -11,7 +11,6 @@ pub mod thread;
 pub mod timer;
 pub mod tls;
 pub mod traits;
-pub mod zone;
 
 #[cfg(feature = "tcp")]
 pub mod net;

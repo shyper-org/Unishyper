@@ -1,7 +1,6 @@
 use core::arch::asm;
 
 /// Get current PKRU register value.
-/// !!! `ecx` is modified inside unsafe block.
 #[inline(never)]
 pub fn rdpkru() -> u32 {
     let val: u32;
@@ -19,7 +18,6 @@ pub fn rdpkru() -> u32 {
 }
 
 /// Set current PKRU register value.
-/// !!! `ecx` and `edx` are modified inside unsafe block.
 #[inline(never)]
 pub fn wrpkru(val: u32) {
     unsafe {

@@ -12,7 +12,7 @@ use crate::mm::paging::{map_allocated_pages, EntryAttribute, MappedRegion};
 use crate::mm::address::VAddr;
 use crate::mm::interface::PageTableEntryAttrTrait;
 
-use crate::libs::zone::ZoneId;
+use zone::ZoneId;
 
 #[cfg(feature = "zone")]
 use crate::mm::interface::PageTableEntryAttrZoneTrait;
@@ -118,7 +118,7 @@ pub fn allocate(size: usize, _protected: bool) -> Option<VAddr> {
     if _protected {
         attr.set_zone(t.zone_id());
     } else {
-        attr.set_zone(crate::libs::zone::ZONE_ID_SHARED);
+        attr.set_zone(zone::ZONE_ID_SHARED);
     }
 
     let region = match map_allocated_pages(pages, attr) {

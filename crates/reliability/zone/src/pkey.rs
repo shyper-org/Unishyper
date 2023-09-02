@@ -4,7 +4,7 @@ use spin::Lazy;
 use bitflags::bitflags;
 use bitmaps::Bitmap;
 
-pub type ZoneId = usize;
+use super::ZoneId;
 
 pub const ZONE_ID_PRIVILEGED: ZoneId = 0x0;
 pub const ZONE_ID_SHARED: ZoneId = 0xf;
@@ -19,37 +19,23 @@ pub const PKRU_PRIVILEGED: u32 = 0x0;
 // for each i (0 ≤ i ≤ 15)
 // PKRU[2i] is the access-disable bit for protection key i (ADi)
 // PKRU[2i+1] is the write-disable bitfor protection key i (WDi).
-pub enum PkeyPerm {
-    NoAccess = 0b11,
-    ReadOnly = 0b10,
-    ReadWrite = 0b00,
-}
+// pub enum PkeyPerm {
+//     NoAccess = 0b11,
+//     ReadOnly = 0b10,
+//     ReadWrite = 0b00,
+// }
 
-pub fn switch_to_privilege_pkru() -> u32 {
+use super::{wrpkru, rdpkru};
+
+pub fn switch_to_privilege() -> u32 {
     let ori_pkru = rdpkru();
     wrpkru(PKRU_PRIVILEGED);
     ori_pkru
 }
 
-pub fn switch_from_privilege_pkru(ori_pkru: u32) {
+pub fn switch_from_privilege(ori_pkru: u32) {
     wrpkru(ori_pkru);
 }
-
-/// Get current PKRU register value.
-pub fn rdpkru() -> u32 {
-    crate::arch::mpk::rdpkru()
-}
-
-/// Set current PKRU register value.
-pub fn wrpkru(val: u32) {
-    crate::arch::mpk::wrpkru(val)
-}
-
-pub fn dump_pkru() {
-    println!("current pkru {:#x}", rdpkru());
-}
-
-
 
 // The PKRU register (protection-key rights for user pages) is a 32-bit register with the following format:
 // for each i (0 ≤ i ≤ 15)
@@ -143,7 +129,7 @@ pub fn zone_init() {
 pub fn zone_alloc() -> Option<ZoneId> {
     let mut global_zone = GLOBAL_ZONES.lock();
     let allocated_zone = global_zone.first_false_index().unwrap_or_else(|| {
-        warn!("No free zones, use ZONE_ID_SHARED {ZONE_ID_SHARED} by default");
+        // warn!("No free zones, use ZONE_ID_SHARED {ZONE_ID_SHARED} by default");
         ZONE_ID_SHARED
     });
 
@@ -158,3 +144,6 @@ pub fn zone_free(zone_id: ZoneId) {
     global_zone.set(zone_id, false);
 }
 
+// pub const fn zone_protected() -> ZoneId {
+//     ZONE_ID_PRIVILEGED
+// }

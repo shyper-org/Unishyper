@@ -11,10 +11,12 @@ Unishyper  now supports following platforms:
 | MACHINE | ARCH                    | Description                             |
 |---------|-------------------------|-----------------------------------------|
 | qemu    | **aarch64**  | QEMU/KVM (qemu-system-aarch64) |
-| shyper  | **aarch64**  |  Type-1 Hypervisor         |
-| tx2     | **aarch64**  | NVIDIA TX2                 |
+| shyper  | **aarch64**  |  [Shyper](https://gitee.com/openeuler/rust_shyper) Type-1 Hypervisor         |
+| tx2     | **aarch64**  | [NVIDIA TX2](https://developer.nvidia.com/embedded/jetson-tx2)                 |
 | qemu    | **x86_64**   | QEMU/KVM (qemu-system-x86_64)  |
 | qemu    | **riscv64**  | QEMU/KVM (qemu-system-riscv64)|
+| ~~k210~~    | **riscv64**  | ~~[Kendryte K210](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html) on [Maix Dock(M1/M1W)](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html)~~ (upcoming)|
+| ~~raspi4~~    | **aarch64**  | ~~Raspberry Pi 4 Model B~~ (pending) |
 
 
 ## Features

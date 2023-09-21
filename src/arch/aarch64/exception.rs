@@ -1,9 +1,9 @@
 use cortex_a::registers::{ESR_EL1, VBAR_EL1, TPIDRRO_EL0, DAIF};
 use tock_registers::interfaces::{Readable, Writeable};
 
-use crate::drivers::INTERRUPT_CONTROLLER;
+use crate::drivers::InterruptController;
 use crate::libs::traits::ArchTrait;
-use crate::libs::interrupt::*;
+use crate::libs::traits::InterruptControllerTrait;
 
 use super::ContextFrame;
 
@@ -24,7 +24,7 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
-    let irq = INTERRUPT_CONTROLLER.fetch();
+    let irq = InterruptController::fetch();
     // debug!(
     //     "current_el_spx_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on sp {:p}\n",
     //     TPIDRRO_EL0.get(),
@@ -44,19 +44,35 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
     match irq {
         Some(INT_TIMER) => {
             crate::libs::timer::interrupt();
-            INTERRUPT_CONTROLLER.finish(INT_TIMER);
+            InterruptController::finish(INT_TIMER);
             // Give up CPU actively.
             crate::libs::thread::thread_yield();
         }
         Some(i) => {
             if i >= 32 {
                 crate::libs::interrupt::interrupt(i);
-                INTERRUPT_CONTROLLER.finish(irq.unwrap());
+                InterruptController::finish(irq.unwrap());
             } else {
+                warn!(
+                    "current_el_spx_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on sp {:p}\n",
+                    TPIDRRO_EL0.get(),
+                    crate::arch::Arch::curent_privilege(),
+                    irq.unwrap(),
+                    DAIF.get(),
+                    ctx
+                );
                 panic!("GIC unhandled SGI PPI")
             }
         }
         None => {
+            warn!(
+                "current_el_spx_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on sp {:p}\n",
+                TPIDRRO_EL0.get(),
+                crate::arch::Arch::curent_privilege(),
+                irq.unwrap(),
+                DAIF.get(),
+                ctx
+            );
             panic!("GIC unknown irq")
         }
     }
@@ -85,7 +101,7 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
         "current_el_sp0_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on user_sp {:p}\n",
         TPIDRRO_EL0.get(),
         crate::arch::Arch::curent_privilege(),
-        INTERRUPT_CONTROLLER.fetch().unwrap(),
+        InterruptController::fetch().unwrap(),
         DAIF.get(),
         ctx
     );

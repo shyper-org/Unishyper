@@ -6,10 +6,14 @@ TOOLCHAIN ?=
 
 LOG ?= info
 
+BUS ?= mmio
+
 APP ?= hello_world
 
 APP_BIN ?= ${APP}
 
+export MACHINE
+export ARCH
 # Panic Inject Function
 export PI
 

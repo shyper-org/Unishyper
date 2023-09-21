@@ -1,5 +1,5 @@
 pub mod constants;
-#[cfg(not(feature = "pci"))]
+#[cfg(feature = "mmio")]
 pub mod virtio_mmio;
 pub mod virtio_net;
 #[cfg(feature = "pci")]
@@ -29,41 +29,31 @@ pub trait NetworkInterface {
     /// Handle interrupt and check if a packet is available
     fn handle_interrupt(&mut self) -> bool;
 }
-#[cfg(not(feature = "pci"))]
-use crate::drivers::virtio::mmio::get_network_driver;
+#[cfg(feature = "mmio")]
+pub use crate::drivers::virtio::mmio::get_network_driver;
 
 #[cfg(feature = "pci")]
-use crate::drivers::pci::get_network_driver;
-use crate::libs::synch::spinlock::SpinlockIrqSave;
+pub use crate::drivers::pci::get_network_driver;
 
 #[cfg(not(target_arch = "x86_64"))]
 pub fn network_irqhandler() {
-    trace!("Receive network interrupt");
+    debug!("Receive network interrupt");
 
-    let check_scheduler = match get_network_driver() {
-        Some(driver) => driver.lock().handle_interrupt(),
-        _ => {
-            error!("Unable to handle interrupt!");
-            false
-        }
-    };
-
-    if check_scheduler {
-        crate::libs::net::network_poll();
-        crate::libs::thread::thread_yield();
-    }
+    inner_network_irq_handler()
 }
 
 #[cfg(target_arch = "x86_64")]
-use x86_64::structures::idt::InterruptStackFrame;
-
-#[cfg(target_arch = "x86_64")]
-pub extern "x86-interrupt" fn network_irqhandler(_stack_frame: InterruptStackFrame) {
-    trace!("Receive network interrupt!!!");
-    use crate::libs::interrupt::InterruptController;
-    crate::drivers::INTERRUPT_CONTROLLER.finish(0);
+pub extern "x86-interrupt" fn network_irqhandler(
+    _stack_frame: x86_64::structures::idt::InterruptStackFrame,
+) {
+    info!("Receive network interrupt!!!");
+    use crate::libs::traits::InterruptControllerTrait;
+    crate::drivers::InterruptController::finish(0);
     // apic::eoi();
+    inner_network_irq_handler()
+}
 
+fn inner_network_irq_handler() {
     let has_packet = if let Some(driver) = get_network_driver() {
         driver.lock().handle_interrupt()
     } else {
@@ -74,84 +64,5 @@ pub extern "x86-interrupt" fn network_irqhandler(_stack_frame: InterruptStackFra
     if has_packet {
         crate::libs::net::network_poll();
         crate::libs::thread::thread_yield();
-    }
-}
-
-/// set driver in polling mode and threads will not be blocked
-pub fn set_polling_mode(value: bool) {
-    static THREADS_IN_POLLING_MODE: SpinlockIrqSave<usize> = SpinlockIrqSave::new(0);
-    let mut guard = THREADS_IN_POLLING_MODE.lock();
-
-    if value {
-        *guard += 1;
-
-        if *guard == 1 {
-            if let Some(driver) = get_network_driver() {
-                driver.lock().set_polling_mode(value)
-            }
-        }
-    } else {
-        *guard -= 1;
-
-        if *guard == 0 {
-            if let Some(driver) = get_network_driver() {
-                driver.lock().set_polling_mode(value)
-            }
-        }
-    }
-}
-
-pub fn get_mac_address() -> Result<[u8; 6], ()> {
-    match get_network_driver() {
-        Some(driver) => Ok(driver.lock().get_mac_address()),
-        _ => Err(()),
-    }
-}
-
-pub fn get_mtu() -> Result<u16, ()> {
-    match get_network_driver() {
-        Some(driver) => Ok(driver.lock().get_mtu()),
-        _ => Err(()),
-    }
-}
-
-pub fn get_tx_buffer(len: usize) -> Result<(*mut u8, usize), ()> {
-    match get_network_driver() {
-        Some(driver) => driver.lock().get_tx_buffer(len),
-        _ => Err(()),
-    }
-}
-
-pub fn free_tx_buffer(handle: usize) -> Result<(), ()> {
-    match get_network_driver() {
-        Some(driver) => {
-            driver.lock().free_tx_buffer(handle);
-            Ok(())
-        }
-        _ => Err(()),
-    }
-}
-
-pub fn send_tx_buffer(handle: usize, len: usize) -> Result<(), ()> {
-    match get_network_driver() {
-        Some(driver) => driver.lock().send_tx_buffer(handle, len),
-        _ => Err(()),
-    }
-}
-
-pub fn receive_rx_buffer() -> Result<(&'static mut [u8], usize), ()> {
-    match get_network_driver() {
-        Some(driver) => driver.lock().receive_rx_buffer(),
-        _ => Err(()),
-    }
-}
-
-pub fn rx_buffer_consumed(handle: usize) -> Result<(), ()> {
-    match get_network_driver() {
-        Some(driver) => {
-            driver.lock().rx_buffer_consumed(handle);
-            Ok(())
-        }
-        _ => Err(()),
     }
 }

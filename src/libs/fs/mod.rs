@@ -48,54 +48,6 @@ pub fn init() {
         info!("unilib fs mount success on \"{}\".", UNILIB_FS_ROOT);
     }
     info!("fs init success.");
-
-    // This is just for uni-lib test during development.
-    if false {
-        use alloc::vec;
-        #[cfg(not(feature = "std"))]
-        use alloc::{format, string::String};
-        // Test open.
-        debug!("This is just for uni-lib test during development");
-        let fd = open(format!("{}{}", FS_ROOT, "test_path").as_str(), 111, 222);
-        debug!("Open test passed, get fd {}", fd);
-
-        // Test write.
-        let write_str = "hello";
-        let write_res = write(fd, write_str.as_bytes().as_ptr(), write_str.len());
-        debug!("Write test passed, get write_res {}", write_res);
-
-        // Test lseek.
-        // SEEK_SET = 0
-        let lseek_res = lseek(fd, 0, 0);
-        debug!("Lseek test passed, get lseek_res {}", lseek_res);
-
-        // Test read.
-        let mut read_str = vec![0 as u8; 10];
-        let read_res = read(fd, &mut read_str[0], write_str.len());
-        debug!(
-            "Read test passed, get res {}, get str '{}'",
-            read_res,
-            String::from_utf8(read_str).expect("failed to convert vec u8 to string")
-        );
-
-        // Test lseek.
-        // SEEK_SET = 0
-        let lseek_res = lseek(fd, 1, 0);
-        debug!("Lseek test passed, get lseek_res {}", lseek_res);
-
-        // After lseek, start should remove to 1;
-        let mut read_str = vec![0 as u8; 3];
-        let read_res = read(fd, &mut read_str[0], 3);
-        debug!(
-            "After Lseek to 1, read buffer of 3 bytes, get res {}, get str '{}'",
-            read_res,
-            String::from_utf8(read_str).expect("failed to convert vec u8 to string")
-        );
-
-        // Test close.
-        let close_res = close(fd);
-        debug!("CLose test passed, get close_res {}", close_res);
-    }
 }
 
 use interface::*;

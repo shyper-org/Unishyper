@@ -6,8 +6,9 @@ use ioslice::{IoSlice, IoSliceMut};
 
 use crate::libs::fs;
 use crate::libs::fs::interface::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
+use crate::libs::error::ShyperError;
 
-use crate::exported::shyperstd::io::{self, cvt,SeekFrom};
+use crate::exported::shyperstd::io::{self, cvt, SeekFrom};
 use crate::exported::shyperstd::fd::FileDesc;
 
 pub struct Path {
@@ -211,7 +212,10 @@ impl OpenOptions {
             (true, true, false) => Ok(O_RDWR),
             (false, _, true) => Ok(O_WRONLY | O_APPEND),
             (true, _, true) => Ok(O_RDWR | O_APPEND),
-            (false, false, false) => Err("invalid access mode"),
+            (false, false, false) => {
+                warn!("invalid access mode");
+                Err(ShyperError::InvalidInput)
+            }
         }
     }
 
@@ -220,12 +224,14 @@ impl OpenOptions {
             (true, false) => {}
             (false, false) => {
                 if self.truncate || self.create || self.create_new {
-                    return Err("invalid creation mode");
+                    warn!("invalid creation mode");
+                    return Err(ShyperError::InvalidInput);
                 }
             }
             (_, true) => {
                 if self.truncate && !self.create_new {
-                    return Err("invalid creation mode");
+                    warn!("invalid creation mode");
+                    return Err(ShyperError::InvalidInput);
                 }
             }
         }
@@ -322,7 +328,8 @@ impl File {
         while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => {
-                    return Err("failed to write whole buffer");
+                    warn!("failed to write whole buffer");
+                    return Err(ShyperError::WriteZero);
                 }
                 Ok(n) => buf = &buf[n..],
                 Err(e) => return Err(e),

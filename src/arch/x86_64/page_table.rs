@@ -165,7 +165,7 @@ unsafe impl FrameAllocator<Size4KiB> for FrameAllocatorForX86 {
     fn allocate_frame(&mut self) -> Option<Frame> {
         frame_allocator::allocate_frames(1).map(|allocated_frames| {
             let frame_addr = allocated_frames.start_address().value() as u64;
-            debug!(
+            trace!(
                 "Pagetable FrameAllocatorForX86 alloc frame on {:#x}",
                 frame_addr
             );
@@ -180,7 +180,7 @@ unsafe impl FrameAllocator<Size4KiB> for FrameAllocatorForX86 {
 impl FrameDeallocator<Size4KiB> for FrameAllocatorForX86 {
     unsafe fn deallocate_frame(&mut self, frame: Frame) {
         let frame_addr = frame.start_address().as_u64();
-        debug!(
+        trace!(
             "Pagetable FrameAllocatorForX86 dealloc frame on {:#x}",
             frame_addr
         );

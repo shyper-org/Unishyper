@@ -1,7 +1,7 @@
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 mod tcp;
 
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 pub use tcp::*;
 
 mod tls;
@@ -55,7 +55,7 @@ pub extern "C" fn shyper_free(ptr: *mut u8, size: usize, align: usize) {
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct timespec {
+pub struct Timespec {
     /// seconds
     pub tv_sec: i64,
     /// nanoseconds
@@ -64,7 +64,7 @@ pub struct timespec {
 
 use core::sync::atomic::AtomicU32;
 
-pub(crate) fn timespec_to_microseconds(time: timespec) -> Option<usize> {
+pub(crate) fn timespec_to_microseconds(time: Timespec) -> Option<usize> {
     usize::try_from(time.tv_sec)
         .ok()
         .and_then(|secs| secs.checked_mul(1_000_000))
@@ -75,7 +75,7 @@ pub(crate) fn timespec_to_microseconds(time: timespec) -> Option<usize> {
 pub extern "C" fn shyper_futex_wait(
     address: *mut u32,
     expected: u32,
-    timeout: *const timespec,
+    timeout: *const Timespec,
     flags: u32,
 ) -> i32 {
     let address = unsafe { &*(address as *const AtomicU32) };
@@ -167,13 +167,13 @@ pub extern "C" fn shyper_yield() {
     crate::libs::thread::thread_yield()
 }
 
-fn nanoseconds_to_timespec(nanoseconds: usize, result: &mut timespec) {
+fn nanoseconds_to_timespec(nanoseconds: usize, result: &mut Timespec) {
     result.tv_sec = (nanoseconds / 1_000_000_000) as i64;
     result.tv_nsec = (nanoseconds % 1_000_000_000) as i64;
 }
 
 #[no_mangle]
-pub extern "C" fn shyper_clock_gettime(clock_id: u64, tp: *mut timespec) -> i32 {
+pub extern "C" fn shyper_clock_gettime(clock_id: u64, tp: *mut Timespec) -> i32 {
     use crate::libs::timer::{CLOCK_REALTIME, CLOCK_MONOTONIC, current_ns, boot_time};
     assert!(
         !tp.is_null(),
@@ -204,8 +204,9 @@ pub extern "C" fn shyper_clock_gettime(clock_id: u64, tp: *mut timespec) -> i32 
 #[no_mangle]
 pub extern "C" fn shyper_network_init() -> i32 {
     debug!("Unishyper network init");
-    #[cfg(feature = "tcp")]
-    crate::libs::net::network_init();
+    // #[cfg(feature = "net")]
+    // crate::libs::net::network_init();
+    // Currently we do nothing here.
     0
 }
 

@@ -124,7 +124,7 @@ struct ControlBlock {
 
 impl Drop for ControlBlock {
     fn drop(&mut self) {
-        debug!("Drop Thread [{}]'s ControlBlock", self.inner.uuid);
+        trace!("Drop Thread [{}]'s ControlBlock", self.inner.uuid);
     }
 }
 

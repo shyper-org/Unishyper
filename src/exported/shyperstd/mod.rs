@@ -1,10 +1,9 @@
-
 pub mod io;
 pub mod thread;
 
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 pub mod net;
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 pub use net::*;
 
 #[cfg(feature = "fs")]

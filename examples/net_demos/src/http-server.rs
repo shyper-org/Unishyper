@@ -9,7 +9,7 @@ use unishyper::shyperstd as std;
 
 use std::io;
 use std::thread;
-use std::net::{ToSocketAddrs, Ipv4Addr, TcpListener, TcpStream};
+use std::net::{Ipv4Addr, TcpListener, TcpStream};
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::UNSPECIFIED;
 const LOCAL_PORT: u16 = 4444;
@@ -48,6 +48,14 @@ fn http_server(mut stream: TcpStream) -> io::Result<()> {
     let mut buf = [0u8; 1024];
     stream.read(&mut buf)?;
 
+    println!(
+        "http_server get {}",
+        match core::str::from_utf8(&buf) {
+            Ok(v) => v,
+            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+        }
+    );
+
     let reponse = alloc::format!(header!(), CONTENT.len(), CONTENT);
     stream.write_all(reponse.as_bytes())?;
 
@@ -55,12 +63,7 @@ fn http_server(mut stream: TcpStream) -> io::Result<()> {
 }
 
 fn accept_loop() -> io::Result<usize> {
-    let addr = (LOCAL_IP, LOCAL_PORT)
-        .to_socket_addrs()
-        .map_err(|_| "ToSocketAddrError")?
-        .next()
-        .unwrap();
-    let listener = TcpListener::bind(addr)?;
+    let listener = TcpListener::bind((LOCAL_IP, LOCAL_PORT))?;
     println!(
         "listen on: http://{}/ on polling",
         listener.socket_addr().unwrap()
@@ -70,11 +73,11 @@ fn accept_loop() -> io::Result<usize> {
     loop {
         match listener.accept() {
             Ok((stream, addr)) => {
-                // println!("new client {}: {}", i, addr);
+                println!("new client {}: {}", i, addr);
                 thread::spawn(move || match http_server(stream) {
                     Err(e) => println!("client connection error: {:?}", e),
-                    // Ok(()) => println!("client {} closed successfully", i),
-                    Ok(()) => {},
+                    Ok(()) => println!("client {} closed successfully", i),
+                    // Ok(()) => {},
                 });
             }
             Err(e) => return Err(e),

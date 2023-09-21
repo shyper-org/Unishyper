@@ -1,7 +1,9 @@
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 use x86_64::set_general_handler;
 
-use crate::{drivers::apic, libs::interrupt::InterruptController};
+use crate::drivers::apic;
+use crate::drivers::InterruptController;
+use crate::libs::traits::InterruptControllerTrait;
 
 pub static mut IDT: InterruptDescriptorTable = InterruptDescriptorTable::new();
 
@@ -39,6 +41,8 @@ pub fn init_idt() {
     idt.page_fault.set_handler_fn(page_fault_handler);
     // Set timer handler.
     idt[apic::INT_TIMER].set_handler_fn(timer_interrupt_handler);
+    idt[apic::ERROR_INTERRUPT_NUMBER as usize].set_handler_fn(error_interrupt_handler);
+    idt[apic::SPURIOUS_INTERRUPT_NUMBER as usize].set_handler_fn(spurious_interrupt_handler);
 
     // idt.load();
 }
@@ -47,28 +51,33 @@ fn abort(stack_frame: InterruptStackFrame, index: u8, error_code: Option<u64>) {
     error!("Exception {index}");
     error!("Error code: {error_code:?}");
     error!("Stack frame: {stack_frame:#?}");
+    crate::libs::thread::thread_exit()
     // scheduler::abort();
 }
 
 fn unhandle(_stack_frame: InterruptStackFrame, index: u8, _error_code: Option<u64>) {
     warn!("received unhandled irq {index}");
-    // apic::eoi();
-    // increment_irq_counter(index.into());
+    InterruptController::finish(index as usize);
 }
 
 fn unknown(_stack_frame: InterruptStackFrame, index: u8, _error_code: Option<u64>) {
     warn!("unknown interrupt {index}");
+    InterruptController::finish(index as usize);
+
     // apic::eoi();
 }
 
 pub fn irq_install_handler(irq_number: u32, handler: usize) {
-    info!("Install handler for interrupt {}", irq_number);
+    info!(
+        "Install handler for interrupt {} handler {:#x}",
+        irq_number, handler
+    );
 
     let idt = unsafe { &mut *(&mut IDT as *mut _ as *mut InterruptDescriptorTable) };
     unsafe {
-        idt[apic::IRQ_MIN + irq_number as usize]
-            .set_handler_addr(x86_64::VirtAddr::new(handler as u64))
-            .set_stack_index(0);
+        idt[apic::IRQ_MIN + irq_number as usize].set_handler_addr(x86_64::VirtAddr::new(
+            u64::try_from(handler as usize).unwrap(),
+        ));
     }
 }
 
@@ -173,15 +182,28 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     #[cfg(feature = "zone")]
     let ori_pkru = zone::switch_to_privilege();
 
-    // trace!("timer interrupt");
+    // debug!("timer_interrupt_handler");
     // trace!("stack frame:\n{:#?}", _stack_frame);
     crate::libs::timer::interrupt();
     // Finished interrupt before switching
-    apic::INTERRUPT_CONTROLLER.finish(apic::INT_TIMER);
+    InterruptController::finish(apic::INT_TIMER);
 
     #[cfg(feature = "zone")]
     zone::switch_from_privilege(ori_pkru);
 
     // Give up CPU actively.
     crate::libs::thread::thread_yield();
+}
+
+extern "x86-interrupt" fn error_interrupt_handler(stack_frame: InterruptStackFrame) {
+    error!("APIC LVT Error Interrupt");
+    error!("ESR: {:#?}", unsafe { apic::local_apic().error_flags() });
+    error!("{:#?}", stack_frame);
+    InterruptController::finish(apic::ERROR_INTERRUPT_NUMBER as usize);
+    crate::libs::thread::thread_exit();
+}
+
+extern "x86-interrupt" fn spurious_interrupt_handler(stack_frame: InterruptStackFrame) {
+    error!("Spurious Interrupt: {:#?}", stack_frame);
+    crate::libs::thread::thread_exit();
 }

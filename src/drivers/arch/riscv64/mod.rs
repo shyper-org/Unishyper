@@ -6,4 +6,4 @@ pub mod timer;
 #[path = "uart_ns16550.rs"]
 pub mod uart;
 
-pub use plic::{Interrupt, INTERRUPT_CONTROLLER};
+pub use plic::{Interrupt, InterruptController};

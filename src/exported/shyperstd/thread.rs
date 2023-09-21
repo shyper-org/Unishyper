@@ -4,6 +4,7 @@ use alloc::boxed::Box;
 use core::cell::UnsafeCell;
 
 use super::io;
+use crate::libs::error::ShyperError;
 use crate::libs::thread as imp;
 
 #[derive(Debug)]
@@ -164,7 +165,7 @@ impl<T> JoinInner<T> {
             .result
             .get_mut()
             .take()
-            .ok_or_else(|| "bad state")
+            .ok_or_else(|| ShyperError::BadState)
         // unsafe { (*self.packet.0.get()).take().unwrap() }
     }
 }

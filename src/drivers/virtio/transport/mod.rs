@@ -1,4 +1,4 @@
-#[cfg(not(feature = "pci"))]
+#[cfg(feature = "mmio")]
 pub mod mmio;
 #[cfg(feature = "pci")]
 pub mod pci;

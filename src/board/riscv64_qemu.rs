@@ -2,11 +2,10 @@ use core::ops::Range;
 use core::sync::atomic::{AtomicBool, Ordering};
 use spin::Mutex;
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 use crate::libs::device::Device;
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 use crate::libs::device::VirtioDevice;
-use crate::libs::interrupt::InterruptController;
 use crate::libs::traits::*;
 
 pub const BOARD_CORE_NUMBER: usize = 1;
@@ -19,6 +18,21 @@ pub const ELF_IMAGE_LOAD_ADDR: usize = 0xc0000000;
 
 pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
 
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "axdriver", feature = "pci"))] {
+        /// Base physical address of the PCIe ECAM space (should read from ACPI 'MCFG' table).
+        pub const PCI_ECAM_BASE: usize = 0x3000_0000;
+        /// End PCI bus number (`bus-range` property in device tree).
+        pub const PCI_BUS_END: usize = 0xff;
+        /// PCI device memory ranges (`ranges` property in device tree).
+        pub const PCI_RANGES: &[(usize, usize)] = &[
+            (0x0300_0000, 0x1_0000),        // PIO space
+            (0x4000_0000, 0x4000_0000),     // 32-bit MMIO space
+            (0x4_0000_0000, 0x4_0000_0000), // 64-but MMIO space
+        ];
+    }
+}
+
 pub fn init() {
     crate::drivers::uart::init();
     crate::drivers::init_devices();
@@ -27,7 +41,7 @@ pub fn init() {
 pub fn init_per_core() {
     crate::drivers::timer::init();
     crate::arch::Arch::exception_init();
-    crate::drivers::INTERRUPT_CONTROLLER.init();
+    crate::drivers::InterruptController::init();
 }
 
 #[cfg(feature = "smp")]
@@ -63,9 +77,9 @@ pub unsafe extern "C" fn hart_spin(core_id: usize) {
     crate::loader_main(core_id);
 }
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 use alloc::{vec, vec::Vec};
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 pub fn devices() -> Vec<Device> {
     vec![
         Device::Virtio(VirtioDevice::new(

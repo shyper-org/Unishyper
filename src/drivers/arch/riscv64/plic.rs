@@ -4,8 +4,8 @@ use tock_registers::{
 };
 use tock_registers::registers::*;
 
-use crate::libs::interrupt::InterruptController;
 use crate::libs::traits::ArchTrait;
+use crate::libs::traits::InterruptControllerTrait;
 
 // platform level interrupt controller
 // https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc
@@ -78,8 +78,10 @@ impl PlicMmio {
 
 static PLIC_MMIO: PlicMmio = PlicMmio::new(PLIC_BASE_ADDR);
 
-impl InterruptController for Plic {
-    fn init(&self) {
+pub struct InterruptController;
+
+impl InterruptControllerTrait for InterruptController {
+    fn init() {
         let plic = &PLIC_MMIO;
         let core_id = crate::arch::Arch::core_id();
         match core_id {
@@ -91,7 +93,7 @@ impl InterruptController for Plic {
         }
     }
 
-    fn enable(&self, i: Interrupt) {
+    fn enable(i: Interrupt) {
         let plic = &PLIC_MMIO;
         let core_id = crate::arch::Arch::core_id();
         let reg_idx = i / 32;
@@ -112,7 +114,7 @@ impl InterruptController for Plic {
         plic.InterruptPriority[i].set(1);
     }
 
-    fn disable(&self, i: Interrupt) {
+    fn disable(i: Interrupt) {
         let plic = &PLIC_MMIO;
         let core_id = crate::arch::Arch::core_id();
         let reg_idx = i / 32;
@@ -131,7 +133,7 @@ impl InterruptController for Plic {
         }
     }
 
-    fn fetch(&self) -> Option<Interrupt> {
+    fn fetch() -> Option<Interrupt> {
         let plic = &PLIC_MMIO;
         let core_id = crate::arch::Arch::core_id();
         let int = match core_id {
@@ -148,7 +150,7 @@ impl InterruptController for Plic {
         }
     }
 
-    fn finish(&self, int: Interrupt) {
+    fn finish(int: Interrupt) {
         let plic = &PLIC_MMIO;
         let core_id = crate::arch::Arch::core_id();
         match core_id {
@@ -160,7 +162,5 @@ impl InterruptController for Plic {
         };
     }
 }
-
-pub static INTERRUPT_CONTROLLER: Plic = Plic {};
 
 pub type Interrupt = usize;

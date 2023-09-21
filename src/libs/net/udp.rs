@@ -3,16 +3,15 @@ use spin::RwLock;
 
 use no_std_net::SocketAddr;
 use smoltcp::wire::IpEndpoint;
-use smoltcp::socket::UdpSocket;
-use smoltcp::Error;
+use smoltcp::socket::udp::{self, BindError, SendError};
 
 use crate::libs::error::ShyperError;
 
-use super::Handle;
+use super::SmoltcpSocketHandle;
 use super::addr::*;
 
 pub struct AsyncUdpSocket {
-    handle: Handle,
+    handle: SmoltcpSocketHandle,
     local_addr: RwLock<Option<IpEndpoint>>,
     peer_addr: RwLock<Option<IpEndpoint>>,
     nonblock: AtomicBool,
@@ -36,13 +35,13 @@ impl AsyncUdpSocket {
         }
     }
 
-    fn with<R>(&self, f: impl FnOnce(&mut UdpSocket<'_>) -> R) -> R {
+    fn with<R>(&self, f: impl FnOnce(&mut udp::Socket<'_>) -> R) -> R {
         // println!("Async Socket with(), handle {:?}", self.0);
 
         let mut guard = super::NIC.lock();
         let nic = guard.as_nic_mut().unwrap();
         let res = {
-            let s = nic.iface.get_socket::<UdpSocket<'_>>(self.handle);
+            let s = nic.get_mut_socket::<udp::Socket<'_>>(self.handle);
             let res = f(s);
             res
         };
@@ -71,37 +70,37 @@ impl AsyncUdpSocket {
     pub fn local_addr(&self) -> Result<SocketAddr, ShyperError> {
         match self.local_addr.try_read() {
             Some(addr) => addr
-                .map(ipendpoint_to_core_socketaddr)
+                .map(ipendpoint_to_socketaddr)
                 .ok_or(ShyperError::NotConnected),
             None => Err(ShyperError::NotConnected),
         }
     }
 
     pub fn peer_addr(&self) -> Result<SocketAddr, ShyperError> {
-        self.remote_endpoint().map(ipendpoint_to_core_socketaddr)
+        self.remote_endpoint().map(ipendpoint_to_socketaddr)
     }
 
     pub fn bind(&self, mut local_addr: SocketAddr) -> Result<(), ShyperError> {
         let mut self_local_addr = self.local_addr.write();
 
         if local_addr.port() == 0 {
-            local_addr.set_port(super::interface::get_local_endpoint());
+            local_addr.set_port(super::interface::get_ephemeral_port()?);
         }
         if self_local_addr.is_some() {
-            warn!("UdpSocket bind() failed: already bound");
+            warn!("udp::Socket bind() failed: already bound");
             return Err(ShyperError::InvalidInput);
         }
 
-        let local_endpoint = core_socketaddr_to_ipendpoint(local_addr);
+        let local_endpoint = socketaddr_to_ipendpoint(local_addr);
         // debug!("local endpoint {:?}", local_endpoint);
         // let endpoint = IpEndpoint {
         //     addr: local_endpoint.addr,
         //     port: local_endpoint.port,
         // };
         self.with(|socket| socket.bind(local_endpoint))
-            .map_err(|e| {
-                warn!("UdpSocket bind() failed: error {}", e);
-                ShyperError::InvalidInput
+            .map_err(|e| match e {
+                BindError::InvalidState => ShyperError::AlreadyExists,
+                BindError::Unaddressable => ShyperError::InvalidInput,
             })?;
 
         *self_local_addr = Some(local_endpoint);
@@ -116,14 +115,14 @@ impl AsyncUdpSocket {
             return Err(ShyperError::InvalidInput);
             // return ax_err!(InvalidInput, "socket send_to() failed: invalid address");
         }
-        self.send_impl(buf, core_socketaddr_to_ipendpoint(remote_addr))
+        self.send_impl(buf, socketaddr_to_ipendpoint(remote_addr))
     }
 
     /// Receives a single datagram message on the socket. On success, returns
     /// the number of bytes read and the origin.
     pub fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr), ShyperError> {
         self.recv_impl(|socket| match socket.recv_slice(buf) {
-            Ok((len, endpoint)) => Ok((len, ipendpoint_to_core_socketaddr(endpoint))),
+            Ok((len, udpmetadata)) => Ok((len, ipendpoint_to_socketaddr(udpmetadata.endpoint))),
             Err(err) => {
                 warn!("AsyncUdpsocket recv_from() failed on err {}", err);
                 Err(ShyperError::BadState)
@@ -135,7 +134,7 @@ impl AsyncUdpSocket {
     /// the queue. On success, returns the number of bytes read and the origin.
     pub fn peek_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr), ShyperError> {
         self.recv_impl(|socket| match socket.peek_slice(buf) {
-            Ok((len, endpoint)) => Ok((len, ipendpoint_to_core_socketaddr(*endpoint))),
+            Ok((len, udpmetadata)) => Ok((len, ipendpoint_to_socketaddr(udpmetadata.endpoint))),
             Err(err) => {
                 warn!("AsyncUdpsocket recv_from() failed on err {}", err);
                 Err(ShyperError::BadState)
@@ -155,10 +154,10 @@ impl AsyncUdpSocket {
         let mut self_peer_addr = self.peer_addr.write();
 
         if self.local_addr.read().is_none() {
-            self.bind(ipendpoint_to_core_socketaddr(UNSPECIFIED_ENDPOINT))?;
+            self.bind(ipendpoint_to_socketaddr(UNSPECIFIED_ENDPOINT))?;
         }
 
-        *self_peer_addr = Some(core_socketaddr_to_ipendpoint(addr));
+        *self_peer_addr = Some(socketaddr_to_ipendpoint(addr));
         debug!("UDP socket {}: connected to {}", self.handle, addr);
         Ok(())
     }
@@ -174,14 +173,16 @@ impl AsyncUdpSocket {
     pub fn recv(&self, buf: &mut [u8]) -> Result<usize, ShyperError> {
         let remote_endpoint = self.remote_endpoint()?;
         self.recv_impl(|socket| {
-            let (len, endpoint) = socket.recv_slice(buf).map_err(|err| {
+            let (len, udpmetadata) = socket.recv_slice(buf).map_err(|err| {
                 warn!("AsyncUdpSocket recv() failed on err {}", err);
                 ShyperError::BadState
             })?;
-            if !is_unspecified(remote_endpoint.addr) && remote_endpoint.addr != endpoint.addr {
+            if !is_unspecified(remote_endpoint.addr)
+                && remote_endpoint.addr != udpmetadata.endpoint.addr
+            {
                 return Err(ShyperError::WouldBlock);
             }
-            if remote_endpoint.port != 0 && remote_endpoint.port != endpoint.port {
+            if remote_endpoint.port != 0 && remote_endpoint.port != udpmetadata.endpoint.port {
                 return Err(ShyperError::WouldBlock);
             }
             Ok(len)
@@ -222,7 +223,7 @@ impl AsyncUdpSocket {
 
     fn send_impl(&self, buf: &[u8], remote_endpoint: IpEndpoint) -> Result<usize, ShyperError> {
         if self.local_addr.read().is_none() {
-            warn!("UdpSocket send() failed, no local addr");
+            warn!("udp::Socket send() failed, no local addr");
             return Err(ShyperError::NotConnected);
         }
 
@@ -232,9 +233,9 @@ impl AsyncUdpSocket {
                     socket
                         .send_slice(buf, remote_endpoint)
                         .map_err(|e| match e {
-                            Error::Exhausted => ShyperError::WouldBlock,
-                            _ => {
-                                warn!("UdpSocket send() failed on error {}", e);
+                            SendError::BufferFull => ShyperError::WouldBlock,
+                            SendError::Unaddressable => {
+                                warn!("udp::Socket send() failed on error {}", e);
                                 ShyperError::ConnectionRefused
                             }
                         })?;
@@ -249,10 +250,10 @@ impl AsyncUdpSocket {
 
     fn recv_impl<F, T>(&self, mut op: F) -> Result<T, ShyperError>
     where
-        F: FnMut(&mut UdpSocket) -> Result<T, ShyperError>,
+        F: FnMut(&mut udp::Socket) -> Result<T, ShyperError>,
     {
         if self.local_addr.read().is_none() {
-            warn!("UdpSocket receive() failed, no local addr");
+            warn!("udp::Socket receive() failed, no local addr");
             return Err(ShyperError::NotConnected);
         }
 

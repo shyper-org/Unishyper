@@ -56,8 +56,8 @@
 // error[E0658]: use of unstable library feature 'ip_in_core'
 // see issue #108443 <https://github.com/rust-lang/rust/issues/108443> for more information
 #![feature(ip_in_core)]
-
 #![feature(stmt_expr_attributes)]
+#![feature(associated_type_defaults)]
 #[macro_use]
 extern crate log;
 // #[macro_use]
@@ -72,6 +72,10 @@ mod macros;
 
 mod arch;
 mod board;
+// mod drivers;
+
+#[cfg_attr(feature = "axdriver", path = "drivers/axmod.rs")]
+#[cfg_attr(not(feature = "axdriver"), path = "drivers/mod.rs")]
 mod drivers;
 mod exported;
 mod logger;
@@ -91,6 +95,27 @@ pub use panic::random_panic;
 
 // pub static mut START_CYCLE: u64 = 0;
 
+mod built_info {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+fn print_built_info() {
+    println!(
+        "Unishyper for [{platform}] on [{arch}].\nBuilt at [{build_time}] by {hostname} of {rustc_version}",
+        platform = env!("MACHINE"),
+        arch = env!("ARCH"),
+        build_time = env!("BUILD_TIME"),
+        hostname = env!("HOSTNAME"),
+        rustc_version = built_info::RUSTC_VERSION,
+    );
+    println!("Enabled features:");
+    print!("\t[");
+    for f in built_info::FEATURES_LOWERCASE {
+        print!(" \"{f}\",");
+    }
+    println!("]");
+}
+
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
     // Init output.
@@ -99,6 +124,7 @@ pub extern "C" fn loader_main(core_id: usize) {
         #[cfg(feature = "serial")]
         drivers::uart::init();
         logger::init();
+        print_built_info();
     }
 
     arch::Arch::exception_init();
@@ -124,9 +150,13 @@ pub extern "C" fn loader_main(core_id: usize) {
     if core_id == 0 {
         board::init();
 
-        #[cfg(feature = "zone")]
-        zone::zone_init();
+        #[cfg(feature = "net")]
+        libs::net::init();
+        #[cfg(feature = "fs")]
+        libs::fs::init();
 
+        // #[cfg(feature = "zone")]
+        zone::zone_init();
 
         info!("board init ok");
         extern "Rust" {
@@ -138,9 +168,6 @@ pub extern "C" fn loader_main(core_id: usize) {
             }
             runtime_entry as usize
         } else {
-            #[cfg(feature = "tcp")]
-            crate::libs::net::network_init();
-
             fn main_wrapper(main: extern "C" fn(usize), arg: usize) -> ! {
                 main(arg);
                 exit()
@@ -154,10 +181,6 @@ pub extern "C" fn loader_main(core_id: usize) {
         arch::Arch::set_thread_id(t.id().as_u64());
         arch::Arch::set_tls_ptr(t.get_tls_ptr() as u64);
         libs::cpu::cpu().set_running_thread(Some(t));
-        // Init fs if configured.
-        #[cfg(feature = "fs")]
-        libs::fs::init();
-        // Init shell if configured.
         #[cfg(feature = "terminal")]
         libs::terminal::init();
     }

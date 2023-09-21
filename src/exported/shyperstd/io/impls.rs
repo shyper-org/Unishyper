@@ -1,3 +1,5 @@
+use crate::libs::error::ShyperError;
+
 use super::{prelude::*, Result};
 use core::cmp;
 
@@ -24,7 +26,8 @@ impl Read for &[u8] {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
         if buf.len() > self.len() {
-            return Err("failed to fill whole buffer");
+            warn!("failed to fill whole buffer");
+            return Err(ShyperError::UnexpectedEof);
         }
         let amt = buf.len();
         let a = &self[..amt];

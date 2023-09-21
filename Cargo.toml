@@ -17,6 +17,10 @@ members = [
   "crates/reliability/inject",
   "crates/reliability/zone_protected",
   "crates/reliability/zone",
+  "crates/drivers/driver_common",
+  "crates/drivers/driver_virtio",
+  "crates/drivers/driver_net",
+  "crates/drivers/driver_pci",
 ]
 
 exclude = ["rboot", "examples/rust-tcp-io-perf"]
@@ -64,12 +68,21 @@ lru = {version = "0.11.0", optional = true}
 no-std-net = {version = "0.6.0", optional = true}
 xmas-elf = {version = "0.8.0", optional = true}
 
+## Local dependencies port from ArceOS: https://github.com/rcore-os/arceos.
+# driver = { path = "crates/drivers/driver" }
+driver_common = { path = "crates/drivers/driver_common" }
+driver_virtio = { path = "crates/drivers/driver_virtio", optional = true }
+driver_net = { path = "crates/drivers/driver_net", optional = true }
+driver_pci = { path = "crates/drivers/driver_pci", optional = true }
+
+
 [target.'cfg(target_arch = "aarch64")'.dependencies]
 cortex-a = {git = "https://github.com/hky1999/cortex-a"}
 gimli = {version = "0.19.0", default-features = false, features = ["read", "alloc"]}
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-apic = {git = "https://github.com/hky1999/apic-rs"}
+# apic = {git = "https://github.com/hky1999/apic-rs"}
+x2apic = "0.4"
 pic8259 = "0.10.1"
 raw-cpuid = "10.6.1"
 rboot = {git = "https://github.com/hky1999/rboot.git", default-features = false}
@@ -80,18 +93,23 @@ x86_64 = "0.14.2"
 riscv = { git = "https://github.com/hky1999/riscv" }
 
 [dependencies.smoltcp]
+git = "https://github.com/rcore-os/smoltcp.git"
 default-features = false
 features = [
   "alloc",
   "async",
+  "log",
   "medium-ethernet",
   "proto-ipv4",
   "proto-ipv6",
   "socket-tcp",
-  "socket-udp", # Enable for increased output  # "log",  # "verbose",
+  "socket-udp",
+  "socket-dns",
+  "socket-icmp",
+  "socket-raw",
+   # Enable for increased output  # "log",  # "verbose",
 ]
 optional = true
-version = "0.8.1"
 
 [dependencies.fatfs]
 default-features = false
@@ -111,39 +129,63 @@ path = "crates/reliability/zone_protected"
 path = "crates/reliability/zone"
 
 [build-dependencies]
+built = { version = "0.6.1", features = [] }
 chrono = "0.4.23"
+gethostname = "0.4.3"
 
 [features]
+default = ["qemu", "terminal", "fat", "fs", "unilib", "log-level-info", "zone", "net"]
+
+# Modular
+## Platforms
+shyper = []
+qemu = []
+tx2 = []
+## SMP
+smp = []
+scheduler-global = ["smp"]
+scheduler-percore = ["smp"]
+## Rust std | no_std support
+std = ["serial", "ahash", "hashbrown", "bitflags", "libm"]
 alloc = []
-default = ["qemu", "terminal", "tcp", "fat", "fs", "unilib", "log-level-info", "zone"]
+
+## File system
 fat = [
   "fatfs",
   "lru",
 ]
 fs = [
-  "ioslice",
+  "dep:ioslice",
   "libm",
 ]
-zone = []
-pci = []
-qemu = []
-scheduler-global = ["smp"]
-scheduler-percore = ["smp"]
-serial = []
-shyper = []
-smp = []
-std = ["serial", "ahash", "hashbrown", "bitflags", "libm"]
-tcp = [
-  "async-task",
-  "futures-lite",
-  "smoltcp",
-  "crossbeam-queue",
-  "ioslice",
-  "no-std-net",
-]
-terminal = ["serial"]
-tx2 = []
+## Unilib interface enable
 unilib = []
+
+## Network stack
+net = [
+  "dep:async-task",
+  "dep:futures-lite",
+  "dep:smoltcp",
+  "dep:crossbeam-queue",
+  "dep:ioslice",
+  "dep:no-std-net",
+]
+axdriver = [
+  "dep:driver_virtio",
+  "dep:driver_net",
+]
+## Driver bus
+pci = ["dep:driver_pci"]
+mmio = []
+
+## MISC
+serial = []
+terminal = ["serial"]
+
+# Reliability
+## Zone isolation(only supported in x86_64 currently)
+zone = []
+## Unwind
 unwind = [
   "fallible-iterator",
   "xmas-elf",
@@ -153,6 +195,8 @@ unwind-test = [
   "dep:inject",
   "unwind",
 ]
+
+# Control log level
 log-level-off = ["log/max_level_off", "log/release_max_level_off"]
 log-level-error = ["log/max_level_error", "log/release_max_level_error"]
 log-level-warn = ["log/max_level_warn", "log/release_max_level_warn"]

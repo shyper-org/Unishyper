@@ -2,7 +2,7 @@
 //! See Virito specification v1.1. - 2.6
 #![allow(dead_code)]
 
-#[cfg(not(feature = "pci"))]
+#[cfg(feature = "mmio")]
 use super::super::transport::mmio::{ComCfg, NotifCfg, NotifCtrl};
 #[cfg(feature = "pci")]
 use super::super::transport::pci::{ComCfg, NotifCfg, NotifCtrl};

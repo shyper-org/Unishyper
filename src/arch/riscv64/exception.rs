@@ -2,7 +2,6 @@ use riscv::regs::*;
 use tock_registers::interfaces::{Readable, Writeable, ReadWriteable};
 
 use crate::arch::ContextFrame;
-use crate::libs::interrupt::InterruptController;
 use crate::libs::traits::*;
 
 core::arch::global_asm!(include_str!("exception.S"));
@@ -58,10 +57,9 @@ unsafe extern "C" fn exception_entry(ctx: *mut ContextFrame) {
                 crate::libs::thread::thread_yield();
             }
             INTERRUPT_SUPERVISOR_EXTERNAL => {
-                let plic = &crate::drivers::INTERRUPT_CONTROLLER;
-                if let Some(int) = plic.fetch() {
+                if let Some(int) = crate::drivers::InterruptController::fetch() {
                     crate::libs::interrupt::interrupt(int);
-                    plic.finish(int);
+                    crate::drivers::InterruptController::finish(int);
                 } else {
                     warn!("PLIC report no irq");
                 }

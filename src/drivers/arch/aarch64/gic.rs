@@ -3,7 +3,7 @@ use tock_registers::interfaces::{Readable, Writeable};
 use tock_registers::registers::*;
 
 use crate::board::{GICC_BASE, GICD_BASE};
-use crate::libs::interrupt::InterruptController;
+use crate::libs::traits::InterruptControllerTrait;
 use crate::libs::traits::ArchTrait;
 
 const GIC_INTERRUPT_NUM: usize = 1024;
@@ -180,10 +180,10 @@ impl GicDistributor {
 static GICD: GicDistributor = GicDistributor::new(GICD_BASE | 0xFFFF_FF80_0000_0000);
 static GICC: GicCpuInterface = GicCpuInterface::new(GICC_BASE | 0xFFFF_FF80_0000_0000);
 
-pub struct Gic;
+pub struct InterruptController;
 
-impl InterruptController for Gic {
-    fn init(&self) {
+impl InterruptControllerTrait for InterruptController {
+    fn init() {
         let core_id = crate::arch::Arch::core_id();
         let gicd = &GICD;
         if core_id == 0 {
@@ -196,7 +196,7 @@ impl InterruptController for Gic {
         gicc.init();
     }
 
-    fn enable(&self, int: Interrupt) {
+    fn enable(int: Interrupt) {
         let core_id = crate::arch::Arch::core_id();
         debug!("core {} gic enable interrupt {}", core_id, int);
         let gicd = &GICD;
@@ -208,12 +208,12 @@ impl InterruptController for Gic {
         gicd.set_target(int, (1 << core_id) as u8);
     }
 
-    fn disable(&self, int: Interrupt) {
+    fn disable(int: Interrupt) {
         let gicd = &GICD;
         gicd.clear_enable(int);
     }
 
-    fn fetch(&self) -> Option<Interrupt> {
+    fn fetch() -> Option<Interrupt> {
         let gicc = &GICC;
         let i = gicc.IAR.get();
         if i >= 1022 {
@@ -223,14 +223,12 @@ impl InterruptController for Gic {
         }
     }
 
-    fn finish(&self, int: Interrupt) {
+    fn finish(int: Interrupt) {
         let gicc = &GICC;
         gicc.EOIR.set(int as u32);
     }
 }
 
 pub const INT_TIMER: Interrupt = 27; // virtual timer
-
-pub static INTERRUPT_CONTROLLER: Gic = Gic {};
 
 pub type Interrupt = usize;

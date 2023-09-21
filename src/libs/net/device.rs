@@ -1,129 +1,123 @@
-// use alloc::collections::btree_map::BTreeMap;
 use alloc::vec;
-use core::slice;
 use alloc::boxed::Box;
-use alloc::collections::BTreeMap;
+use core::slice;
 
-use no_std_net::Ipv4Addr;
-
-use smoltcp::iface::{InterfaceBuilder, NeighborCache, Routes};
-use smoltcp::phy::{self, Device, DeviceCapabilities};
+use smoltcp::iface::{Config, Interface, SocketSet};
+use smoltcp::phy::{self, Device, DeviceCapabilities, Medium};
 use smoltcp::time::Instant;
-use smoltcp::wire::IpAddress;
-use smoltcp::wire::{EthernetAddress, HardwareAddress, IpCidr, Ipv4Address};
+use smoltcp::wire::{EthernetAddress, HardwareAddress};
+use smoltcp::wire::{IpAddress, IpCidr};
 
 use super::interface::{NetworkInterface, NetworkState};
 
-use crate::drivers::net::{
-    get_mac_address, get_mtu, get_tx_buffer, send_tx_buffer, receive_rx_buffer, rx_buffer_consumed,
-    free_tx_buffer,
-};
+use crate::drivers::get_network_driver;
+// use crate::drivers::net::{
+//     get_mac_address, get_mtu, get_tx_buffer, send_tx_buffer, receive_rx_buffer, rx_buffer_consumed,
+//     free_tx_buffer,
+// };
 
-/// Data type to determine the mac address
-#[derive(Debug, Copy, Clone)]
-#[repr(C)]
+const STANDARD_MTU: usize = 1500;
+
+const RANDOM_SEED: u64 = 0xA2CE_05A2_CE05_A2CE;
+const IP: &str = "10.0.0.2";
+const GATEWAY: &str = "10.0.0.1";
+const IP_PREFIX: u8 = 24;
+
 pub struct ShyperNet {
-    pub mtu: u16,
+    // mtu: u16,
+    // with_checksums: bool,
 }
 
 impl ShyperNet {
-    pub const fn new(mtu: u16) -> Self {
-        Self { mtu }
+    pub const fn new() -> Self {
+        Self {
+            // mtu,
+            // with_checksums,
+        }
     }
 }
 
-impl NetworkInterface<ShyperNet> {
-    pub fn new() -> NetworkState {
-        info!("Network interface new:");
-        // Get mtu, Maximum transmission unit.
-        let mtu = match get_mtu() {
-            Ok(mtu) => mtu,
-            Err(_) => {
-                return NetworkState::InitializationFailed;
-            }
-        };
-        // New physical device, ShyperNet.
-        let device = ShyperNet::new(mtu);
-
-        // Get mac address.
-        let mac: [u8; 6] = match get_mac_address() {
-            Ok(mac) => mac,
-            Err(_) => {
-                return NetworkState::InitializationFailed;
-            }
+impl<'a> NetworkInterface<'a> {
+    pub fn new() -> NetworkState<'a> {
+        let mac = if let Some(driver) = get_network_driver() {
+            driver.lock().get_mac_address()
+        } else {
+            return NetworkState::InitializationFailed;
         };
 
-        // Generate local ip address ,gateway address and network mask.
-        let myip = Ipv4Addr::new(10, 0, 0, 2);
-        // let myip = Ipv4Addr::new(10, 0, 0, 3);
-        let myip = myip.octets();
-        let mygw = Ipv4Addr::new(10, 0, 0, 1);
-        let mygw = mygw.octets();
-        let mymask = Ipv4Addr::new(255, 255, 255, 0);
-        let mymask = mymask.octets();
+        let mut device = ShyperNet::new();
 
-        // calculate the netmask length
-        // => count the number of contiguous 1 bits,
-        // starting at the most significant bit in the first octet
+        let myip = IP.parse::<IpAddress>().expect("invalid IP address");
+        let mygw = GATEWAY
+            .parse::<IpAddress>()
+            .expect("invalid gateway IP address");
 
-        let mut prefix_len = (!mymask[0]).trailing_zeros();
-        if prefix_len == 8 {
-            prefix_len += (!mymask[1]).trailing_zeros();
-        }
-        if prefix_len == 16 {
-            prefix_len += (!mymask[2]).trailing_zeros();
-        }
-        if prefix_len == 24 {
-            prefix_len += (!mymask[3]).trailing_zeros();
-        }
-
-        let neighbor_cache = NeighborCache::new(BTreeMap::new());
-        let ethernet_addr = EthernetAddress([mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]]);
+        let ethernet_addr = EthernetAddress(mac);
         let hardware_addr = HardwareAddress::Ethernet(ethernet_addr);
-        let ip_addrs = [IpCidr::new(
-            IpAddress::v4(myip[0], myip[1], myip[2], myip[3]),
-            prefix_len.try_into().unwrap(),
-        )];
+        let ip_addrs = [IpCidr::new(myip, IP_PREFIX)];
 
-        let default_v4_gw = Ipv4Address::new(mygw[0], mygw[1], mygw[2], mygw[3]);
-        let mut routes = Routes::new(BTreeMap::new());
-        routes.add_default_ipv4_route(default_v4_gw).unwrap();
-
-        info!("MAC address {}", ethernet_addr);
+        info!("MAC address {}", hardware_addr);
         info!("Configure network interface with address {}", ip_addrs[0]);
-        info!("Configure gateway with address {}", default_v4_gw);
-        info!("MTU: {} bytes", mtu);
+        info!("Configure gateway with address {}", mygw);
 
-        let iface = InterfaceBuilder::new(device, vec![])
-            .hardware_addr(hardware_addr)
-            .neighbor_cache(neighbor_cache)
-            .ip_addrs(ip_addrs)
-            .routes(routes)
-            .finalize();
+        // use the current time based on the wall-clock time as seed
+        let mut config = Config::new(hardware_addr);
 
-        NetworkState::Initialized(Box::new(Self { iface }))
+        config.random_seed = RANDOM_SEED;
+        if device.capabilities().medium == Medium::Ethernet {
+            config.hardware_addr = hardware_addr;
+        }
+
+        let mut iface = Interface::new(config, &mut device, super::now());
+        iface.update_ip_addrs(|ip_addrs| {
+            ip_addrs.push(IpCidr::new(myip, IP_PREFIX)).unwrap();
+        });
+        match mygw {
+            IpAddress::Ipv4(v4) => iface.routes_mut().add_default_ipv4_route(v4).unwrap(),
+            IpAddress::Ipv6(v6) => unimplemented!("Unsuppported Ipv6 gateway {:?}", v6),
+        };
+
+        NetworkState::Initialized(Box::new(Self {
+            iface,
+            sockets: SocketSet::new(vec![]),
+            device,
+        }))
     }
 }
 
-impl<'a> Device<'a> for ShyperNet {
-    type RxToken = RxToken;
-    type TxToken = TxToken;
+impl Device for ShyperNet {
+    type RxToken<'a> = RxToken;
+    type TxToken<'a> = TxToken;
 
+    /// Get a description of device capabilities.
     fn capabilities(&self) -> DeviceCapabilities {
         let mut cap = DeviceCapabilities::default();
-        cap.max_transmission_unit = self.mtu.into();
+        cap.max_transmission_unit = STANDARD_MTU + 14;
         cap
     }
 
-    fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
+    /// Construct a token pair consisting of one receive token and one transmit token.
+    ///
+    /// The additional transmit token makes it possible to generate a reply packet based
+    /// on the contents of the received packet. For example, this makes it possible to
+    /// handle arbitrarily large ICMP echo ("ping") requests, where the all received bytes
+    /// need to be sent back, without heap allocation.
+    ///
+    /// The timestamp must be a number of milliseconds, monotonically increasing since an
+    /// arbitrary moment in time, such as system startup.
+    fn receive(&mut self, _timestamp: Instant) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
         // trace!("ShyperNet receive receive_rx_buffer()");
-        match receive_rx_buffer() {
+        match get_network_driver().unwrap().lock().receive_rx_buffer() {
             Ok((buffer, handle)) => Some((RxToken::new(buffer, handle), TxToken::new())),
             _ => None,
         }
     }
 
-    fn transmit(&'a mut self) -> Option<Self::TxToken> {
+    /// Construct a transmit token.
+    ///
+    /// The timestamp must be a number of milliseconds, monotonically increasing since an
+    /// arbitrary moment in time, such as system startup.
+    fn transmit(&mut self, _timestamp: Instant) -> Option<Self::TxToken<'_>> {
         // debug!("create TxToken to transfer data");
         Some(TxToken::new())
     }
@@ -133,6 +127,7 @@ pub struct RxToken {
     buffer: &'static mut [u8],
     handle: usize,
 }
+
 /// A token to receive a single network packet.
 impl RxToken {
     pub fn new(buffer: &'static mut [u8], handle: usize) -> Self {
@@ -149,20 +144,21 @@ impl phy::RxToken for RxToken {
     /// The timestamp must be a number of milliseconds, monotonically increasing since an
     /// arbitrary moment in time, such as system startup.
     #[allow(unused_mut)]
-    fn consume<R, F>(mut self, _timestamp: Instant, f: F) -> smoltcp::Result<R>
+    fn consume<R, F>(mut self, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
+        F: FnOnce(&mut [u8]) -> R,
     {
         let result = f(self.buffer);
-        if rx_buffer_consumed(self.handle).is_ok() {
-            result
-        } else {
-            Err(smoltcp::Error::Exhausted)
-        }
+        get_network_driver()
+            .unwrap()
+            .lock()
+            .rx_buffer_consumed(self.handle);
+        result
     }
 }
 
 pub struct TxToken;
+
 /// A token to transmit a single network packet.
 impl TxToken {
     pub fn new() -> Self {
@@ -180,24 +176,25 @@ impl phy::TxToken for TxToken {
     ///
     /// The timestamp must be a number of milliseconds, monotonically increasing since an
     /// arbitrary moment in time, such as system startup.
-    fn consume<R, F>(self, _timestamp: Instant, len: usize, f: F) -> smoltcp::Result<R>
+    fn consume<R, F>(self, len: usize, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
+        F: FnOnce(&mut [u8]) -> R,
     {
-        let (tx_buffer, handle) = get_tx_buffer(len).map_err(|_| smoltcp::Error::Exhausted)?;
+        let mut dev = get_network_driver().unwrap().lock();
+        let (tx_buffer, handle) = dev
+            .get_tx_buffer(len)
+            .expect("TxToken: failed in get_tx_buffer");
         let tx_slice: &'static mut [u8] = unsafe { slice::from_raw_parts_mut(tx_buffer, len) };
-        match f(tx_slice) {
-            Ok(result) => {
-                if send_tx_buffer(handle, len).is_ok() {
-                    Ok(result)
-                } else {
-                    Err(smoltcp::Error::Exhausted)
-                }
-            }
-            Err(e) => {
-                _ = free_tx_buffer(handle);
-                Err(e)
+        let ret = f(tx_slice);
+
+        trace!("SEND {} bytes: {:02X?}", len, tx_slice);
+        match dev.send_tx_buffer(handle, len) {
+            Ok(()) => {}
+            Err(_) => {
+                warn!("TxToken consume error");
             }
         }
+
+        ret
     }
 }

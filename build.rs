@@ -11,6 +11,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         Ok(s) => s,
         Err(_) => String::new(),
     };
+    let machine = match env::var("MACHINE") {
+        Ok(s) => s,
+        Err(_) => String::from("unknown"),
+    };
     match arch.as_str() {
         "x86_64" => File::create(out_dir.join("linkerx86.ld"))?
             .write_all(include_bytes!("cfg/x86_64linker.ld"))?,
@@ -18,10 +22,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             .write_all(include_bytes!("cfg/riscv64linker.ld"))?,
         // By default, we set arch as aarch64.
         _ => {
-            let machine = match env::var("MACHINE") {
-                Ok(s) => s,
-                Err(_) => String::new(),
-            };
             match machine.as_str() {
                 "tx2" => File::create(out_dir.join("linker-tx2.ld"))?
                     .write_all(include_bytes!("cfg/linker-tx2.ld"))?,
@@ -33,6 +33,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     // set envs
     let build_time = chrono::offset::Local::now().format("%Y-%m-%d %H:%M:%S %Z");
     println!("cargo:rustc-env=BUILD_TIME={}", build_time);
-
+    let hostname = gethostname::gethostname();
+    println!("cargo:rustc-env=HOSTNAME={}", hostname.into_string().unwrap());
+    println!("cargo:rustc-env=ARCH={}", arch);
+    println!("cargo:rustc-env=MACHINE={}", machine);
+    built::write_built_file().expect("Failed to acquire build-time information");
     Ok(())
 }

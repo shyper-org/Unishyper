@@ -55,16 +55,15 @@ endif
 TAP_IF ?= tap0
 
 ifeq ($(NET), y)
-ifneq ($(ARCH), x86_64)
+ifeq ($(BUS), pci)
+QEMU_CMD := ${QEMU_CMD} \
+			-netdev tap,id=${TAP_IF},ifname=${TAP_IF},script=no,downscript=no,vhost=on \
+			-device virtio-net-pci,netdev=${TAP_IF},disable-legacy=on,mac=48:b0:2d:0e:6e:9e
+else
 QEMU_CMD := ${QEMU_CMD} \
 			-netdev tap,id=${TAP_IF},ifname=${TAP_IF},script=no,downscript=no \
 			-device virtio-net-device,mac=48:b0:2d:0e:6e:9e,netdev=${TAP_IF} \
 			-global virtio-mmio.force-legacy=false
-endif
-ifeq ($(ARCH), x86_64)
-QEMU_CMD := ${QEMU_CMD} \
-			-netdev tap,id=${TAP_IF},ifname=${TAP_IF},script=no,downscript=no,vhost=on \
-			-device virtio-net-pci,netdev=${TAP_IF},disable-legacy=on,mac=48:b0:2d:0e:6e:9e
 endif
 endif
 

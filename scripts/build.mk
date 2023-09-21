@@ -53,7 +53,11 @@ ifeq ($(filter $(LOG),off error warn info debug trace),)
   $(error "LOG" must be one of "off", "error", "warn", "info", "debug", "trace")
 endif
 
-FEATURES := ${MACHINE}, unishyper/log-level-${LOG}
+ifeq ($(filter $(BUS),mmio pci),)
+  $(error "BUS" must be one of "mmio", "pci")
+endif
+
+FEATURES := ${MACHINE}, unishyper/log-level-${LOG}, unishyper/$(BUS)
 
 # Currently we use [rboot](https://github.com/hky1999/rboot.git) as bootloader in x86_64.
 ifeq ($(ARCH), x86_64)
@@ -62,6 +66,7 @@ OVMF := ${RBOOT_DIR}/OVMF.fd
 endif
 
 define rboot_pre
+	mkdir -p $(RBOOT_DIR)/EFI/Demo
 	cp $(OUT_ELF) $(RBOOT_DIR)/EFI/Demo/kernel.elf
 endef
 

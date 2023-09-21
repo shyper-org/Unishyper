@@ -79,6 +79,13 @@ impl ContextFrameTrait for Riscv64TrapContextFrame {
     fn set_gpr(&mut self, index: usize, value: usize) {
         self.gpr[index + 10] = value as u64;
     }
+    #[cfg(feature = "zone")]
+    fn set_pkru(&mut self, _value: u32) {}
+
+    #[cfg(feature = "zone")]
+    fn pkru(&self) -> u32 {
+        0
+    }
 }
 
 /// Saved hardware states of a task.

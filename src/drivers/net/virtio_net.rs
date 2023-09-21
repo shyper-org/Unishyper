@@ -13,11 +13,11 @@ use core::mem;
 use core::result::Result;
 use core::{cell::RefCell, cmp::Ordering};
 
-#[cfg(not(feature = "pci"))]
+#[cfg(feature = "mmio")]
 use crate::drivers::net::virtio_mmio::NetDevCfgRaw;
 #[cfg(feature = "pci")]
 use crate::drivers::net::virtio_pci::NetDevCfgRaw;
-#[cfg(not(feature = "pci"))]
+#[cfg(feature = "mmio")]
 use crate::drivers::virtio::transport::mmio::{ComCfg, IsrStatus, NotifCfg};
 #[cfg(feature = "pci")]
 use crate::drivers::virtio::transport::pci::{ComCfg, IsrStatus, NotifCfg};
@@ -699,14 +699,14 @@ impl VirtioNetDriver {
     pub fn disable_interrupts(&self) {
         // Für send und receive queues?
         // Nur für receive? Weil send eh ausgeschaltet ist?
-        debug!("disable interrupts");
+        // debug!("disable interrupts");
         self.recv_vqs.disable_notifs();
     }
 
     pub fn enable_interrupts(&self) {
         // Für send und receive queues?
         // Nur für receive? Weil send eh ausgeschaltet ist?
-        debug!("enable interrupts");
+        // debug!("enable interrupts");
         self.recv_vqs.enable_notifs();
     }
 

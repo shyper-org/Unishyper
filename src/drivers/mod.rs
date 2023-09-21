@@ -16,7 +16,7 @@ mod arch;
 /// They need to be refactor in the future.
 /// see arch/{target_arch}/uart for details.
 pub use arch::*;
-pub use arch::{Interrupt, INTERRUPT_CONTROLLER};
+pub use arch::{Interrupt, InterruptController};
 
 #[cfg(any(
     feature = "tx2",
@@ -27,16 +27,19 @@ mod ns16550;
 
 #[cfg(feature = "fat")]
 pub mod blk;
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 pub mod net;
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 pub mod virtio;
 
 #[cfg(feature = "pci")]
 pub mod pci;
 
+#[cfg(feature = "net")]
+pub use net::get_network_driver;
+
 pub mod error {
-    #[cfg(any(feature = "tcp", feature = "fat"))]
+    #[cfg(any(feature = "net", feature = "fat"))]
     use crate::drivers::virtio::error::VirtioError;
     use core::fmt;
 
@@ -45,11 +48,11 @@ pub mod error {
         #[allow(dead_code)]
         CommonDevErr(u16),
 
-        #[cfg(any(feature = "tcp", feature = "fat"))]
+        #[cfg(any(feature = "net", feature = "fat"))]
         InitVirtioDevFail(VirtioError),
     }
 
-    #[cfg(any(feature = "tcp", feature = "fat"))]
+    #[cfg(any(feature = "net", feature = "fat"))]
     impl From<VirtioError> for DriverError {
         fn from(err: VirtioError) -> Self {
             DriverError::InitVirtioDevFail(err)
@@ -62,7 +65,7 @@ pub mod error {
                 DriverError::CommonDevErr(err) => {
                     write!(f, "Common driver failed: {:?}", err)
                 }
-                #[cfg(any(feature = "tcp", feature = "fat"))]
+                #[cfg(any(feature = "net", feature = "fat"))]
                 DriverError::InitVirtioDevFail(ref err) => {
                     write!(f, "Virtio driver failed: {:?}", err)
                 }
@@ -78,6 +81,6 @@ pub fn init_devices() {
     crate::drivers::pci::print_information();
 
     debug!("init virtio devices");
-    #[cfg(any(feature = "tcp", feature = "fat"))]
+    #[cfg(any(feature = "net", feature = "fat"))]
     crate::drivers::virtio::init_drivers();
 }

@@ -1,12 +1,12 @@
 use core::ops::Range;
 
 use crate::drivers::gic::INT_TIMER;
-use crate::libs::interrupt::InterruptController;
+use crate::libs::traits::InterruptControllerTrait;
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 use crate::libs::device::Device;
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 use crate::libs::device::VirtioDevice;
 
 #[cfg(not(feature = "smp"))]
@@ -25,9 +25,25 @@ pub const GICC_BASE: usize = 0x08010000;
 
 pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "axdriver", feature = "pci"))] {
+        /// Base physical address of the PCIe ECAM space (should read from ACPI 'MCFG' table).
+        pub const PCI_ECAM_BASE: usize = 0x40_1000_0000;
+        /// End PCI bus number (`bus-range` property in device tree).
+        pub const PCI_BUS_END: usize = 0xff;
+        /// PCI device memory ranges (`ranges` property in device tree).
+        pub const PCI_RANGES: &[(usize, usize)] = &[
+            (0x3ef_f0000, 0x1_0000),          // PIO space
+            (0x1000_0000, 0x2eff_0000),       // 32-bit MMIO space
+            (0x80_0000_0000, 0x80_0000_0000), // 64-but MMIO space
+        ];
+    }
+}
+
+#[cfg(any(feature = "net", feature = "fat"))]
 use alloc::{vec, vec::Vec};
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
+#[allow(unused)]
 pub fn devices() -> Vec<Device> {
     vec![
         #[cfg(feature = "fat")]
@@ -36,7 +52,7 @@ pub fn devices() -> Vec<Device> {
             0x0a00_0000..0x0a00_0200,
             0x10,
         )),
-        #[cfg(feature = "tcp")]
+        #[cfg(feature = "net")]
         Device::Virtio(VirtioDevice::new(
             "virtio_net",
             0x0a00_3e00..0x0a00_4000,
@@ -67,8 +83,8 @@ pub fn init_per_core() {
     use cortex_a::registers::*;
     use tock_registers::interfaces::Writeable;
     DAIF.write(DAIF::I::Masked);
-    crate::drivers::INTERRUPT_CONTROLLER.init();
-    crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
+    crate::drivers::InterruptController::init();
+    crate::drivers::InterruptController::enable(INT_TIMER);
     crate::drivers::timer::init();
 
     // Init page table.

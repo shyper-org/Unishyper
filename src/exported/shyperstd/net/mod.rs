@@ -22,13 +22,15 @@ mod tcp;
 mod udp;
 
 use super::io;
+use crate::libs::error::ShyperError;
+
 fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
 where
     F: FnMut(io::Result<&SocketAddr>) -> io::Result<T>,
 {
     let addrs = match addr.to_socket_addrs() {
         Ok(addrs) => addrs,
-        Err(_e) => return f(Err("ToSocketAddrError")),
+        Err(_e) => return f(Err(ShyperError::InvalidInput)),
     };
     let mut last_err = None;
     for addr in addrs {
@@ -37,5 +39,9 @@ where
             Err(e) => last_err = Some(e),
         }
     }
-    Err(last_err.unwrap_or_else(|| "could not resolve to any addresses"))
+    Err(last_err.unwrap_or_else(|| {
+        warn!("could not resolve to any addresses");
+        ShyperError::InvalidInput
+    }))
 }
+

@@ -30,6 +30,7 @@ Unishyper  now supports following platforms:
 7. Zone, thread grained memory isolation mechanism.
 8. Rust-std support, with modified [rust-toolchain](https://gitee.com/unishyper/rust).
 9. Unwind based fault tolerance.
+10. Parts of [axdriver](https://github.com/rcore-os/arceos/tree/main/modules/axdriver) ported from [ArceOS](https://github.com/rcore-os/arceos) is suppported (bus-mmio), feature `'axdriver'` is required.
 ## Toolchains
 
 1. Nightly Rust (`nightly-2022-09-14` tested)
@@ -104,7 +105,7 @@ sudo ip link set dev tap0 up
 sudo bash -c 'echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp'
 ```
 
-Add the feature `tcp` in the `Cargo.toml`. Unishyper use the network stack [smoltcp](https://github.com/smoltcp-rs/smoltcp) to offer TCP/UDP communication.
+Add the feature `net` in the `Cargo.toml`. Unishyper use the network stack [smoltcp](https://github.com/smoltcp-rs/smoltcp) to offer TCP/UDP communication.
 
 By default, Unishyper's network interface uses `10.0.0.2` as IP address, `10.0.0.1`
 for the gateway and `255.255.255.0` as network mask.

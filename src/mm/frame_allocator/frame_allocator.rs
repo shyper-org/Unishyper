@@ -491,7 +491,7 @@ fn find_any_chunk<'list>(
                         ValueRefMut::RBTree(cursor),
                     );
                 }
-                warn!(
+                trace!(
                     "Frame allocator: inefficient scenario: had to search multiple chunks \
                     (skipping {:?}) while trying to allocate {} frames at any address.",
                     chunk, num_frames

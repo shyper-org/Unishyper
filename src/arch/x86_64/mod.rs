@@ -73,7 +73,7 @@ pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
     //     // println!("\n start cycle {start_cycle}");
     //     crate::START_CYCLE = start_cycle;
     // }
-    
+
     unsafe {
         BOOT_INFO = Some(boot_info);
     }

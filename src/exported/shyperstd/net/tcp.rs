@@ -6,13 +6,10 @@ use ioslice::{IoSlice, IoSliceMut};
 use no_std_net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 
 use crate::exported::shyperstd::io;
-use crate::libs::net::{
-    tcp::*,
-    Handle,
-    IpAddress::{Ipv4, Ipv6},
-};
+use crate::libs::error::ShyperError;
+use crate::libs::net::{api, Handle, IpAddress::Ipv4, IpAddress::Ipv6};
 
-use crate::libs::net::Shutdown;
+use crate::libs::net::tcp::Shutdown;
 
 #[derive(Debug, Clone)]
 pub struct Socket(Handle);
@@ -25,7 +22,7 @@ impl Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
-        let _ = tcp_stream_close(self.0);
+        let _ = api::tcp_stream_close(self.0);
     }
 }
 
@@ -42,7 +39,7 @@ pub(crate) fn default_read_exact(this: &mut TcpStream, mut buf: &mut [u8]) -> io
         }
     }
     if !buf.is_empty() {
-        Err("failed to fill whole buffer")
+        Err(ShyperError::Io)
     } else {
         Ok(())
     }
@@ -56,62 +53,44 @@ pub struct TcpStream(Arc<Socket>);
 
 impl TcpStream {
     pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
-        let addrs = match addr.to_socket_addrs() {
-            Ok(addrs) => addrs,
-            Err(_) => return Err("ToSocketAddrError"),
-        };
-        for addr in addrs {
-            match tcp_stream_connect(addr.ip().to_string().as_bytes(), addr.port(), None) {
-                Ok(handle) => return Ok(TcpStream(Arc::new(Socket(handle)))),
-                _ => continue,
-            }
-        }
-        return Err("Unable to initiate a connection on a socket");
-    }
-
-    pub fn connect_timeout(saddr: &SocketAddr, duration: Duration) -> io::Result<TcpStream> {
-        match tcp_stream_connect(
-            saddr.ip().to_string().as_bytes(),
-            saddr.port(),
-            Some(duration.as_millis() as u64),
-        ) {
-            Ok(handle) => Ok(TcpStream(Arc::new(Socket(handle)))),
-            _ => Err("Unable to initiate a connection on a socket"),
-        }
+        super::each_addr(addr, |addr: io::Result<&SocketAddr>| {
+            let addr = addr?;
+            let handle =
+                api::tcp_stream_connect(addr.ip().to_string().as_bytes(), addr.port(), None)?;
+            Ok(TcpStream(Arc::new(Socket(handle))))
+        })
     }
 
     pub fn set_read_timeout(&self, duration: Option<Duration>) -> io::Result {
-        tcp_stream_set_read_timeout(*self.0.as_inner(), duration.map(|d| d.as_millis() as u64))
-            .map_err(|_| "Unable to set timeout value")
+        api::tcp_stream_set_read_timeout(*self.0.as_inner(), duration.map(|d| d.as_millis() as u64))
     }
 
     pub fn set_write_timeout(&self, duration: Option<Duration>) -> io::Result {
-        tcp_stream_set_write_timeout(*self.0.as_inner(), duration.map(|d| d.as_millis() as u64))
-            .map_err(|_| ("Unable to set timeout value"))
+        api::tcp_stream_set_write_timeout(
+            *self.0.as_inner(),
+            duration.map(|d| d.as_millis() as u64),
+        )
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        let duration = tcp_stream_get_read_timeout(*self.0.as_inner())
-            .map_err(|_| "Unable to determine timeout value")?;
+        let duration = api::tcp_stream_get_read_timeout(*self.0.as_inner())?;
 
         Ok(duration.map(|d| Duration::from_millis(d)))
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        let duration = tcp_stream_get_write_timeout(*self.0.as_inner())
-            .map_err(|_| "Unable to determine timeout value")?;
+        let duration = api::tcp_stream_get_write_timeout(*self.0.as_inner())?;
 
         Ok(duration.map(|d| Duration::from_millis(d)))
     }
 
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
-        tcp_stream_peek(*self.0.as_inner(), buf).map_err(|_| "peek failed")
+        api::tcp_stream_peek(*self.0.as_inner(), buf)
     }
 
     pub fn read(&self, buffer: &mut [u8]) -> io::Result<usize> {
         // self.read_vectored(&mut [IoSliceMut::new(buffer)])
-        let ret = tcp_stream_read(*self.0.as_inner(), &mut buffer[0..])
-            .map_err(|_| "Unable to read on socket")?;
+        let ret = api::tcp_stream_read(*self.0.as_inner(), &mut buffer[0..])?;
         Ok(ret)
     }
 
@@ -124,8 +103,7 @@ impl TcpStream {
         let mut size: usize = 0;
 
         for i in ioslice.iter_mut() {
-            let ret = tcp_stream_read(*self.0.as_inner(), &mut i[0..])
-                .map_err(|_| "Unable to read on socket")?;
+            let ret = api::tcp_stream_read(*self.0.as_inner(), &mut i[0..])?;
 
             if ret != 0 {
                 size += ret;
@@ -142,15 +120,14 @@ impl TcpStream {
 
     pub fn write(&self, buffer: &[u8]) -> io::Result<usize> {
         // self.write_vectored(&[IoSlice::new(buffer)])
-        let size = tcp_stream_write(*self.0.as_inner(), buffer)
-            .map_err(|_| "Unable to write on socket")?;
+        let size = api::tcp_stream_write(*self.0.as_inner(), buffer)?;
         Ok(size)
     }
 
     pub fn write_all(&mut self, mut buf: &[u8]) -> io::Result {
         while !buf.is_empty() {
             match self.write(buf) {
-                Ok(0) => return Err("failed to write whole buffer"),
+                Ok(0) => return Err(ShyperError::UnexpectedEof),
                 Ok(n) => buf = &buf[n..],
                 Err(e) => return Err(e),
             }
@@ -163,8 +140,7 @@ impl TcpStream {
         let mut size: usize = 0;
 
         for i in ioslice.iter() {
-            size +=
-                tcp_stream_write(*self.0.as_inner(), i).map_err(|_| "Unable to write on socket")?;
+            size += api::tcp_stream_write(*self.0.as_inner(), i)?;
         }
 
         Ok(size)
@@ -176,15 +152,11 @@ impl TcpStream {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        let (ipaddr, port) =
-            tcp_stream_peer_addr(*self.0.as_inner()).map_err(|_| ("peer_addr failed"))?;
+        let (ipaddr, port) = api::tcp_stream_peer_addr(*self.0.as_inner())?;
 
         let saddr = match ipaddr {
             Ipv4(ref addr) => SocketAddr::new(IpAddr::V4(Ipv4Addr::from(addr.0)), port),
             Ipv6(ref addr) => SocketAddr::new(IpAddr::V6(Ipv6Addr::from(addr.0)), port),
-            _ => {
-                return Err("peer_addr failed");
-            }
         };
 
         Ok(saddr)
@@ -195,7 +167,7 @@ impl TcpStream {
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result {
-        tcp_stream_shutdown(*self.0.as_inner(), how).map_err(|_| "unable to shutdown socket")
+        api::tcp_stream_shutdown(*self.0.as_inner(), how)
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
@@ -211,19 +183,19 @@ impl TcpStream {
     }
 
     pub fn set_nodelay(&self, mode: bool) -> io::Result {
-        tcp_stream_set_no_delay(*self.0.as_inner(), mode).map_err(|_| "set_nodelay failed")
+        api::tcp_stream_set_no_delay(*self.0.as_inner(), mode)
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        tcp_stream_no_delay(*self.0.as_inner()).map_err(|_| "nodelay failed")
+        api::tcp_stream_no_delay(*self.0.as_inner())
     }
 
     pub fn set_ttl(&self, tll: u32) -> io::Result {
-        tcp_stream_set_tll(*self.0.as_inner(), tll).map_err(|_| "unable to set TTL")
+        api::tcp_stream_set_tll(*self.0.as_inner(), tll)
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        tcp_stream_get_tll(*self.0.as_inner()).map_err(|_| "unable to get TTL")
+        api::tcp_stream_get_tll(*self.0.as_inner())
     }
 
     pub fn take_error(&self) -> io::Result {
@@ -231,8 +203,7 @@ impl TcpStream {
     }
 
     pub fn set_nonblocking(&self, mode: bool) -> io::Result {
-        tcp_stream_set_nonblocking(*self.0.as_inner(), mode)
-            .map_err(|_| "unable to set blocking mode")
+        api::tcp_stream_set_nonblocking(*self.0.as_inner(), mode)
     }
 }
 
@@ -249,8 +220,10 @@ impl TcpListener {
     /// Todo: use `bind` provided in `tcplistener`.
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
         super::each_addr(addr, |addr: io::Result<&SocketAddr>| {
-            let addr = addr?;
-            Ok(TcpListener(*addr))
+            let mut addr = *addr?;
+            let new_port = api::tcp_listener_bind(addr.ip().to_string().as_bytes(), addr.port())?;
+            addr.set_port(new_port);
+            Ok(TcpListener(addr))
         })
     }
 
@@ -259,14 +232,10 @@ impl TcpListener {
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
-        let (handle, ipaddr, port) =
-            tcp_listener_accept(self.0.port()).map_err(|_| "accept failed")?;
+        let (handle, ipaddr, port) = api::tcp_listener_accept(self.0.port())?;
         let saddr = match ipaddr {
             Ipv4(ref addr) => SocketAddr::new(IpAddr::V4(Ipv4Addr::from(addr.0)), port),
             Ipv6(ref addr) => SocketAddr::new(IpAddr::V6(Ipv6Addr::from(addr.0)), port),
-            _ => {
-                return Err("accept failed");
-            }
         };
 
         Ok((TcpStream(Arc::new(Socket(handle))), saddr))

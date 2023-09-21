@@ -4,16 +4,16 @@ use crate::libs::traits::Address;
 use alloc::vec::Vec;
 use core::ops::Range;
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 use crate::util::irqsave;
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 use crate::drivers::virtio::transport::mmio::{init_device, DevId, MmioRegisterLayout, VirtioDriver};
 
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 use crate::drivers::net::virtio_net::VirtioNetDriver;
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 use crate::drivers::net::NetworkInterface;
 
 #[cfg(feature = "fat")]
@@ -26,14 +26,14 @@ pub const MAGIC_VALUE: u32 = 0x74726976;
 static mut MMIO_DRIVERS: Vec<MmioDriver> = Vec::new();
 
 pub enum MmioDriver {
-    #[cfg(feature = "tcp")]
+    #[cfg(feature = "net")]
     VirtioNet(SpinlockIrqSave<VirtioNetDriver>),
     #[cfg(feature = "fat")]
     VirtioBlk(SpinlockIrqSave<VirtioBlkDriver>),
 }
 
 impl MmioDriver {
-    #[cfg(feature = "tcp")]
+    #[cfg(feature = "net")]
     #[allow(unreachable_patterns)]
     fn get_network_driver(&self) -> Option<&SpinlockIrqSave<dyn NetworkInterface>> {
         match self {
@@ -51,7 +51,7 @@ impl MmioDriver {
     }
 }
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 fn init_virtio_device(
     range: Range<usize>,
 ) -> Result<&'static mut MmioRegisterLayout, &'static str> {
@@ -83,7 +83,7 @@ fn init_virtio_device(
     }
 }
 
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 pub fn get_network_driver() -> Option<&'static SpinlockIrqSave<dyn NetworkInterface>> {
     unsafe { MMIO_DRIVERS.iter().find_map(|drv| drv.get_network_driver()) }
 }
@@ -93,7 +93,7 @@ pub fn get_block_driver() -> Option<&'static SpinlockIrqSave<dyn BlkInterface>> 
     unsafe { MMIO_DRIVERS.iter().find_map(|drv| drv.get_blk_driver()) }
 }
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 fn parse_virtio_devices() {
     let devices = crate::board::devices();
     for device in devices {
@@ -105,7 +105,7 @@ fn parse_virtio_devices() {
                         Ok(VirtioDriver::Blk(drv)) => {
                             MmioDriver::VirtioBlk(SpinlockIrqSave::new(drv))
                         }
-                        #[cfg(feature = "tcp")]
+                        #[cfg(feature = "net")]
                         Ok(VirtioDriver::Network(drv)) => {
                             MmioDriver::VirtioNet(SpinlockIrqSave::new(drv))
                         }
@@ -132,7 +132,7 @@ pub fn register_driver(drv: MmioDriver) {
 pub fn init_drivers() {
     // virtio: MMIO Device Discovery
     irqsave(|| {
-        #[cfg(any(feature = "tcp", feature = "fat"))]
+        #[cfg(any(feature = "net", feature = "fat"))]
         parse_virtio_devices();
     });
 }

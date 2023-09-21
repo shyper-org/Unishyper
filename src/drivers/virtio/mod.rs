@@ -4,14 +4,14 @@ pub mod env;
 /// A module containing Virtio's feature bits.
 pub mod features;
 
-// #[cfg(any(feature = "tcp", feature = "fat"))]
+// #[cfg(any(feature = "net", feature = "fat"))]
 //
 
-#[cfg(not(feature = "pci"))]
+#[cfg(feature = "mmio")]
 pub mod mmio;
 
 cfg_if! {
-    if #[cfg(any(feature = "tcp", feature = "fat"))] {
+    if #[cfg(any(feature = "net", feature = "fat"))] {
         pub mod transport;
         pub mod virtqueue;
     }
@@ -34,7 +34,7 @@ pub mod error {
     use crate::drivers::pci::error::PciError;
     #[cfg(feature = "fat")]
     use crate::drivers::blk::virtio_blk::error::VirtioBlkError;
-    #[cfg(feature = "tcp")]
+    #[cfg(feature = "net")]
     pub use crate::drivers::net::virtio_net::error::VirtioNetError;
     use core::fmt;
 
@@ -43,7 +43,7 @@ pub mod error {
         #[cfg(feature = "pci")]
         FromPci(PciError),
         DevNotSupported(u16),
-        #[cfg(feature = "tcp")]
+        #[cfg(feature = "net")]
         NetDriver(VirtioNetError),
         #[cfg(feature = "fat")]
         BlkDriver(VirtioBlkError),
@@ -64,7 +64,7 @@ pub mod error {
                     PciError::NoVirtioCaps(id) => write!(f, "Driver failed to initialize device with id: {id:#x}. Reason: No Virtio capabilities were found."),
                 },
                 VirtioError::DevNotSupported(id) => write!(f, "Device with id {:#x} not supported.", id),
-                #[cfg(feature = "tcp")]
+                #[cfg(feature = "net")]
                 VirtioError::NetDriver(net_error) => match net_error {
                     VirtioNetError::General => write!(f, "Virtio network driver failed due to unknown reasons!"),
                     VirtioNetError::NoDevCfg(id) => write!(f, "Network driver failed, for device {:x}, due to a missing or malformed device config!", id),

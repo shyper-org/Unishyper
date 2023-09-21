@@ -12,7 +12,7 @@ pub mod timer;
 pub mod tls;
 pub mod traits;
 
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 pub mod net;
 
 #[cfg(feature = "fs")]

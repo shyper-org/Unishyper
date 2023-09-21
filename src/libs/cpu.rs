@@ -18,9 +18,9 @@ pub struct Core {
 }
 
 // Note: only the core itself can be allowed to access its `Core`
-unsafe impl core::marker::Send for Core {}
+unsafe impl Send for Core {}
 
-unsafe impl core::marker::Sync for Core {}
+unsafe impl Sync for Core {}
 
 const CORE: Core = Core {
     running_thread: None,
@@ -94,11 +94,15 @@ impl Core {
         self.sched = scheduler;
         let core_id = crate::arch::Arch::core_id();
         info!("Scheduler init ok on core [{}]", core_id);
+        debug!("cpu scheduler  at {:#p}", &self.sched);
     }
 
     pub fn scheduler(&self) -> &impl Scheduler {
         match &self.sched {
-            ScheduerType::None => panic!("scheduler is None"),
+            ScheduerType::None =>{
+                debug!("cpu scheduler  at {:#p}", &self.sched);
+                panic!("scheduler is None");
+            },
             ScheduerType::PerCoreSchedRoundRobin(rr) => rr,
             ScheduerType::GlobalSchedRoundRobin => crate::libs::scheduler::global_scheduler(),
         }
@@ -131,7 +135,7 @@ impl Core {
             }
         });
 
-        // debug!("cpu schedule\nprev {} to next {}", prev.id(), next.id());
+        // debug!("cpu schedule prev {} to next {}", prev.id(), next.id());
 
         if prev.eq(&next) {
             return;

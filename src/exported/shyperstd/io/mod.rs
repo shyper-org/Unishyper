@@ -1,17 +1,19 @@
 use core::fmt;
 use alloc::{string::String, vec::Vec};
+use crate::libs::error::ShyperError;
 
 mod bufreader;
-mod prelude;
 mod impls;
+mod prelude;
 
 pub use bufreader::BufReader;
 
-pub type Result<T = ()> = core::result::Result<T, &'static str>;
+pub type Result<T = ()> = core::result::Result<T, ShyperError>;
 
 pub fn cvt(result: i32) -> Result<usize> {
     if result < 0 {
-        Err("Shyper IO Error")
+        warn!("Shyper IO Error");
+        Err(ShyperError::Io)
     } else {
         Ok(result as usize)
     }
@@ -81,7 +83,8 @@ pub trait Read {
             }
         }
         if !buf.is_empty() {
-            Err("failed to fill whole buffer")
+            warn!("failed to fill whole buffer");
+            Err(ShyperError::UnexpectedEof)
         } else {
             Ok(())
         }
@@ -101,7 +104,10 @@ pub trait Write {
     fn write_all(&mut self, mut buf: &[u8]) -> Result {
         while !buf.is_empty() {
             match self.write(buf) {
-                Ok(0) => return Err("failed to write whole buffer"),
+                Ok(0) => {
+                    warn!("failed to fill whole buffer");
+                    return Err(ShyperError::WriteZero);
+                }
                 Ok(n) => buf = &buf[n..],
                 Err(e) => return Err(e),
             }
@@ -142,7 +148,8 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err("formatter error")
+                    warn!("formatter error");
+                    Err(ShyperError::InvalidData)
                 }
             }
         }
@@ -261,7 +268,8 @@ where
     let buf = unsafe { buf.as_mut_vec() };
     let ret = f(buf)?;
     if core::str::from_utf8(&buf[old_len..]).is_err() {
-        Err("stream did not contain valid UTF-8")
+        warn!("stream did not contain valid UTF-8");
+        Err(ShyperError::InvalidData)
     } else {
         Ok(ret)
     }

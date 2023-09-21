@@ -41,9 +41,20 @@ pub const ELF_IMAGE_LOAD_ADDR: usize = 0x6000_0000;
 
 pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
 
-#[cfg(any(feature = "tcp", feature = "fat"))]
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "axdriver", feature = "pci"))] {
+        // Base physical address of the PCIe ECAM space (should read from ACPI 'MCFG' table).
+        pub const PCI_ECAM_BASE: usize = 0;
+        /// End PCI bus number.
+        pub const PCI_BUS_END: usize = 0;
+        /// PCI device memory ranges.
+        pub const PCI_RANGES: &[(usize, usize)] = &[];
+    }
+}
+
+#[cfg(any(feature = "net", feature = "fat"))]
 use {alloc::vec::Vec, alloc::vec, crate::libs::device::Device};
-#[cfg(any(feature = "tcp", feature = "fat"))]
+#[cfg(any(feature = "net", feature = "fat"))]
 pub fn devices() -> Vec<Device> {
     use crate::libs::device::VirtioDevice;
     vec![
@@ -53,7 +64,7 @@ pub fn devices() -> Vec<Device> {
             0x0a00_0000..0x0a00_0200,
             0x10,
         )),
-        #[cfg(feature = "tcp")]
+        #[cfg(feature = "net")]
         Device::Virtio(VirtioDevice::new("virtio_net", 0xa001000..0xa002000, 0x11)),
     ]
 }
@@ -95,8 +106,8 @@ pub fn init_per_core() {
     use cortex_a::registers::*;
     use tock_registers::interfaces::Writeable;
     DAIF.write(DAIF::I::Masked);
-    crate::drivers::INTERRUPT_CONTROLLER.init();
-    crate::drivers::INTERRUPT_CONTROLLER.enable(INT_TIMER);
+    crate::drivers::InterruptController::init();
+    crate::drivers::InterruptController::enable(INT_TIMER);
     crate::drivers::timer::init();
 
     // Init page table.

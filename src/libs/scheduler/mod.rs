@@ -7,6 +7,7 @@ pub enum ScheduerType {
     PerCoreSchedRoundRobin(sched_rr::RoundRobinScheduler),
     /// Scheduling on multiple cores with a global queue.
     GlobalSchedRoundRobin,
+    // CFS,
 }
 
 use crate::libs::thread::Thread;

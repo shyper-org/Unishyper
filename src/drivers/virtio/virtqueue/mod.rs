@@ -18,7 +18,7 @@ use crate::mm::address::VAddr;
 
 use self::error::{BufferError, VirtqError};
 use self::split::SplitVq;
-#[cfg(not(feature = "pci"))]
+#[cfg(feature = "mmio")]
 use super::transport::mmio::{ComCfg, NotifCfg};
 #[cfg(feature = "pci")]
 use super::transport::pci::{ComCfg, NotifCfg};

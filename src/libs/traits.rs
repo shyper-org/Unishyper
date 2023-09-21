@@ -62,3 +62,13 @@ pub trait ArchPageTableEntryTrait {
     fn set_entry(&self, index: usize, value: Self);
     fn make_table(frame_pa: usize) -> Self;
 }
+
+pub trait InterruptControllerTrait {
+    fn init();
+
+    fn enable(int: crate::libs::interrupt::Interrupt);
+    fn disable(int: crate::libs::interrupt::Interrupt);
+
+    fn fetch() -> Option<crate::libs::interrupt::Interrupt>;
+    fn finish(int: crate::libs::interrupt::Interrupt);
+}

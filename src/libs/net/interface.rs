@@ -6,80 +6,98 @@ use core::task::Poll;
 use core::ops::DerefMut;
 
 use futures_lite::future;
-use smoltcp::phy::Device;
-use smoltcp::socket::{TcpSocket, TcpSocketBuffer};
-use smoltcp::socket::{UdpSocket, UdpSocketBuffer, UdpPacketMetadata};
+use smoltcp::iface::SocketSet;
+use smoltcp::socket::{tcp, udp, AnySocket};
 use smoltcp::time::{Duration, Instant};
 
+use crate::libs::error::ShyperError;
 use crate::libs::synch::spinlock::SpinlockIrqSave;
-use crate::libs::net::Handle;
+use crate::libs::net::SmoltcpSocketHandle;
 use crate::libs::net::device::ShyperNet;
+
+// use crate::drivers::axdriver::prelude::*;
 
 #[inline]
 pub(crate) fn now() -> Instant {
     Instant::from_millis(crate::libs::timer::current_ms() as i64)
 }
 
-
-pub enum NetworkState {
+pub enum NetworkState<'a> {
     Missing,
     InitializationFailed,
-    Initialized(Box<NetworkInterface<ShyperNet>>),
+    Initialized(Box<NetworkInterface<'a>>),
 }
 
-impl NetworkState {
-    pub fn as_nic_mut(&mut self) -> Result<&mut NetworkInterface<ShyperNet>, &'static str> {
+impl<'a> NetworkState<'a> {
+    pub fn as_nic_mut(&mut self) -> Result<&mut NetworkInterface<'a>, ShyperError> {
         match self {
             NetworkState::Initialized(nic) => Ok(nic),
-            _ => Err("Network is not initialized!"),
+            _ => {
+                warn!("Network is not initialized!");
+                Err(ShyperError::BadState)
+            }
         }
     }
 }
 
 pub(crate) static NIC: SpinlockIrqSave<NetworkState> = SpinlockIrqSave::new(NetworkState::Missing);
 
-pub struct NetworkInterface<T: for<'a> Device<'a>> {
-    pub iface: smoltcp::iface::Interface<'static, T>,
+pub struct NetworkInterface<'a> {
+    pub(super) iface: smoltcp::iface::Interface,
+    pub(super) sockets: SocketSet<'a>,
+    pub(super) device: ShyperNet,
 }
 
-impl<T> NetworkInterface<T>
-where
-    T: for<'a> Device<'a>,
-{
-    pub fn create_tcp_handle(&mut self) -> Result<Handle, ()> {
-        let tcp_rx_buffer = TcpSocketBuffer::new(vec![0; 65535]);
-        let tcp_tx_buffer = TcpSocketBuffer::new(vec![0; 65535]);
-        let tcp_socket = TcpSocket::new(tcp_rx_buffer, tcp_tx_buffer);
-        let tcp_handle = self.iface.add_socket(tcp_socket);
+impl<'a> NetworkInterface<'a> {
+    pub fn create_tcp_handle(&mut self) -> Result<SmoltcpSocketHandle, ()> {
+        let tcp_rx_buffer = tcp::SocketBuffer::new(vec![0; 65535]);
+        let tcp_tx_buffer = tcp::SocketBuffer::new(vec![0; 65535]);
+        let mut tcp_socket = tcp::Socket::new(tcp_rx_buffer, tcp_tx_buffer);
+        tcp_socket.set_nagle_enabled(true);
+        let tcp_handle = self.sockets.add(tcp_socket);
 
         Ok(tcp_handle)
     }
 
-    pub fn create_udp_handle(&mut self) -> Result<Handle, ()> {
-        let udp_rx_buffer = UdpSocketBuffer::new(vec![UdpPacketMetadata::EMPTY; 8], vec![0; 65535]);
-        let udp_tx_buffer = UdpSocketBuffer::new(vec![UdpPacketMetadata::EMPTY; 8], vec![0; 65535]);
-        let ucp_socket = UdpSocket::new(udp_rx_buffer, udp_tx_buffer);
-        let udp_handle = self.iface.add_socket(ucp_socket);
+    pub fn create_udp_handle(&mut self) -> Result<SmoltcpSocketHandle, ()> {
+        // Must fit mDNS payload of at least one packet
+        let udp_rx_buffer =
+            udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY; 4], vec![0; 1024]);
+        // Will not send mDNS
+        let udp_tx_buffer = udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY], vec![0; 0]);
+        let udp_socket = udp::Socket::new(udp_rx_buffer, udp_tx_buffer);
+        let udp_handle = self.sockets.add(udp_socket);
 
         Ok(udp_handle)
     }
 
     pub fn poll_common(&mut self, timestamp: Instant) {
-        // let mut start = crate::libs::timer::current_us();
-        // let _start = start;
-        while self.iface.poll(timestamp).unwrap_or(true) {
-            // just to make progress
-            // debug!("NetworkInterface::poll_common::poll:send or receive packets!!!");
-            // let end = crate::libs::timer::current_us();
-            // println!("poll_common , one pull use {} us, current {} us", end - start, end);
-            // start = crate::libs::timer::current_us();
-            core::hint::spin_loop();
-        }
-        // println!("poll_common end , totally use {} us, current {} us", start - _start, start);
+        let _ = self
+            .iface
+            .poll(timestamp, &mut self.device, &mut self.sockets);
     }
 
-    pub fn poll_delay(&mut self, timestamp: Instant) -> Option<Duration> {
-        self.iface.poll_delay(timestamp)
+    pub(crate) fn poll_delay(&mut self, timestamp: Instant) -> Option<Duration> {
+        self.iface.poll_delay(timestamp, &self.sockets)
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn get_socket<T: AnySocket<'a>>(&self, handle: SmoltcpSocketHandle) -> &T {
+        self.sockets.get(handle)
+    }
+
+    pub(crate) fn get_mut_socket<T: AnySocket<'a>>(
+        &mut self,
+        handle: SmoltcpSocketHandle,
+    ) -> &mut T {
+        self.sockets.get_mut(handle)
+    }
+
+    pub(crate) fn get_socket_and_context<T: AnySocket<'a>>(
+        &mut self,
+        handle: SmoltcpSocketHandle,
+    ) -> (&mut T, &mut smoltcp::iface::Context) {
+        (self.sockets.get_mut(handle), self.iface.context())
     }
 }
 
@@ -97,7 +115,7 @@ pub fn network_init() {
 
     let mut guard = NIC.lock();
 
-    *guard = NetworkInterface::<ShyperNet>::new();
+    *guard = NetworkInterface::new();
 
     if let NetworkState::Initialized(nic) = guard.deref_mut() {
         let time = now();
@@ -164,7 +182,8 @@ fn start_endpoint() -> u16 {
     start_endpoint
 }
 
-pub fn get_local_endpoint() -> u16 {
+// Todo: may failed.
+pub fn get_ephemeral_port() -> Result<u16, ShyperError> {
     let mut lock = LOCAL_ENDPOINT_MAP.lock();
     let mut local_endpoint;
     loop {
@@ -173,45 +192,17 @@ pub fn get_local_endpoint() -> u16 {
             continue;
         }
         if local_endpoint > u16::MAX {
-            warn!("get_local_endpoint failed, port exceeds u16 max");
+            warn!("get_ephemeral_port failed, port exceeds u16 max");
             // Let's just start over.
             LOCAL_ENDPOINT.store(start_endpoint(), Ordering::Relaxed);
         }
         lock.insert(local_endpoint, None);
         break;
     }
-    local_endpoint
+    Ok(local_endpoint)
 }
 
 pub fn check_local_endpoint(endpoint: u16) -> bool {
     let lock = LOCAL_ENDPOINT_MAP.lock();
     lock.contains_key(&endpoint)
-}
-
-// Todo: can one port be connected to multiple remote endpoint?
-pub fn set_local_endpoint_link(local_endpoint: u16, remote_endpoint: IpEndpoint) {
-    let mut lock = LOCAL_ENDPOINT_MAP.lock();
-    if !lock.contains_key(&local_endpoint) {
-        // warn!("local endpoint not exists");
-        return;
-    }
-    // if lock.get(&local_endpoint).unwrap().is_some() {
-    //     warn!("local endpoint has been occupied");
-    // }
-    lock.insert(local_endpoint, Some(remote_endpoint));
-}
-
-pub fn remove_local_endpoint(local_endpoint: u16) {
-    let mut lock = LOCAL_ENDPOINT_MAP.lock();
-    let remote_endpoint = lock.remove(&local_endpoint).unwrap_or_else(|| {
-        // warn!("Local endpoint {local_endpoint} has no remote endpoint");
-        return None;
-    });
-    if remote_endpoint.is_some() {
-        debug!(
-            "connect to remote {} is closed, release port {}",
-            remote_endpoint.unwrap(),
-            local_endpoint
-        );
-    }
 }

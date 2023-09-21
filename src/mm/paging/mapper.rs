@@ -75,7 +75,7 @@ impl MappedRegion {
 
 impl Drop for MappedRegion {
     fn drop(&mut self) {
-        debug!("Drop Mapped Region at {}", self.start_address());
+        trace!("Drop Mapped Region at {}", self.start_address());
         self.unmap();
     }
 }
@@ -230,16 +230,16 @@ pub fn virtual_to_physical(virtual_address: &VAddr) -> Option<PAddr> {
     Some(paddr)
 }
 
-#[cfg(feature = "pci")]
-pub fn map_pci_mem_bar(bar_addr: usize, bar_size: usize) -> usize {
+#[allow(unused)]
+pub fn map_device_memory_range(device_addr: usize, mem_size: usize) -> VAddr {
     let attr = EntryAttribute::kernel_device();
-    let mut physical_address = PAddr::new_canonical(bar_addr);
+    let mut physical_address = PAddr::new_canonical(device_addr);
     use crate::mm::page_allocator;
-    let pages = match page_allocator::allocate_pages_by_bytes(bar_size) {
+    let pages = match page_allocator::allocate_pages_by_bytes(mem_size) {
         Some(pages) => pages,
         None => panic!("failed to allocate pages for PCI bar"),
     };
-    let start_addr = pages.start_address().value();
+    let start_addr = pages.start_address();
 
     let mut page_table = crate::arch::page_table::page_table().lock();
     for page in pages.deref().clone().into_iter() {
@@ -249,11 +249,13 @@ pub fn map_pci_mem_bar(bar_addr: usize, bar_size: usize) -> usize {
                 physical_address += crate::arch::PAGE_SIZE;
             }
             Err(_) => {
-                panic!("map_pci_mem_bar failed on {}", page.start_address());
+                panic!("map_device_memory_range failed on {}", page.start_address());
             }
         }
     }
-    // let frames = frame_allocator::allocate_frames_at(paddr, num_frames);
+    // for page in pages.deref().clone().into_iter() {
+    // page_table.dump_entry(pages.start_address().value());
+    // }
     core::mem::forget(pages);
 
     start_addr

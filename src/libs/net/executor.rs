@@ -2,7 +2,7 @@
 use async_task::{Runnable, Task};
 use futures_lite::pin;
 
-use smoltcp::time::{Duration, Instant};
+use smoltcp::time::Duration;
 
 use alloc::{sync::Arc, task::Wake, vec::Vec};
 use core::{
@@ -11,15 +11,17 @@ use core::{
     task::{Context, Poll},
 };
 
-use crate::drivers::net::set_polling_mode;
-use crate::libs::thread::{
-    current_thread_id, thread_block_current_with_timeout, thread_wake_by_tid, thread_yield, Tid,
-};
+use crate::libs::thread::{current_thread_id, thread_wake_by_tid, Tid};
+#[cfg(not(feature = "axdriver"))]
+use crate::libs::thread::{thread_block_current_with_timeout, thread_yield};
+
 use crate::libs::synch::spinlock::Spinlock;
+use crate::libs::error::ShyperError;
 
 static QUEUE: Spinlock<Vec<Runnable>> = Spinlock::new(Vec::new());
 
-pub fn network_delay(timestamp: Instant) -> Option<Duration> {
+#[cfg(not(feature = "axdriver"))]
+pub fn network_delay(timestamp: smoltcp::time::Instant) -> Option<Duration> {
     crate::libs::net::NIC
         .lock()
         .as_nic_mut()
@@ -39,6 +41,21 @@ fn run_executor() {
     drop(queue);
     for runnable in runnables {
         runnable.run();
+    }
+}
+
+fn executor_set_polling_mode(value: bool) {
+    #[cfg(not(feature = "axdriver"))]
+    {
+        crate::drivers::get_network_driver()
+            .unwrap()
+            .lock()
+            .set_polling_mode(value)
+    }
+
+    #[cfg(feature = "axdriver")]
+    {
+        let _ = value;
     }
 }
 
@@ -84,37 +101,38 @@ impl Wake for ThreadNotify {
     fn wake_by_ref(self: &Arc<Self>) {
         // Make sure the wakeup is remembered until the next `park()`.
         let unparked = self.unparked.swap(true, Ordering::AcqRel);
-        debug!(
-            "Thread {} wake by ref: unparked {}",
-            self.thread, unparked
-        );
+        debug!("Thread {} wake by ref: unparked {}", self.thread, unparked);
         if !unparked {
-            thread_wake_by_tid(self.thread);
+            crate::util::irqsave(|| {
+                thread_wake_by_tid(self.thread);
+            });
         }
     }
 }
 
-use super::now;
-
 /// Blocks the current thread on `f`, running the executor when idling.
-pub fn block_on<F, T>(future: F, timeout: Option<Duration>) -> Result<T, ()>
+pub fn block_on<F, T>(future: F, _timeout: Option<Duration>) -> Result<T, ShyperError>
 where
     F: Future<Output = T>,
 {
     // debug!("block_on is called");
     // Polling mode => no NIC interrupts => NIC thread should not run
-    set_polling_mode(true);
-    let start = now();
+    executor_set_polling_mode(true);
+
+    #[cfg(not(feature = "axdriver"))]
+    let start = super::now();
 
     let thread_notify = Arc::new(ThreadNotify::new());
     let waker = thread_notify.clone().into();
     let mut cx = Context::from_waker(&waker);
-    // Pins a variable of type T on the stack and rebinds it as Pin<&mut T>.
+    // Pins a variable of type T on the stack and rebinds it as Pin<&mut T>.A
     pin!(future);
 
     loop {
         // run background tasks
         run_executor();
+
+        // let now = now();
 
         if let Poll::Ready(t) = future.as_mut().poll(&mut cx) {
             //
@@ -130,37 +148,38 @@ where
             // }
 
             // allow interrupts => NIC thread is able to run
-            set_polling_mode(false);
+            executor_set_polling_mode(false);
             // debug!("block on return ok");
             return Ok(t);
         }
 
         // println!("block_on, Poll not Ready");
 
-        if let Some(duration) = timeout {
-            if now() >= start + duration {
-                if let Some(delay_millis) = network_delay(now()).map(|d| d.total_millis()) {
-                    trace!(
-                        "block_on() timeout {} poll now {} delay_millis {}",
-                        duration.millis(),
-                        now(),
-                        delay_millis
-                    );
-                    thread_block_current_with_timeout(delay_millis as usize);
+        #[cfg(not(feature = "axdriver"))]
+        {
+            if let Some(duration) = _timeout {
+                if super::now() >= start + duration {
+                    if let Some(delay_millis) =
+                        network_delay(super::now()).map(|d| d.total_millis())
+                    {
+                        trace!(
+                            "block_on() timeout {} poll now {} delay_millis {}",
+                            duration.millis(),
+                            super::now(),
+                            delay_millis
+                        );
+                        thread_block_current_with_timeout(delay_millis as usize);
+                    }
+
+                    // allow interrupts => NIC thread is able to run
+                    executor_set_polling_mode(false);
+                    debug!("block on return err");
+                    return Err(ShyperError::BadState);
                 }
-
-                // allow interrupts => NIC thread is able to run
-                set_polling_mode(false);
-                debug!("block on return err");
-                return Err(());
             }
-        }
 
-        // These code segment can be delete to improve network performance.
-        if false {
-            // let now = now();
             // Return an advisory wait time for calling [poll] the next time.
-            let delay = network_delay(now()).map(|d| d.total_millis());
+            let delay = network_delay(super::now()).map(|d| d.total_millis());
 
             // debug!("block_on, Poll not Ready, get delay {:?}", delay);
 
@@ -176,16 +195,16 @@ where
                             "block_on() unparked {} delay {:?} now {} ms",
                             unparked,
                             delay,
-                            now().millis()
+                            super::now().millis()
                         );
                         thread_block_current_with_timeout(delay.unwrap() as usize);
                     }
                     // allow interrupts => NIC thread is able to run
-                    set_polling_mode(false);
+                    executor_set_polling_mode(false);
                     // switch to another task
                     thread_yield();
                     // Polling mode => no NIC interrupts => NIC thread should not run
-                    set_polling_mode(true);
+                    executor_set_polling_mode(true);
                 }
             }
         }

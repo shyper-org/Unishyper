@@ -168,6 +168,13 @@ impl ContextFrameTrait for TrapContextFrame {
         assert!(index < crate::arch::registers::GPR_NUM_MAX);
         self.gpr[index] = value as u64;
     }
+    #[cfg(feature = "zone")]
+    fn set_pkru(&mut self, _value: u32) {}
+
+    #[cfg(feature = "zone")]
+    fn pkru(&self) -> u32 {
+        0
+    }
 }
 
 impl ThreadContext {

@@ -72,8 +72,7 @@ pub fn boot_time() -> usize {
 
 pub fn init() {
     info!(
-        "Unishyper built at [{}]\nUnishyper starts at [{} (UTC)]",
-        env!("BUILD_TIME"),
+        "Unishyper starts at [{} (UTC)]",
         rtc_time64_to_tm(crate::drivers::timer::timestamp_sec() as u64)
     );
     let boot_time = crate::drivers::timer::timestamp_us() as usize - current_us();

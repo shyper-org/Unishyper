@@ -93,7 +93,7 @@ impl ThreadTls {
 
 impl Drop for ThreadTls {
     fn drop(&mut self) {
-        debug!("ThreadTls drop , start at {}", self.get_tls_start());
+        trace!("ThreadTls drop , start at {}", self.get_tls_start());
         let self_tls = unsafe { &*(self.get_tls_start().as_ptr::<u8>() as *const Tls) };
         let value_with_destructor = |key: usize| {
             let ptr = TLS_DESTRUCTOR[key].load(Ordering::Relaxed);

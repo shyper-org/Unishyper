@@ -19,9 +19,9 @@ use crate::drivers::virtio::error::VirtioError;
 
 use crate::libs::interrupt::irq_install_handler;
 
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 use crate::drivers::net::virtio_net::VirtioNetDriver;
-#[cfg(feature = "tcp")]
+#[cfg(feature = "net")]
 use crate::drivers::net::network_irqhandler;
 
 #[cfg(feature = "fat")]
@@ -322,7 +322,7 @@ impl IsrStatus {
 }
 
 pub enum VirtioDriver {
-    #[cfg(feature = "tcp")]
+    #[cfg(feature = "net")]
     Network(VirtioNetDriver),
     #[cfg(feature = "fat")]
     Blk(VirtioBlkDriver),
@@ -343,7 +343,7 @@ pub fn init_device(
 
     // Verify the device-ID to find the network card
     match registers.get_device_id() {
-        #[cfg(feature = "tcp")]
+        #[cfg(feature = "net")]
         DevId::VIRTIO_DEV_ID_NET => {
             match VirtioNetDriver::init(dev_id, registers, irq_no) {
                 Ok(virt_net_drv) => {

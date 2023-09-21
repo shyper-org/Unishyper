@@ -131,8 +131,10 @@ impl<R: Read> Read for BufReader<R> {
             // buffer.
             let mut bytes = Vec::new();
             self.read_to_end(&mut bytes)?;
-            let string =
-                core::str::from_utf8(&bytes).map_err(|_| "stream did not contain valid UTF-8")?;
+            let string = core::str::from_utf8(&bytes).map_err(|_| {
+                warn!("stream did not contain valid UTF-8");
+                crate::libs::error::ShyperError::InvalidData
+            })?;
             *buf += string;
             Ok(string.len())
         }

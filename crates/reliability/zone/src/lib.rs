@@ -1,9 +1,8 @@
 #![no_std]
 
-#[cfg(target_arch = "x86_64")]
+#[allow(unused)]
 mod pkey;
 
-#[cfg(target_arch = "x86_64")]
 pub use pkey::{ZoneKeys, ZONE_ID_SHARED};
 
 pub type ZoneId = usize;

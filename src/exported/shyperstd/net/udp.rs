@@ -1,5 +1,6 @@
 use crate::exported::shyperstd::io;
 use crate::libs::net as net_impl;
+use crate::libs::error::ShyperError;
 
 use no_std_net::{SocketAddr, ToSocketAddrs};
 
@@ -27,24 +28,24 @@ impl UdpSocket {
 
     /// Returns the socket address that this socket was created from.
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        self.0.local_addr().map_err(|err| err.as_str())
+        self.0.local_addr()
     }
 
     /// Returns the socket address of the remote peer this socket was connected to.
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        self.0.peer_addr().map_err(|err| err.as_str())
+        self.0.peer_addr()
     }
 
     /// Receives a single datagram message on the socket. On success, returns
     /// the number of bytes read and the origin.
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        self.0.recv_from(buf).map_err(|err| err.as_str())
+        self.0.recv_from(buf)
     }
 
     /// Receives a single datagram message on the socket, without removing it from
     /// the queue. On success, returns the number of bytes read and the origin.
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        self.0.peek_from(buf).map_err(|err| err.as_str())
+        self.0.peek_from(buf)
     }
 
     /// Sends data on the socket to the given address. On success, returns the
@@ -58,11 +59,11 @@ impl UdpSocket {
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
         match addr
             .to_socket_addrs()
-            .map_err(|_e| "failed in ToSocketAddrs")?
+            .map_err(|_e| ShyperError::InvalidInput)?
             .next()
         {
-            Some(addr) => self.0.send_to(buf, addr).map_err(|err| err.as_str()),
-            None => Err("no addresses to send data to"),
+            Some(addr) => self.0.send_to(buf, addr),
+            None => Err(ShyperError::InvalidInput),
         }
     }
 
@@ -80,7 +81,7 @@ impl UdpSocket {
     pub fn connect(&self, addr: SocketAddr) -> io::Result<()> {
         super::each_addr(addr, |addr: io::Result<&SocketAddr>| {
             let addr = addr?;
-            self.0.connect(*addr).map_err(|err| err.as_str())
+            self.0.connect(*addr)
         })
     }
 
@@ -89,12 +90,12 @@ impl UdpSocket {
     /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
-        self.0.send(buf).map_err(|err| err.as_str())
+        self.0.send(buf)
     }
 
     /// Receives a single datagram message on the socket from the remote address to
     /// which it is connected. On success, returns the number of bytes read.
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.recv(buf).map_err(|err| err.as_str())
+        self.0.recv(buf)
     }
 }

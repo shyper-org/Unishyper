@@ -8,7 +8,7 @@ version = "0.1.0"
 tiny_http = "0.12"
 
 [target.'cfg(target_os = "shyper")'.dependencies]
-unishyper = {path = "../../", default-features = false, features = ["qemu", "std", "tcp", "pci", "log-level-debug"]}
+unishyper = {path = "../../", default-features = false, features = ["qemu", "std", "net", "pci","fs", "log-level-debug"]}
 
 [features]
 qemu = []

@@ -32,7 +32,6 @@ pub trait PageTableEntryAttrTrait {
     fn filter(&self) -> Self;
 }
 
-#[cfg(target_arch = "x86_64")]
 pub trait PageTableEntryAttrZoneTrait {
     fn set_zone(&mut self, zone_id: usize);
     fn get_zone_id(&self) -> usize;

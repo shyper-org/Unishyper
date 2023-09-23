@@ -159,21 +159,28 @@ pub extern "C" fn loader_main(core_id: usize) {
         zone::zone_init();
 
         info!("board init ok");
+        #[cfg(not(feature = "std"))]
         extern "Rust" {
             fn main(arg: usize) -> !;
         }
-        let start = if cfg!(feature = "std") {
-            extern "C" {
-                fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
-            }
-            runtime_entry as usize
-        } else {
+        #[cfg(feature = "std")]
+        extern "C" {
+            fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
+        }
+        let start;
+        #[cfg(not(feature = "std"))]
+        {
             fn main_wrapper(main: extern "C" fn(usize), arg: usize) -> ! {
                 main(arg);
                 exit()
             }
-            main_wrapper as usize
-        };
+            start = main_wrapper as usize
+        }
+        #[cfg(feature = "std")]
+        {
+            start = runtime_entry as usize;
+        }
+
         // Init user first thread on core 0 by default.
         let t = libs::thread::thread_alloc(None, Some(core_id), start, main as usize, 123, true);
         libs::thread::thread_wake(&t);

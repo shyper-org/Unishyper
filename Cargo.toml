@@ -141,6 +141,7 @@ default = ["qemu", "terminal", "fat", "fs", "unilib", "log-level-info", "zone", 
 shyper = []
 qemu = []
 tx2 = []
+k210 = []
 ## SMP
 smp = []
 scheduler-global = ["smp"]

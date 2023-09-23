@@ -3,6 +3,12 @@ use alloc::vec::Vec;
 
 use spin::Once;
 
+use crate::arch::PAGE_SIZE;
+// pub const STACK_SIZE: usize = PAGE_SIZE * 512;
+// pub const STACK_SIZE: usize = PAGE_SIZE * 64;
+pub const STACK_SIZE: usize = PAGE_SIZE * 2;
+
+
 pub fn heap_range() -> Range<usize> {
     use crate::board::GLOBAL_HEAP_SIZE;
     use crate::arch::MACHINE_SIZE;
@@ -37,8 +43,12 @@ pub fn paged_ranges() -> &'static Vec<Range<usize>> {
     match FRAME_RANGES.get() {
         None => FRAME_RANGES.call_once(|| {
             let mut frame_ranges = Vec::new();
-            // let normal_range = crate::board::BOARD_NORMAL_MEMORY_RANGE;
+            #[cfg(not(feature = "k210"))]
             frame_ranges.push(kernel_end_address().value()..crate::board::ELF_IMAGE_LOAD_ADDR);
+            #[cfg(feature = "k210")]
+            frame_ranges
+                .push(kernel_end_address().value()..crate::board::BOARD_NORMAL_MEMORY_RANGE.end);
+
             frame_ranges
         }),
         Some(x) => x,

@@ -20,8 +20,6 @@ pub const MAX_USER_VIRTUAL_ADDRESS: usize = 0x0000_007F_FFFF_FFFF;
 
 pub const MAX_PAGE_NUMBER: usize = MAX_VIRTUAL_ADDRESS / PAGE_SIZE;
 
-pub const STACK_SIZE: usize = 2_097_152; // PAGE_SIZE * 512
-
 const PA2KVA: usize = 0xFFFF_FFFF_0000_0000;
 const KVA2PA: usize = 0xFFFF_FFFF;
 

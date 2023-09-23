@@ -11,8 +11,6 @@ use crate::libs::traits::InterruptControllerTrait;
 // https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc
 const PLIC_BASE_ADDR: usize = 0xffff_ffff_0000_0000 + 0x0c00_0000;
 
-pub struct Plic;
-
 register_structs! {
   #[allow(non_snake_case)]
   PlicBlock {

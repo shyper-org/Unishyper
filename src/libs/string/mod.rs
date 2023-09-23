@@ -19,73 +19,86 @@ pub extern "C" fn sqrt(x: f64) -> f64 {
 
 cfg_if::cfg_if! {
   if #[cfg(all(target_arch = "aarch64", feature = "asm"))] {
+    extern "C" {
+      pub fn memset(dest: *mut u8, c: i32, n: usize) -> *mut u8;
+      pub fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
+    }
     core::arch::global_asm!(include_str!("aarch64/memset.S"));
     core::arch::global_asm!(include_str!("aarch64/memcpy.S"));
 
   } else if #[cfg(all(target_arch = "riscv64", feature = "asm"))] {
+    extern "C" {
+      pub fn memset(dest: *mut u8, c: i32, n: usize) -> *mut u8;
+      pub fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
+    }
     core::arch::global_asm!(include_str!("riscv64/memset.S"));
     core::arch::global_asm!(include_str!("riscv64/memcpy.S"));
 
   } else {
-    /// Memset
-    ///
-    /// Fill a block of memory with a specified value.
-    ///
-    /// This faster implementation works by setting bytes not one-by-one, but in
-    /// groups of 8 bytes (or 4 bytes in the case of 32-bit architectures).
-    #[no_mangle]
-    pub unsafe extern fn memset(dest: *mut u8, c: i32, n: usize) -> *mut u8 {
-      let c: usize = core::mem::transmute([c as u8; WORD_SIZE]);
-      let n_usize: usize = n/WORD_SIZE;
-      let mut i: usize = 0;
-
-      // Set `WORD_SIZE` bytes at a time
-      let n_fast = n_usize*WORD_SIZE;
-      while i < n_fast {
-        *((dest as usize + i) as *mut usize) = c;
-        i += WORD_SIZE;
-      }
-
-      let c = c as u8;
-
-      // Set 1 byte at a time
-      while i < n {
-        *((dest as usize + i) as *mut u8) = c;
-        i += 1;
-      }
-
-      dest
+    extern "C" {
+      pub fn memset(dest: *mut u8, c: i32, n: usize) -> *mut u8;
+      pub fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
     }
+    // /// Memset
+    // ///
+    // /// Fill a block of memory with a specified value.
+    // ///
+    // /// This faster implementation works by setting bytes not one-by-one, but in
+    // /// groups of 8 bytes (or 4 bytes in the case of 32-bit architectures).
+    // #[no_mangle]
+    // pub unsafe extern fn memset(dest: *mut u8, c: i32, n: usize) -> *mut u8 {
+    //   let c: usize = core::mem::transmute([c as u8; WORD_SIZE]);
+    //   let n_usize: usize = n/WORD_SIZE;
 
-    /// Memcpy
-    ///
-    /// Copy N bytes of memory from one location to another.
-    ///
-    /// This faster implementation works by copying bytes not one-by-one, but in
-    /// groups of 8 bytes (or 4 bytes in the case of 32-bit architectures).
-    #[no_mangle]
-    pub unsafe extern fn memcpy(dest: *mut u8, src: *const u8,
-                                n: usize) -> *mut u8 {
+    //   let mut i: usize = 0;
 
-      let n_usize: usize = n/WORD_SIZE; // Number of word sized groups
-      let mut i: usize = 0;
+    //   // Set `WORD_SIZE` bytes at a time
+    //   let n_fast = n_usize*WORD_SIZE;
+    //   while i < n_fast {
+    //     *((dest as usize + i) as *mut usize) = c;
+    //     i += WORD_SIZE;
+    //   }
 
-      // Copy `WORD_SIZE` bytes at a time
-      let n_fast = n_usize*WORD_SIZE;
-      while i < n_fast {
-        *((dest as usize + i) as *mut usize) =
-          *((src as usize + i) as *const usize);
-        i += WORD_SIZE;
-      }
+    //   let c = c as u8;
 
-      // Copy 1 byte at a time
-      while i < n {
-        *((dest as usize + i) as *mut u8) = *((src as usize + i) as *const u8);
-        i += 1;
-      }
+    //   // Set 1 byte at a time
+    //   while i < n {
+    //     *((dest as usize + i) as *mut u8) = c;
+    //     i += 1;
+    //   }
 
-      dest
-    }
+    //   dest
+    // }
+
+    // /// Memcpy
+    // ///
+    // /// Copy N bytes of memory from one location to another.
+    // ///
+    // /// This faster implementation works by copying bytes not one-by-one, but in
+    // /// groups of 8 bytes (or 4 bytes in the case of 32-bit architectures).
+    // #[no_mangle]
+    // pub unsafe extern fn memcpy(dest: *mut u8, src: *const u8,
+    //                             n: usize) -> *mut u8 {
+
+    //   let n_usize: usize = n/WORD_SIZE; // Number of word sized groups
+    //   let mut i: usize = 0;
+
+    //   // Copy `WORD_SIZE` bytes at a time
+    //   let n_fast = n_usize*WORD_SIZE;
+    //   while i < n_fast {
+    //     *((dest as usize + i) as *mut usize) =
+    //       *((src as usize + i) as *const usize);
+    //     i += WORD_SIZE;
+    //   }
+
+    //   // Copy 1 byte at a time
+    //   while i < n {
+    //     *((dest as usize + i) as *mut u8) = *((src as usize + i) as *const u8);
+    //     i += 1;
+    //   }
+
+    //   dest
+    // }
   }
 }
 

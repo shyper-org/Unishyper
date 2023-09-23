@@ -11,7 +11,7 @@ use core::cell::UnsafeCell;
 
 use spin::{Mutex, Once};
 
-use crate::arch::{ContextFrame, PAGE_SIZE, STACK_SIZE, ThreadContext};
+use crate::arch::{ContextFrame, PAGE_SIZE, ThreadContext};
 use crate::libs::traits::ContextFrameTrait;
 use crate::libs::cpu::{CoreId, cpu, get_cpu};
 use crate::libs::scheduler::Scheduler;
@@ -20,6 +20,7 @@ use crate::libs::synch::spinlock::SpinlockIrqSave;
 use crate::mm::address::VAddr;
 use crate::mm::stack::Stack;
 use crate::mm::paging::MappedRegion;
+use crate::mm::config::STACK_SIZE;
 use crate::util::{round_up, irqsave};
 
 #[cfg(feature = "zone")]
@@ -408,7 +409,6 @@ pub fn thread_alloc(
     #[cfg(feature = "zone")]
     let ori_pkru = zone::switch_to_privilege();
 
-    // pub const STACK_SIZE: usize = 32_768; // PAGE_SIZE * 8
     let stack_size = round_up(STACK_SIZE, PAGE_SIZE);
 
     #[cfg(feature = "zone")]

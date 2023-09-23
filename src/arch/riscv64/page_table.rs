@@ -141,7 +141,7 @@ impl core::convert::From<Entry> for RISCV64PageTableEntry {
             } + PAGE_DESCRIPTOR::DIRTY::True
                 + PAGE_DESCRIPTOR::ACCESSED::True
                 + PAGE_DESCRIPTOR::VALID::True
-                + PAGE_DESCRIPTOR::USER::True
+                // + PAGE_DESCRIPTOR::USER::True
                 + PAGE_DESCRIPTOR::OUTPUT_PPN.val((pte.ppn()) as u64))
             .value as usize,
         );
@@ -176,6 +176,36 @@ pub fn init() {
     });
 }
 
+impl RISCV64PageTable {
+    #[allow(unused)]
+    pub fn dump_entry_flags_of_va(&mut self, va: usize) {
+        let directory = self.directory_entry;
+        let l1e = directory.entry(va.l1x());
+        if !l1e.valid() {
+            warn!("dump_entry_flags_of_va {va:#x} l1e not mapped");
+            return;
+        }
+        let l2e = l1e.entry(va.l2x());
+
+        println!(
+            "RISCV64PageTable {va:#x} l2e {:#x}, {:#x}",
+            l2e.0,
+            l2e.0 >> 10
+        );
+        if !l2e.valid() {
+            warn!("dump_entry_flags_of_va {va:#x} l2e not mapped");
+            return;
+        }
+        let l3e = l2e.entry(va.l3x());
+
+        println!(
+            "RISCV64PageTable {va:#x} l3e {:#x}, {:#x}",
+            l3e.0,
+            l3e.0 >> 10
+        );
+    }
+}
+
 impl PageTableTrait for RISCV64PageTable {
     fn base_pa(&self) -> usize {
         self.directory_entry.0
@@ -183,7 +213,7 @@ impl PageTableTrait for RISCV64PageTable {
 
     fn map(&mut self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
         trace!(
-            "page table map va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
+            "page table map va {:#x} pa: 0x{:#x}, directory 0x{:x}",
             va,
             pa,
             self.base_pa()
@@ -222,6 +252,8 @@ impl PageTableTrait for RISCV64PageTable {
             l1e.set_entry(va.l2x(), l2e);
         }
         l2e.set_entry(va.l3x(), RISCV64PageTableEntry::from(Entry::new(attr, pa)));
+        // crate::arch::Arch::invalidate_tlb();
+        // self.dump_entry_flags_of_va(va);
         Ok(())
     }
 

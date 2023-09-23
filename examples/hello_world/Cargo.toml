@@ -10,10 +10,13 @@ unishyper = {path = "../../", default-features = false, features = ["qemu", "std
 [dependencies.unishyper]
 path = "../../"
 default-features = false
-features = ["qemu", "serial"]
+features = ["serial", "terminal"]
 
 [features]
-qemu = []
+qemu = ["unishyper/qemu"]
+k210 = ["unishyper/k210"]
+shyper = ["unishyper/shyper"]
+tx2 = ["unishyper/tx2"]
 # [profile.release]
 # # opt-level = 's'  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
 # lto = true

@@ -20,9 +20,7 @@ pub const MAX_USER_VIRTUAL_ADDRESS: usize = 0x0000_007F_FFFF_FFFF;
 
 pub const MAX_PAGE_NUMBER: usize = MAX_VIRTUAL_ADDRESS / PAGE_SIZE;
 
-// pub const STACK_SIZE: usize = 2_097_152; // PAGE_SIZE * 512
-pub const STACK_SIZE: usize = PAGE_SIZE * 64;
-// pub const STACK_SIZE: usize = PAGE_SIZE * 2;
+
 
 /// The virtual address offset from which physical memory is mapped, as described in
 /// https://os.phil-opp.com/paging-implementation/#map-the-complete-physical-memory

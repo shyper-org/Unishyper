@@ -1,7 +1,7 @@
 use core::ops::Range;
 
 use crate::drivers::gic::INT_TIMER;
-use crate::libs::interrupt::InterruptController;
+use crate::libs::traits::InterruptControllerTrait;
 
 #[cfg(not(feature = "smp"))]
 pub const BOARD_CORE_NUMBER: usize = 1;

@@ -37,7 +37,7 @@ pub use crate::drivers::pci::get_network_driver;
 
 #[cfg(not(target_arch = "x86_64"))]
 pub fn network_irqhandler() {
-    debug!("Receive network interrupt");
+    // debug!("Receive network interrupt");
 
     inner_network_irq_handler()
 }
@@ -46,7 +46,7 @@ pub fn network_irqhandler() {
 pub extern "x86-interrupt" fn network_irqhandler(
     _stack_frame: x86_64::structures::idt::InterruptStackFrame,
 ) {
-    info!("Receive network interrupt!!!");
+    // debug!("Receive network interrupt!!!");
     use crate::libs::traits::InterruptControllerTrait;
     crate::drivers::InterruptController::finish(0);
     // apic::eoi();
@@ -57,7 +57,7 @@ fn inner_network_irq_handler() {
     let has_packet = if let Some(driver) = get_network_driver() {
         driver.lock().handle_interrupt()
     } else {
-        warn!("Unable to handle interrupt!");
+        warn!("Network irq handler, driver not found!");
         false
     };
 

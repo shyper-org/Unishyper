@@ -194,4 +194,12 @@ impl<H: Hal, T: Transport, const QS: usize> NetDriverOps for VirtIoNetDev<H, T, 
     fn ack_interrupt(&mut self) -> DevResult<bool> {
         Ok(self.inner.ack_interrupt())
     }
+
+    fn set_polling_mode(&mut self, value: bool) -> DevResult {
+        if value {
+            Ok(self.inner.disable_interrupts())
+        } else {
+            Ok(self.inner.enable_interrupts())
+        }
+    }
 }

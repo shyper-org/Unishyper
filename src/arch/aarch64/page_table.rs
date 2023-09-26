@@ -182,8 +182,22 @@ pub fn init() {
 pub fn install_page_table() {
     use cortex_a::registers::TTBR0_EL1;
     use tock_registers::interfaces::Writeable;
+    println!("trying...");
+    // match page_table().try_lock() {
+    //     Ok(Guard) => {
+    //         println!("sucess!");
+    //     }
+    //     Err(_) => {
+    //         println!("fail!");
+            
+    //     }
+    // }
+    // let adr:u64=1141555200;
+    //TTBR0_EL1.set(adr as u64);
     let pgdir_addr = page_table().lock().directory.start().start_address();
     TTBR0_EL1.set(pgdir_addr.value() as u64);
+    
+    println!("over");
     debug!("Page table is installed");
     crate::arch::Arch::invalidate_tlb();
 }

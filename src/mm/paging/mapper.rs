@@ -56,6 +56,7 @@ impl MappedRegion {
         if self.size_in_pages() == 0 {
             return;
         }
+        println!("err:59");
         let mut page_table = crate::arch::page_table::page_table().lock();
 
         if self.attribute().block() {
@@ -97,7 +98,7 @@ pub fn map_allocated_pages(
         frames.start().start_address(),
         attr
     );
-
+    println!("err:101");
     let mut page_table = crate::arch::page_table::page_table().lock();
     for (page, frame) in pages
         .deref()
@@ -140,6 +141,7 @@ pub fn map_allocated_pages_to(
         );
         return Err("map_allocated_pages_to(): page count must equal frame count");
     }
+    println!("err:144");
     // Get global page table.
     let mut page_table = crate::arch::page_table::page_table().lock();
 
@@ -212,6 +214,7 @@ pub fn virt_to_phys(virtual_address: &VAddr) -> PAddr {
 // Do the transfer from user virtual address to physical address.
 // Need to check the mapping granularity.
 pub fn virtual_to_physical(virtual_address: &VAddr) -> Option<PAddr> {
+    println!("err:217");
     let page_table = page_table().lock();
     let (entry, granularity) = match page_table.lookup_entry(virtual_address.value()) {
         Some((entry, granularity)) => (entry, granularity),
@@ -240,7 +243,7 @@ pub fn map_device_memory_range(device_addr: usize, mem_size: usize) -> VAddr {
         None => panic!("failed to allocate pages for PCI bar"),
     };
     let start_addr = pages.start_address();
-
+    println!("err:246");
     let mut page_table = crate::arch::page_table::page_table().lock();
     for page in pages.deref().clone().into_iter() {
         match page_table.map(page.start_address().value(), physical_address.value(), attr) {

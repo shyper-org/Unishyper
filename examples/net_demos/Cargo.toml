@@ -14,7 +14,7 @@ default = ["qemu"]
 qemu = [
     "unishyper/alloc",
     "unishyper/net",
-    "unishyper/axdriver",
+    # "unishyper/axdriver",
     "unishyper/qemu",
     "unishyper/serial",
     # "unishyper/unwind",

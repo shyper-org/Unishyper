@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use spin::RwLock;
 
 use no_std_net::SocketAddr;
-use smoltcp::wire::IpEndpoint;
+use smoltcp::wire::{IpEndpoint, IpListenEndpoint};
 use smoltcp::socket::udp::{self, BindError, SendError};
 
 use crate::libs::error::ShyperError;
@@ -36,22 +36,18 @@ impl AsyncUdpSocket {
     }
 
     fn with<R>(&self, f: impl FnOnce(&mut udp::Socket<'_>) -> R) -> R {
-        // println!("Async Socket with(), handle {:?}", self.0);
+        // println!("Async UDPSocket with(), handle {:?}", self.handle);
 
         let mut guard = super::NIC.lock();
         let nic = guard.as_nic_mut().unwrap();
-        let res = {
-            let s = nic.get_mut_socket::<udp::Socket<'_>>(self.handle);
-            let res = f(s);
-            res
-        };
+        let res = f(nic.get_mut_socket::<udp::Socket<'_>>(self.handle));
         // To flush send buffers.
         // After using the socket, the network interface has to poll the nic,
         // This is required to flush all send buffers.
-        let t = super::now();
-        if nic.poll_delay(t).map(|d| d.total_millis()).unwrap_or(0) == 0 {
-            nic.poll_common(t);
-        }
+        nic.poll_common(super::now());
+        // if nic.poll_delay(t).map(|d| d.total_millis()).unwrap_or(0) == 0 {
+        //     nic.poll_common(t);
+        // }
         res
     }
 
@@ -90,21 +86,20 @@ impl AsyncUdpSocket {
             warn!("udp::Socket bind() failed: already bound");
             return Err(ShyperError::InvalidInput);
         }
-
         let local_endpoint = socketaddr_to_ipendpoint(local_addr);
-        // debug!("local endpoint {:?}", local_endpoint);
-        // let endpoint = IpEndpoint {
-        //     addr: local_endpoint.addr,
-        //     port: local_endpoint.port,
-        // };
-        self.with(|socket| socket.bind(local_endpoint))
+        let endpoint = IpListenEndpoint {
+            addr: (!is_unspecified(local_endpoint.addr)).then_some(local_endpoint.addr),
+            port: local_endpoint.port,
+        };
+
+        self.with(|socket| socket.bind(endpoint))
             .map_err(|e| match e {
                 BindError::InvalidState => ShyperError::AlreadyExists,
                 BindError::Unaddressable => ShyperError::InvalidInput,
             })?;
 
         *self_local_addr = Some(local_endpoint);
-        debug!("UDP socket {}: bound on {}", self.handle, local_endpoint);
+        debug!("UDP socket {}: bound on {}", self.handle, endpoint);
         Ok(())
     }
 

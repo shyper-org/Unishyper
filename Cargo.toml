@@ -94,6 +94,8 @@ riscv = { git = "https://github.com/hky1999/riscv" }
 
 [dependencies.smoltcp]
 git = "https://github.com/rcore-os/smoltcp.git"
+# path = "../smoltcp"
+# version = "0.10"
 default-features = false
 features = [
   "alloc",

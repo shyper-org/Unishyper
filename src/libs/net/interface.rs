@@ -15,7 +15,10 @@ use crate::libs::synch::spinlock::SpinlockIrqSave;
 use crate::libs::net::SmoltcpSocketHandle;
 use crate::libs::net::device::ShyperNet;
 
-// use crate::drivers::axdriver::prelude::*;
+const TCP_RX_BUF_LEN: usize = 64 * 1024;
+const TCP_TX_BUF_LEN: usize = 64 * 1024;
+const UDP_RX_BUF_LEN: usize = 64 * 1024;
+const UDP_TX_BUF_LEN: usize = 64 * 1024;
 
 #[inline]
 pub(crate) fn now() -> Instant {
@@ -50,8 +53,8 @@ pub struct NetworkInterface<'a> {
 
 impl<'a> NetworkInterface<'a> {
     pub fn create_tcp_handle(&mut self) -> Result<SmoltcpSocketHandle, ()> {
-        let tcp_rx_buffer = tcp::SocketBuffer::new(vec![0; 65535]);
-        let tcp_tx_buffer = tcp::SocketBuffer::new(vec![0; 65535]);
+        let tcp_rx_buffer = tcp::SocketBuffer::new(vec![0; TCP_RX_BUF_LEN]);
+        let tcp_tx_buffer = tcp::SocketBuffer::new(vec![0; TCP_TX_BUF_LEN]);
         let mut tcp_socket = tcp::Socket::new(tcp_rx_buffer, tcp_tx_buffer);
         tcp_socket.set_nagle_enabled(true);
         let tcp_handle = self.sockets.add(tcp_socket);
@@ -62,9 +65,10 @@ impl<'a> NetworkInterface<'a> {
     pub fn create_udp_handle(&mut self) -> Result<SmoltcpSocketHandle, ()> {
         // Must fit mDNS payload of at least one packet
         let udp_rx_buffer =
-            udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY; 4], vec![0; 1024]);
+            udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY; 8], vec![0; UDP_RX_BUF_LEN]);
         // Will not send mDNS
-        let udp_tx_buffer = udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY], vec![0; 0]);
+        let udp_tx_buffer =
+            udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY; 8], vec![0; UDP_TX_BUF_LEN]);
         let udp_socket = udp::Socket::new(udp_rx_buffer, udp_tx_buffer);
         let udp_handle = self.sockets.add(udp_socket);
 
@@ -72,9 +76,10 @@ impl<'a> NetworkInterface<'a> {
     }
 
     pub fn poll_common(&mut self, timestamp: Instant) {
-        let _ = self
-            .iface
-            .poll(timestamp, &mut self.device, &mut self.sockets);
+        let _readiness_may_have_changed =
+            self.iface
+                .poll(timestamp, &mut self.device, &mut self.sockets);
+        // debug!("poll common at {timestamp} {_readiness_may_have_changed}");
     }
 
     pub(crate) fn poll_delay(&mut self, timestamp: Instant) -> Option<Duration> {
@@ -158,7 +163,6 @@ async fn network_run() {
 
 #[inline]
 pub fn network_poll() {
-    // debug!("network poll");
     if let Ok(mut guard) = NIC.try_lock() {
         if let NetworkState::Initialized(nic) = guard.deref_mut() {
             let time = now();

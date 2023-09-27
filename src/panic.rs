@@ -1,12 +1,11 @@
 #[allow(non_snake_case)]
 #[no_mangle]
 extern "C" fn _Unwind_Resume(_arg: usize) -> ! {
-  // info!("Unwind resume arg {:#x}", arg);
-  #[cfg(feature = "unwind")]
-  crate::libs::unwind::unwind_resume(_arg);
-  #[cfg(not(feature = "unwind"))]
-  loop {}
-
+    // info!("Unwind resume arg {:#x}", arg);
+    #[cfg(feature = "unwind")]
+    crate::libs::unwind::unwind_resume(_arg);
+    #[cfg(not(feature = "unwind"))]
+    loop {}
 }
 
 #[cfg(not(feature = "std"))]
@@ -29,10 +28,10 @@ pub fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     // }
     // use crate::libs::thread::current_thread;
     if let Some(message) = info.message() {
-        error!("PANIC on : {}", message);
+        println!("PANIC on : {}", message);
     }
     if let Some(location) = info.location() {
-        error!("Location: {}:{}", location.file(), location.line());
+        println!("Location: {}:{}", location.file(), location.line());
     }
 
     #[cfg(feature = "unwind")]

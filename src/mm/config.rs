@@ -8,7 +8,6 @@ use crate::arch::PAGE_SIZE;
 pub const STACK_SIZE: usize = PAGE_SIZE * 64;
 // pub const STACK_SIZE: usize = PAGE_SIZE * 2;
 
-
 pub fn heap_range() -> Range<usize> {
     use crate::board::GLOBAL_HEAP_SIZE;
     use crate::arch::MACHINE_SIZE;

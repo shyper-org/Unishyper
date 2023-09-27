@@ -64,10 +64,7 @@ fn http_server(mut stream: TcpStream) -> io::Result<()> {
 
 fn accept_loop() -> io::Result<usize> {
     let listener = TcpListener::bind((LOCAL_IP, LOCAL_PORT))?;
-    println!(
-        "listen on: http://{}/",
-        listener.socket_addr().unwrap()
-    );
+    println!("listen on: http://{}/", listener.socket_addr().unwrap());
 
     let mut i = 0;
     loop {

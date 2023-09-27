@@ -15,9 +15,10 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
     let tid = TPIDRRO_EL0.get();
     panic!(
-        "current_el_sp0_synchronous on Thread {}\nEC {:#X} \n{}",
+        "current_el_spx_synchronous on Thread {}\nEC {:#X} ESR_EL1 {:#x}\n{}",
         tid,
         ec,
+        ESR_EL1.get(),
         ctx.read()
     );
 }
@@ -88,9 +89,10 @@ unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
     let tid = TPIDRRO_EL0.get();
     panic!(
-        "current_el_sp0_synchronous on Thread {}\nEC {:#X} \n{}",
+        "current_el_sp0_synchronous on Thread {}\nEC {:#X} ESR_EL1 {:#x}\n{}",
         tid,
         ec,
+        ESR_EL1.get(),
         ctx.read()
     );
 }

@@ -149,11 +149,7 @@ impl phy::RxToken for RxToken {
         F: FnOnce(&mut [u8]) -> R,
     {
         let mut rx_buf = self.buffer;
-        trace!(
-            "RECV {} bytes: {:02X?}",
-            rx_buf.len(),
-            rx_buf
-        );
+        trace!("RECV {} bytes: {:02X?}", rx_buf.len(), rx_buf);
         let result = f(rx_buf);
         get_network_driver()
             .unwrap()

@@ -128,8 +128,7 @@ fn inner_alloc_stack(
     // trace!("stack_pages {:?}", &stack_pages);
     debug!(
         "stack_region {:#?}\n mapped success with zone_id {}",
-        &stack_region,
-        zone_id
+        &stack_region, zone_id
     );
     Some(Stack {
         guard_page,

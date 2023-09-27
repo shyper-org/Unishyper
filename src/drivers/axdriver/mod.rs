@@ -126,7 +126,6 @@ impl AllDevices {
         match dev {
             // #[cfg(feature = "net")]
             AxDeviceEnum::Net(dev) => {
-                
                 if irq_id.is_some() {
                     #[cfg(not(target_arch = "x86_64"))]
                     {

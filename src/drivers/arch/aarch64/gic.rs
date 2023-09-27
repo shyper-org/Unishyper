@@ -189,7 +189,6 @@ impl InterruptControllerTrait for InterruptController {
         if core_id == 0 {
             gicd.init();
         }
-        debug!("core {} Gic init", core_id);
         crate::util::barrier();
         let gicc = &GICC;
         gicd.init_per_core();

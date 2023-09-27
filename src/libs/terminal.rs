@@ -26,7 +26,6 @@ pub fn get_buffer_char() -> u8 {
     }
 }
 
-
 #[cfg_attr(feature = "unwind-test", inject::panic_inject, inject::count_stmts)]
 extern "C" fn input_thread(_arg: usize) {
     debug!("input_thread started Thread [{}]", current_thread_id());

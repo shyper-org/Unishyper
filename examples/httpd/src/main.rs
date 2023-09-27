@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 fn main() {
     let server = Arc::new(tiny_http::Server::http("0.0.0.0:4444").unwrap());
-    
+
     let heart = vec![240, 159, 146, 151];
     let text = format!(
         "Hello from Unishyper {}",

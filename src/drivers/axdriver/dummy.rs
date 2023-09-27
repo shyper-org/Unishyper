@@ -31,7 +31,7 @@ cfg_if! {
             fn receive(&mut self) -> DevResult<NetBufPtr> { Err(DevError::Unsupported) }
             fn alloc_tx_buffer(&mut self, _: usize) -> DevResult<NetBufPtr> { Err(DevError::Unsupported) }
             fn ack_interrupt(&mut self) -> DevResult<bool> { Err(DevError::Unsupported) }
-            fn set_polling_mode(&mut self, value: bool) -> DevResult  { Err(DevError::Unsupported) };
+            fn set_polling_mode(&mut self, value: bool) -> DevResult  { Err(DevError::Unsupported) }
         }
     }
 }

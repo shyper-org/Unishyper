@@ -494,7 +494,8 @@ fn find_any_chunk<'list>(
                 trace!(
                     "Frame allocator: inefficient scenario: had to search multiple chunks \
                     (skipping {:?}) while trying to allocate {} frames at any address.",
-                    chunk, num_frames
+                    chunk,
+                    num_frames
                 );
                 cursor.move_prev();
             }

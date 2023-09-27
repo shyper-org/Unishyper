@@ -13,7 +13,6 @@ use super::interface::{NetworkInterface, NetworkState};
 
 use crate::drivers::get_network_driver;
 
-
 const STANDARD_MTU: usize = 1500;
 
 const RANDOM_SEED: u64 = 0xA2CE_05A2_CE05_A2CE;

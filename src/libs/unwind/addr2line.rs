@@ -72,7 +72,7 @@ impl core::fmt::Display for super::StackFrame {
                 writeln!(f, "??:0:0")?;
             }
         }
-        
+
         write!(f, "call site addr {:#x}, at ", self.call_site_address)?;
         match ctx.find_location(self.call_site_address).unwrap() {
             Some(loc) => {

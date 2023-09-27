@@ -1,8 +1,8 @@
 mod mm;
 // mod sem;
-mod thread;
 mod recover;
 mod schedule;
+mod thread;
 
 use unishyper::println;
 use unishyper::*;

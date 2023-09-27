@@ -1,8 +1,5 @@
 use log::{Level, Metadata, Record};
 use log::LevelFilter;
-// use spin::Mutex;
-
-// use crate::util::irqsave;
 
 use crate::libs::synch::spinlock::SpinlockIrqSave;
 
@@ -18,7 +15,7 @@ impl log::Log for SimpleLogger {
     }
 
     fn log(&self, record: &Record) {
-        let lock = LOCK.lock();
+        let _lock = LOCK.lock();
         if self.enabled(record.metadata()) {
             let ms = crate::libs::timer::current_ms();
             let s = ms / 1000;
@@ -35,7 +32,6 @@ impl log::Log for SimpleLogger {
             if let Some(m) = record.module_path() {
                 #[cfg(feature = "smp")]
                 {
-                    use crate::ArchTrait;
                     print!("core[{}][{}]", crate::arch::Arch::core_id(), m);
                 }
                 #[cfg(not(feature = "smp"))]
@@ -44,7 +40,6 @@ impl log::Log for SimpleLogger {
             print!(" {}", record.args());
             println!();
         }
-        drop(lock);
     }
 
     fn flush(&self) {}

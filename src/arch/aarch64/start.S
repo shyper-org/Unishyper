@@ -37,17 +37,17 @@ _el1_entry:
     sub x0, x0, x1 // BOOT_STACK_TOP - core id * 4096
     mov sp, x0 // Set sp register, retain 4096 stack space for each core
     cbnz x19, 1f
-        
-    adrp x0, KERNEL_PAGE_DIRECTORY
-    bl populate_page_table
-1:  adrp x0, KERNEL_PAGE_DIRECTORY
-    bl mmu_init
 
     adrp x0, BSS_START
     adrp x1, BSS_END
     sub  x2, x1, x0
     mov  x1, xzr
     bl memset // Clear BSS segment, only core 1 runs it.
+        
+    adrp x0, KERNEL_PAGE_DIRECTORY
+    bl populate_page_table
+1:  adrp x0, KERNEL_PAGE_DIRECTORY
+    bl mmu_init
 
     mov x0, x19
     ldr x1, =stack_of_core

@@ -44,4 +44,3 @@ where
         ShyperError::InvalidInput
     }))
 }
-

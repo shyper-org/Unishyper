@@ -56,7 +56,10 @@ static HART_BOOT: Mutex<Option<usize>> = Mutex::new(None);
 
 #[no_mangle]
 pub unsafe extern "C" fn print_arg(arg0: usize, arg1: usize, arg2: usize) {
-    println!("enter RISCV print_arg, arg0 {:#x} arg1 {:#x} arg2 {:#x}", arg0, arg1, arg2);
+    println!(
+        "enter RISCV print_arg, arg0 {:#x} arg1 {:#x} arg2 {:#x}",
+        arg0, arg1, arg2
+    );
 }
 
 #[no_mangle]

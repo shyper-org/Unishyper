@@ -30,9 +30,8 @@ static BASE_ADDRESSES: Lazy<BaseAddresses> = Lazy::new(|| {
         .set_text(text.start)
 });
 
-static ELF_FILE: Lazy<ElfFile> = Lazy::new(|| {
-    ElfFile::new(unsafe { &ELF_IMAGE }).expect("failed to parse elf file")
-});
+static ELF_FILE: Lazy<ElfFile> =
+    Lazy::new(|| ElfFile::new(unsafe { &ELF_IMAGE }).expect("failed to parse elf file"));
 
 pub fn base_addresses() -> BaseAddresses {
     BASE_ADDRESSES.clone()

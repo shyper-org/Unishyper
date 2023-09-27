@@ -93,6 +93,8 @@ pub use mm::heap::Global;
 
 pub use panic::random_panic;
 
+pub(crate) const MASTER_CPU_ID: usize = 0;
+
 // pub static mut START_CYCLE: u64 = 0;
 
 mod built_info {
@@ -118,36 +120,29 @@ fn print_built_info() {
 
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
-    // Init output.
-    if core_id == 0 {
-        // Init serial output.
+    arch::Arch::exception_init();
+
+    if core_id == MASTER_CPU_ID {
         #[cfg(feature = "serial")]
         drivers::uart::init();
         logger::init();
         print_built_info();
-    }
 
-    arch::Arch::exception_init();
-
-    if core_id == 0 {
         libs::timer::init();
-        mm::heap::init();
-        mm::allocator_init();
-        // After Page allocator and Frame allocator init finished, init user page table.
+
+        mm::init();
         arch::Arch::page_table_init();
-        // debug!("page table init ok");
+        debug!("page table init ok");
 
         #[cfg(feature = "smp")]
         board::launch_other_cores();
     }
 
     board::init_per_core();
-    info!("per core init ok on core [{}]", core_id);
-
     // // Init schedule for per core.
     libs::scheduler::init();
 
-    if core_id == 0 {
+    if core_id == MASTER_CPU_ID {
         board::init();
 
         #[cfg(feature = "net")]

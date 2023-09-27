@@ -2,10 +2,7 @@ use unishyper::*;
 
 #[allow(dead_code)]
 extern "C" fn test_spawned_thread(index: usize) {
-    println!(
-        "------------ test_spawned_thread [{}]",
-        index
-    );
+    println!("------------ test_spawned_thread [{}]", index);
     loop {}
 }
 

@@ -257,7 +257,7 @@ pub mod pci {
                     let virtual_address = VirtMemAddr::from(
                         // crate::mm::map(PhysAddr::from(bar.addr), bar.size, true, true, true).0,
                         // bar.addr.pa2kva()
-                        crate::mm::paging::map_device_memory_range(bar.addr, bar.size).value()
+                        crate::mm::paging::map_device_memory_range(bar.addr, bar.size).value(),
                     );
 
                     mapped_bars.push(VirtioPciBar::new(

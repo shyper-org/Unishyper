@@ -35,8 +35,8 @@ pub fn panic_inject(_args: TokenStream, input: TokenStream) -> TokenStream {
 pub fn count_stmts(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item: syn::Item = syn::parse(input).unwrap();
     let fn_item = match &item {
-      syn::Item::Fn(fn_item) => fn_item,
-      _ => panic!("This attribute only targets function"),
+        syn::Item::Fn(fn_item) => fn_item,
+        _ => panic!("This attribute only targets function"),
     };
     let statements = &fn_item.block.stmts;
     let len = statements.len();

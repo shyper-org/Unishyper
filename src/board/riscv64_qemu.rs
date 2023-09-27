@@ -10,11 +10,12 @@ use crate::libs::traits::*;
 
 pub const BOARD_CORE_NUMBER: usize = 1;
 
+#[allow(dead_code)]
 pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x8000_0000..0xf000_0000;
 #[allow(dead_code)]
 pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x8000_0000;
 
-pub const ELF_IMAGE_LOAD_ADDR: usize = 0xc0000000;
+pub const ELF_IMAGE_LOAD_ADDR: usize = 0xc000_0000;
 
 pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
 
@@ -40,7 +41,6 @@ pub fn init() {
 
 pub fn init_per_core() {
     crate::drivers::timer::init();
-    // crate::arch::Arch::exception_init();
     crate::drivers::InterruptController::init();
 }
 

@@ -86,9 +86,8 @@ gdb:
 	  -ex 'target remote localhost:1234' \
 	  -ex 'b _start' \
 	  -ex 'b _pop_context_first' \
-	  -ex 'continue' \
 	  -ex 'disp /16i $$pc' \
-	  -ex 'set print asm-demangle on'
+	  -ex 'set print asm-demangle on' \
 
 disk:
 	rm -rf disk

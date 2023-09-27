@@ -68,10 +68,10 @@ pub trait NetDriverOps: BaseDriverOps {
     /// Acknowledge interrupt.
     /// returns [`DevResult<bool>`]
     fn ack_interrupt(&mut self) -> DevResult<bool>;
-    
+
     /// Enable / disable the polling mode of the network interface.
     /// returns [`DevResult`]
-	fn set_polling_mode(&mut self, value: bool) -> DevResult;
+    fn set_polling_mode(&mut self, value: bool) -> DevResult;
 }
 
 /// A raw buffer struct for network device.

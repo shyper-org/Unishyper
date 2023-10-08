@@ -39,6 +39,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         "aarch64" => match machine.as_str() {
             "tx2" => File::create(out_dir.join("linker-tx2.ld"))?
                 .write_all(include_bytes!("cfg/linker-tx2.ld"))?,
+            "rk3588" => File::create(out_dir.join("linker-rk3588.ld"))?
+                .write_all(include_bytes!("cfg/linker-rk3588.ld"))?,
             "qemu" | "shyper" => File::create(out_dir.join("linker.ld"))?
                 .write_all(include_bytes!("cfg/linker.ld"))?,
             _ => panic!(

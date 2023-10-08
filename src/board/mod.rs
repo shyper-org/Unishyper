@@ -10,6 +10,10 @@
     all(target_arch = "aarch64", feature = "shyper"),
     path = "aarch64_tx2.rs"
 )]
+#[cfg_attr(
+    all(target_arch = "aarch64", feature = "rk3588"),
+    path = "aarch64_tx2.rs"
+)]
 // QEMU platform `qemu-system-x86_64`.
 #[cfg_attr(all(target_arch = "x86_64", feature = "qemu"), path = "x86_64_qemu.rs")]
 // QEMU platform `qemu-system-riscv64`.

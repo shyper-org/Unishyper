@@ -2,7 +2,7 @@ ARCH ?= aarch64
 MACHINE ?= qemu
 PROFILE ?= release
 
-TOOLCHAIN ?= 
+TOOLCHAIN ?=
 
 LOG ?= info
 
@@ -58,6 +58,13 @@ ifeq ($(MACHINE), tx2)
 	cp ${OUT_ELF} /tftp/$(APP_BIN)_${TARGET_DESC}_${PROFILE}
 	cp ${OUT_APP}.ubi /tftp/$(APP_BIN)_${TARGET_DESC}_${PROFILE}.ubi
 	@echo "tftp 0xc0000000 ${TFTP_IPADDR}:$(APP_BIN)_${TARGET_DESC}_${PROFILE}; tftp 0x8a000000 ${TFTP_IPADDR}:$(APP_BIN)_${TARGET_DESC}_${PROFILE}.ubi; bootm start 0x8a000000 - 0x80000000; bootm loados; bootm go"
+endif
+ifeq ($(MACHINE), rk3588)
+	@echo "Build for run on firefly roc-rk3588s-pc, binary file at ${OUT_BIN}, calling mkimage..."
+	mkimage -n unishyper -A arm64 -O linux -C none -T kernel -a 0x00400000 -e 0x00400000 -d ${OUT_BIN} ${OUT_APP}.ubi
+	scp ${OUT_ELF} tx2@192.168.106.153:/tftp/$(APP_BIN)_${TARGET_DESC}_${PROFILE}
+	scp ${OUT_APP}.ubi tx2@192.168.106.153:/tftp/$(APP_BIN)_${TARGET_DESC}_${PROFILE}.ubi
+	@echo "tftp 0x80000000 192.168.106.153:$(APP_BIN)_${TARGET_DESC}_${PROFILE}; tftp 0x00400000 192.168.106.153:$(APP_BIN)_${TARGET_DESC}_${PROFILE}.ubi;tftp 0x10000000 192.168.106.153:rk3588.bin; bootm 0x00400000 - 0x10000000;"
 endif
 ifeq ($(MACHINE), shyper)
 	@echo "Build for run on Shyper Hypervisor, binary file at ${OUT_BIN}."

@@ -5,18 +5,19 @@ edition = "2021"
 authors = ["hukeyang <hky1999@buaa.edu.cn>"]
 
 [target.'cfg(target_os = "shyper")'.dependencies]
-unishyper = {path = "../../", default-features = false, features = ["qemu", "std"]} 
+unishyper = {path = "../../", default-features = false, features = ["qemu", "std"]}
 
 [dependencies.unishyper]
 path = "../../"
 default-features = false
-features = ["qemu", "serial", "smp"]
+features = ["terminal"]
 
 [features]
 qemu = ["unishyper/qemu"]
 k210 = ["unishyper/k210"]
 shyper = ["unishyper/shyper"]
 tx2 = ["unishyper/tx2"]
+rk3588 = ["unishyper/rk3588"]
 # [profile.release]
 # # opt-level = 's'  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
 # lto = true

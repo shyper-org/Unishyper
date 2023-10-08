@@ -1,6 +1,10 @@
 use core::ops::Range;
 
+#[cfg(not(feature = "gicv3"))]
 use crate::drivers::gic::INT_TIMER;
+#[cfg(feature = "gicv3")]
+use crate::drivers::gicv3::INT_TIMER;
+
 use crate::libs::traits::InterruptControllerTrait;
 
 #[cfg(not(feature = "smp"))]
@@ -14,11 +18,15 @@ pub const BOARD_CORE_NUMBER: usize = 2;
 #[cfg(feature = "tx2")]
 pub const GICD_BASE: usize = 0x3881000;
 // The ipa of gicd provided by the hypervisor as a emulated device is 0x8000000.
+#[cfg(feature = "rk3588")]
+pub const GICD_BASE: usize = 0xfe600000;
 #[cfg(feature = "shyper")]
 pub const GICD_BASE: usize = 0x8000000;
 
 #[cfg(feature = "tx2")]
 pub const GICC_BASE: usize = 0x3882000;
+#[cfg(feature = "rk3588")]
+pub const GICC_BASE: usize = 0xfe610000;
 // The ipa of gicc provided by the hypervisor as a passthrough device is 0x8010000.
 #[cfg(feature = "shyper")]
 pub const GICC_BASE: usize = 0x8010000;
@@ -30,6 +38,12 @@ pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x8000_0000;
 #[cfg(feature = "tx2")]
 pub const ELF_IMAGE_LOAD_ADDR: usize = 0xc000_0000;
 
+#[cfg(feature = "rk3588")]
+pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x0000_0000..0xc000_0000;
+#[cfg(feature = "rk3588")]
+pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0xc000_0000..0x1_0000_0000;
+#[cfg(feature = "rk3588")]
+pub const ELF_IMAGE_LOAD_ADDR: usize = 0x8000_0000;
 // Todo: redesign memory range in shyper.
 //       When running on hypervisor, unikernel should not take up so much memory region.
 #[cfg(feature = "shyper")]
@@ -130,6 +144,12 @@ pub fn launch_other_cores() {
             #[cfg(feature = "tx2")]
             crate::driver::psci::cpu_on(
                 (i as u64) | 0x80000100,
+                (KERNEL_ENTRY as usize).kva2pa() as u64,
+                0,
+            );
+            #[cfg(feature = "rk3588")]
+            crate::driver::psci::cpu_on(
+                ((i as u64) << 8) | 0x81000000,
                 (KERNEL_ENTRY as usize).kva2pa() as u64,
                 0,
             );

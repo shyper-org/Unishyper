@@ -144,6 +144,8 @@ shyper = []
 qemu = []
 tx2 = []
 k210 = []
+rk3588 = ["gicv3"]
+gicv3 = []
 ## SMP
 smp = []
 scheduler-global = ["smp"]

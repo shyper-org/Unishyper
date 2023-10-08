@@ -5,6 +5,9 @@ use tock_registers::interfaces::{Readable, Writeable};
 #[cfg(feature = "tx2")]
 const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x3100000;
 
+#[cfg(feature = "rk3588")]
+const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0xfeb50000;
+
 // The ipa provided by the hypervisor is 0x9000000.
 #[cfg(feature = "shyper")]
 const NS16550_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0xc280000;

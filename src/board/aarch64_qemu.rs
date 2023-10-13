@@ -86,10 +86,10 @@ pub fn init_per_core() {
     crate::drivers::InterruptController::init();
     crate::drivers::InterruptController::enable(INT_TIMER);
     crate::drivers::timer::init();
-
+    
     // Init page table.
+    
     crate::arch::page_table::install_page_table();
-
     pmu_init();
 }
 

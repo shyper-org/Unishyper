@@ -1,9 +1,6 @@
 use core::ops::Range;
 
-#[cfg(not(feature = "gicv3"))]
 use crate::drivers::gic::INT_TIMER;
-#[cfg(feature = "gicv3")]
-use crate::drivers::gicv3::INT_TIMER;
 
 use crate::libs::traits::InterruptControllerTrait;
 

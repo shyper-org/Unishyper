@@ -32,5 +32,4 @@ pub trait DriverProbe {
     }
 }
 
-
 // pub type AxNetDevice =  <virtio::VirtIoNet as VirtIoDevMeta>::Device;

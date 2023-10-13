@@ -5,7 +5,7 @@ use riscv::regs::SSTATUS;
 
 use crate::libs::traits::ContextFrameTrait;
 
-#[repr(C)]
+#[repr(C, align(16))]
 #[derive(Copy, Clone, Debug)]
 pub struct Riscv64TrapContextFrame {
     gpr: [u64; 32],

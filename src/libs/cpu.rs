@@ -99,10 +99,10 @@ impl Core {
 
     pub fn scheduler(&self) -> &impl Scheduler {
         match &self.sched {
-            ScheduerType::None =>{
+            ScheduerType::None => {
                 debug!("cpu scheduler  at {:#p}", &self.sched);
                 panic!("scheduler is None");
-            },
+            }
             ScheduerType::PerCoreSchedRoundRobin(rr) => rr,
             ScheduerType::GlobalSchedRoundRobin => crate::libs::scheduler::global_scheduler(),
         }

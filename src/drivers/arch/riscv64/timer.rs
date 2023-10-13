@@ -48,12 +48,18 @@ pub fn current_cycle() -> usize {
     0
 }
 
+#[cfg(feature = "qemu")]
 pub fn timestamp_sec() -> u64 {
     const NSEC_PER_SEC: u64 = 1000_000_000;
     const GOLDFISH_MMIO_BASE: usize = 0xffff_ffff_0000_0000 + 0x101000;
     let low = unsafe { (GOLDFISH_MMIO_BASE as *mut u32).read() as u64 };
     let high = unsafe { ((GOLDFISH_MMIO_BASE + 4) as *mut u32).read() as u64 };
     ((high << 32) | low) / NSEC_PER_SEC
+}
+
+#[cfg(feature = "k210")]
+pub fn timestamp_sec() -> u64 {
+    0
 }
 
 pub fn timestamp_us() -> u64 {

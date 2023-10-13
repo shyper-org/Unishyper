@@ -126,21 +126,20 @@ impl AllDevices {
         match dev {
             // #[cfg(feature = "net")]
             AxDeviceEnum::Net(dev) => {
-                
                 if irq_id.is_some() {
                     #[cfg(not(target_arch = "x86_64"))]
                     {
                         fn network_irqhandler() {
-                            debug!("network_irqhandler of axdriver");
-                            let _ = crate::drivers::get_network_driver().unwrap().lock().ack_interrupt();
+                            // debug!("network_irqhandler of axdriver");
+                            inner_network_irq_handler()
                         }
                         irq_install_handler(irq_id.unwrap(), network_irqhandler, "virtio-net");
                     }
                     #[cfg(target_arch = "x86_64")]
                     {
                         pub extern "x86-interrupt" fn network_irqhandler(_stack_frame: x86_64::structures::idt::InterruptStackFrame) {
-                            debug!("network_irqhandler of axdriver");
-                            let _ = crate::drivers::get_network_driver().unwrap().lock().ack_interrupt();
+                            // debug!("network_irqhandler of axdriver");
+                            inner_network_irq_handler()
                         }
                         irq_install_handler(irq_id.unwrap(), network_irqhandler as usize, "virtio-net");
                     }
@@ -153,6 +152,23 @@ impl AllDevices {
             // #[cfg(feature = "display")]
             // AxDeviceEnum::Display(dev) => self.display.push(dev),
         }
+    }
+}
+
+fn inner_network_irq_handler() {
+    let has_packet = if let Some(driver) = crate::drivers::get_network_driver() {
+        driver.lock().ack_interrupt().unwrap_or_else(|e| {
+            warn!("Network irq handler, ack interrupt err {:?}!", e);
+            false
+        })
+    } else {
+        warn!("Network irq handler, driver not found!");
+        false
+    };
+
+    if has_packet {
+        crate::libs::net::network_poll();
+        crate::libs::thread::thread_yield();
     }
 }
 

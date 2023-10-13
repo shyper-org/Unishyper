@@ -12,7 +12,6 @@ use core::{
 };
 
 use crate::libs::thread::{current_thread_id, thread_wake_by_tid, Tid};
-#[cfg(not(feature = "axdriver"))]
 use crate::libs::thread::{thread_block_current_with_timeout, thread_yield};
 
 use crate::libs::synch::spinlock::Spinlock;
@@ -20,7 +19,6 @@ use crate::libs::error::ShyperError;
 
 static QUEUE: Spinlock<Vec<Runnable>> = Spinlock::new(Vec::new());
 
-#[cfg(not(feature = "axdriver"))]
 pub fn network_delay(timestamp: smoltcp::time::Instant) -> Option<Duration> {
     crate::libs::net::NIC
         .lock()
@@ -45,18 +43,10 @@ fn run_executor() {
 }
 
 fn executor_set_polling_mode(value: bool) {
-    #[cfg(not(feature = "axdriver"))]
-    {
-        crate::drivers::get_network_driver()
-            .unwrap()
-            .lock()
-            .set_polling_mode(value)
-    }
-
-    #[cfg(feature = "axdriver")]
-    {
-        let _ = value;
-    }
+    let _ = crate::drivers::get_network_driver()
+        .unwrap()
+        .lock()
+        .set_polling_mode(value);
 }
 
 /// Spawns a future on the executor.
@@ -119,7 +109,6 @@ where
     // Polling mode => no NIC interrupts => NIC thread should not run
     executor_set_polling_mode(true);
 
-    #[cfg(not(feature = "axdriver"))]
     let start = super::now();
 
     let thread_notify = Arc::new(ThreadNotify::new());
@@ -135,9 +124,6 @@ where
         // let now = now();
 
         if let Poll::Ready(t) = future.as_mut().poll(&mut cx) {
-            //
-            // Todo: figure out what is set_oneshot_timer.
-            //
             // if let Some(delay_millis) = network_delay(now()).map(|d| d.total_millis()) {
             //     debug!(
             //         "block_on() first poll start {} delay_millis {}",
@@ -153,59 +139,34 @@ where
             return Ok(t);
         }
 
-        // println!("block_on, Poll not Ready");
-
-        #[cfg(not(feature = "axdriver"))]
-        {
-            if let Some(duration) = _timeout {
-                if super::now() >= start + duration {
-                    if let Some(delay_millis) =
-                        network_delay(super::now()).map(|d| d.total_millis())
-                    {
-                        trace!(
-                            "block_on() timeout {} poll now {} delay_millis {}",
-                            duration.millis(),
-                            super::now(),
-                            delay_millis
-                        );
-                        thread_block_current_with_timeout(delay_millis as usize);
-                    }
-
-                    // allow interrupts => NIC thread is able to run
-                    executor_set_polling_mode(false);
-                    debug!("block on return err");
-                    return Err(ShyperError::BadState);
+        if let Some(duration) = _timeout {
+            if super::now() >= start + duration {
+                if let Some(delay_millis) = network_delay(super::now()).map(|d| d.total_millis()) {
+                    thread_block_current_with_timeout(delay_millis as usize);
                 }
+
+                // allow interrupts => NIC thread is able to run
+                executor_set_polling_mode(false);
+                debug!("block on return err");
+                return Err(ShyperError::BadState);
             }
+        }
 
-            // Return an advisory wait time for calling [poll] the next time.
-            let delay = network_delay(super::now()).map(|d| d.total_millis());
+        // Return an advisory wait time for calling [poll] the next time.
+        let delay = network_delay(super::now()).map(|d| d.total_millis());
 
-            // debug!("block_on, Poll not Ready, get delay {:?}", delay);
-
-            if delay.unwrap_or(10_000) > 100 {
-                let unparked = thread_notify.unparked.swap(false, Ordering::AcqRel);
-                // info!(
-                //     "block_on() unparked {} delay {:?}",
-                //     unparked, delay
-                // );
-                if !unparked {
-                    if delay.is_some() {
-                        trace!(
-                            "block_on() unparked {} delay {:?} now {} ms",
-                            unparked,
-                            delay,
-                            super::now().millis()
-                        );
-                        thread_block_current_with_timeout(delay.unwrap() as usize);
-                    }
-                    // allow interrupts => NIC thread is able to run
-                    executor_set_polling_mode(false);
-                    // switch to another task
-                    thread_yield();
-                    // Polling mode => no NIC interrupts => NIC thread should not run
-                    executor_set_polling_mode(true);
+        if delay.unwrap_or(10_000) > 100 {
+            let unparked = thread_notify.unparked.swap(false, Ordering::AcqRel);
+            if !unparked {
+                if delay.is_some() {
+                    thread_block_current_with_timeout(delay.unwrap() as usize);
                 }
+                // allow interrupts => NIC thread is able to run
+                executor_set_polling_mode(false);
+                // switch to another task
+                thread_yield();
+                // Polling mode => no NIC interrupts => NIC thread should not run
+                executor_set_polling_mode(true);
             }
         }
     }

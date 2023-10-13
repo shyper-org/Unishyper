@@ -44,11 +44,17 @@ pub fn kallocate(size: usize) -> Option<VAddr> {
     };
     let addr = frames.start_address();
     let kaddr = VAddr::new_canonical(addr.value().pa2kva());
+    // debug!(
+    //     "kernel allocate [{}-{}] size {:#x}",
+    //     kaddr,
+    //     kaddr + size,
+    //     size,
+    // );
     // Zero allocated memory space.
     unsafe {
         memset(kaddr.value() as *mut u8, 0, size);
     }
-    // debug!("kernel allocate size {:x} {} to => {}", size, addr, kaddr);
+
     GLOBAL_MM_MAP.lock().insert(kaddr, frames);
     Some(kaddr)
 }

@@ -7,8 +7,7 @@ use futures_lite::future;
 use smoltcp::iface;
 use smoltcp::socket::tcp::{self, ConnectError};
 use smoltcp::time::Duration;
-use smoltcp::wire::IpAddress;
-use smoltcp::wire::{IpEndpoint};
+use smoltcp::wire::{IpAddress, IpEndpoint};
 use no_std_net::SocketAddr;
 
 use crate::libs::error::ShyperError;

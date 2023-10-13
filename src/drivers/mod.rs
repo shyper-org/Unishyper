@@ -20,6 +20,7 @@ pub use arch::{Interrupt, InterruptController};
 
 #[cfg(any(
     feature = "tx2",
+    feature = "rk3588",
     feature = "shyper",
     all(target_arch = "riscv64", feature = "qemu")
 ))]

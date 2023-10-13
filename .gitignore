@@ -8,4 +8,5 @@ disk.qcow2
 *.asm
 *.bin
 *.elf
+*.ubi
 /esp

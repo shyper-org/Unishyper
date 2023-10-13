@@ -14,7 +14,7 @@ const LOCAL_PORT: u16 = 5555;
 fn receive_loop() -> io::Result<()> {
     let addr = (LOCAL_IP, LOCAL_PORT)
         .to_socket_addrs()
-        .map_err(|_| "ToSocketAddrError")?
+        .expect("failed in to_socket_addrs ")
         .next()
         .unwrap();
     let socket = UdpSocket::bind(addr)?;

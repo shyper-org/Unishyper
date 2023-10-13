@@ -127,7 +127,7 @@ impl TryFrom<i32> for ShyperError {
 
 impl From<ShyperError> for &str {
     #[inline]
-    fn from(value: ShyperError) -> &'static str{
+    fn from(value: ShyperError) -> &'static str {
         value.as_str()
     }
 }

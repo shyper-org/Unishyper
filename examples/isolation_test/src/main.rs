@@ -195,7 +195,7 @@ fn test_heap_var_rw() {
 
 // fn test_kernel_var_rw() {
 
-//     let kernel_var = 
+//     let kernel_var =
 
 //     let mut joinhandles = Vec::new();
 
@@ -232,7 +232,6 @@ fn test_heap_var_rw() {
 //         });
 //     }
 // }
-
 
 #[no_mangle]
 fn main() {

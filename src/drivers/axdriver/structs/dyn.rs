@@ -57,7 +57,7 @@ impl<D> AxDeviceContainer<D> {
             Some(self.0.remove(0))
         }
     }
-    
+
     /// Constructs the container from one device.
     #[allow(dead_code)]
     pub fn from_one(dev: D) -> Self {

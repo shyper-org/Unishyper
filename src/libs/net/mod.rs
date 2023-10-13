@@ -1,8 +1,8 @@
+mod addr;
 /// Network stack implement on smoltcp
 #[cfg_attr(feature = "axdriver", path = "axdevice.rs")]
 mod device;
 mod executor;
-mod addr;
 mod interface;
 
 // tcp api
@@ -28,6 +28,4 @@ pub(crate) type SmoltcpSocketHandle = smoltcp::iface::SocketHandle;
 #[derive(Debug, Clone, Copy)]
 pub struct Handle(pub usize);
 
-
 pub(crate) use smoltcp::wire::IpAddress;
-

@@ -716,7 +716,6 @@ impl VirtioNetDriver {
     /// See Virtio specification v1.1. - 3.1.1.
     ///                      and v1.1. - 5.1.5
     pub fn init_dev(&mut self) -> Result<(), VirtioNetError> {
-
         debug!("init dev  com cfg at {:#p}", &self.com_cfg);
         // Reset
         self.com_cfg.reset_dev();
@@ -767,7 +766,10 @@ impl VirtioNetDriver {
                         return Err(vnet_err);
                     }
                     VirtioNetError::IncompFeatsSet(drv_feats, dev_feats) => {
-                        debug!("IncompFeatsSet for virtio device {:x}. Features are: {:?}", self.dev_cfg.dev_id, &feats);
+                        debug!(
+                            "IncompFeatsSet for virtio device {:x}. Features are: {:?}",
+                            self.dev_cfg.dev_id, &feats
+                        );
                         // Create a new matching feature set for device and driver if the minimal set is met!
                         if (min_feat_set & dev_feats) != min_feat_set {
                             error!("Device features set, does not satisfy minimal features needed. Aborting!");
@@ -855,7 +857,9 @@ impl VirtioNetDriver {
         // features according to Virtio spec. v1.1 - 5.1.3.1.
         match FeatureSet::check_features(wanted_feats) {
             Ok(_) => {
-                trace!("Feature set wanted by network driver are in conformance with specification.")
+                trace!(
+                    "Feature set wanted by network driver are in conformance with specification."
+                )
             }
             Err(vnet_err) => return Err(vnet_err),
         }

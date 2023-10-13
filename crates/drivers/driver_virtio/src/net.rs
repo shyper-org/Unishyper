@@ -90,12 +90,12 @@ impl<H: Hal, T: Transport, const QS: usize> NetDriverOps for VirtIoNetDev<H, T, 
 
     #[inline]
     fn can_transmit(&self) -> bool {
-        !self.free_tx_bufs.is_empty() && self.inner.can_transmit()
+        !self.free_tx_bufs.is_empty() && self.inner.can_send()
     }
 
     #[inline]
     fn can_receive(&self) -> bool {
-        self.inner.can_receive()
+        self.inner.can_recv()
     }
 
     #[inline]
@@ -193,5 +193,13 @@ impl<H: Hal, T: Transport, const QS: usize> NetDriverOps for VirtIoNetDev<H, T, 
 
     fn ack_interrupt(&mut self) -> DevResult<bool> {
         Ok(self.inner.ack_interrupt())
+    }
+
+    fn set_polling_mode(&mut self, value: bool) -> DevResult {
+        if value {
+            Ok(self.inner.disable_interrupts())
+        } else {
+            Ok(self.inner.enable_interrupts())
+        }
     }
 }

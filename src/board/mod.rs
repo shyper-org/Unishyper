@@ -1,25 +1,31 @@
-cfg_if::cfg_if! {
-    if #[cfg(target_arch = "x86_64")] {
-        // Current X86_64 only support QEMU platform `qemu-system-x86_64`.
-        mod x86_64qemu;
-        pub use x86_64qemu::*;
-    } else if #[cfg(target_arch = "riscv64")] {
-        // Current RISCV only support QEMU platform `qemu-system-riscv64`.
-        mod riscv64_qemu;
-        pub use riscv64_qemu::*;
-        // Pending: maybe port to K210 in the future.
-    } else {
-        // By default, target architecture is aarch64.
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "tx2")] {
-                // Nvidia Tegra X2 platform.
-                mod aarch64_tx2;
-                pub use aarch64_tx2::*;
-            } else {
-                // QEMU platform `qemu-system-aarch64`.
-                mod aarch64_qemu;
-                pub use aarch64_qemu::*;
-            }
-        }
-    }
-}
+// QEMU platform `qemu-system-aarch64`.
+#[cfg_attr(
+    all(target_arch = "aarch64", feature = "qemu"),
+    path = "aarch64_qemu.rs"
+)]
+// Nvidia Tegra X2 platform.
+#[cfg_attr(all(target_arch = "aarch64", feature = "tx2"), path = "aarch64_tx2.rs")]
+// Shyper Hypervisor.
+#[cfg_attr(
+    all(target_arch = "aarch64", feature = "shyper"),
+    path = "aarch64_tx2.rs"
+)]
+#[cfg_attr(
+    all(target_arch = "aarch64", feature = "rk3588"),
+    path = "aarch64_tx2.rs"
+)]
+// QEMU platform `qemu-system-x86_64`.
+#[cfg_attr(all(target_arch = "x86_64", feature = "qemu"), path = "x86_64_qemu.rs")]
+// QEMU platform `qemu-system-riscv64`.
+#[cfg_attr(
+    all(target_arch = "riscv64", feature = "qemu"),
+    path = "riscv64_qemu.rs"
+)]
+// Kendryte K210.
+#[cfg_attr(
+    all(target_arch = "riscv64", feature = "k210"),
+    path = "riscv64_k210.rs"
+)]
+mod specific_board;
+
+pub use specific_board::*;

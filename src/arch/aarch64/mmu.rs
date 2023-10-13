@@ -30,8 +30,6 @@ fn block_entry(output_addr: usize, device: bool) -> PageDirectoryEntry {
     )
 }
 
-
-
 #[inline(always)]
 fn invalid_entry() -> PageDirectoryEntry {
     PageDirectoryEntry::from_pte(0)
@@ -41,6 +39,7 @@ fn invalid_entry() -> PageDirectoryEntry {
 #[repr(align(4096))]
 pub struct PageDirectory([PageDirectoryEntry; ENTRY_PER_PAGE]);
 
+#[allow(unused)]
 #[no_mangle]
 pub unsafe extern "C" fn populate_page_table(pt: &mut PageDirectory) {
     const ONE_GIGABYTE: usize = 0x4000_0000;
@@ -59,11 +58,6 @@ pub unsafe extern "C" fn populate_page_table(pt: &mut PageDirectory) {
     }
 
     // Populate normal range by 1GB directly.
-    // Normal range:        0x4000_0000..0xc000_0000
-    // -- Image range:      0x4000_8000..KERNEL_END
-    // -- Heap range:       KERNEL_END ..0x8000_0000
-    // -- ELF image range:  0x8000_0000..0x80a0_0000
-    // -- Paged range:      0x8000_0000..0xc000_0000
     for i in BOARD_NORMAL_MEMORY_RANGE.step_by(ONE_GIGABYTE) {
         pt.0[i / ONE_GIGABYTE] = block_entry(i, false);
     }

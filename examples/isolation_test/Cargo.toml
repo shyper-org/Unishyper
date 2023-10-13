@@ -11,7 +11,7 @@ path = "../../"
 default-features = false
 
 [dependencies]
-ring = { path = "../../../Rust_cryptography/ring"}
+ring = { git = "https://gitee.com/unishyper/ring"}
 data-encoding = {version = "2.4.0", default-features = false, features = ["alloc"]}
 
 [dependencies.zone_protected]

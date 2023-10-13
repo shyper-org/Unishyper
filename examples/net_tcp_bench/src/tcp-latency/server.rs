@@ -50,7 +50,7 @@ extern "C" fn latency_server(_arg: usize) {
 
     irq_disable();
     println!("Done exchanging stuff");
-    loop{
+    loop {
         irq_disable();
     }
 }

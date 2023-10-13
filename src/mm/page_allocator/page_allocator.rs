@@ -571,7 +571,9 @@ fn inner_allocate_pages(
 
     trace!(
         "inner_allocate_pages num_pages {:?} {:?} {:?}",
-        num_pages, requested_vaddr, requested_alignment
+        num_pages,
+        requested_vaddr,
+        requested_alignment
     );
     // The main logic of the allocator is to find an appropriate chunk that can satisfy the allocation request.
     // An appropriate chunk satisfies the following conditions:

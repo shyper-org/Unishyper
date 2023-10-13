@@ -10,7 +10,7 @@ path = "../../"
 default-features = false
 
 [dependencies]
-ring = { path = "../../../Rust_cryptography/ring"}
+ring = { git = "https://gitee.com/unishyper/ring"}
 # ring = { git = "https://gitee.com/unishyper/ring.git"}
 data-encoding = {version = "2.4.0", default-features = false, features = ["alloc"]}
 

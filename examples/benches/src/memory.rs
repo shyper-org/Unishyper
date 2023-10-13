@@ -554,7 +554,7 @@ fn memset_rust_zone_protected(n: usize) {
     );
 }
 
-fn bench_with_size(n :usize) {
+fn bench_with_size(n: usize) {
     memcpy_builtin(n);
     memcpy_builtin_zone_shared(n);
     memcpy_builtin_zone_protected(n);
@@ -580,5 +580,4 @@ fn main() {
     memset_rust(1048576);
 
     println!("memory test bench finished");
-
 }

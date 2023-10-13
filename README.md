@@ -13,10 +13,11 @@ Unishyper  now supports following platforms:
 | qemu    | **aarch64**  | QEMU/KVM (qemu-system-aarch64) |
 | shyper  | **aarch64**  |  [Shyper](https://gitee.com/openeuler/rust_shyper) Type-1 Hypervisor         |
 | tx2     | **aarch64**  | [NVIDIA TX2](https://developer.nvidia.com/embedded/jetson-tx2)                 |
+| rk3588 | **aarch64** | [ROC-RK3588S-PC](https://www.t-firefly.com/product/industry/rocrk3588spc)|
 | qemu    | **x86_64**   | QEMU/KVM (qemu-system-x86_64)  |
 | qemu    | **riscv64**  | QEMU/KVM (qemu-system-riscv64)|
-| ~~k210~~    | **riscv64**  | ~~[Kendryte K210](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html) on [Maix Dock(M1/M1W)](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html)~~ (upcoming)|
-| ~~raspi4~~    | **aarch64**  | ~~Raspberry Pi 4 Model B~~ (pending) |
+| k210    | **riscv64**  | [Kendryte K210](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html) on [Maix Dock(M1/M1W)](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html) |
+| ~~raspi4~~    | **aarch64**  | ~~Raspberry Pi 4 Model B~~ (upcoming) |
 
 
 ## Features
@@ -35,8 +36,12 @@ Unishyper  now supports following platforms:
 
 1. Nightly Rust (`nightly-2022-09-14` tested)
 2. `rust-src` component (use `make dependencies` to install)
-3. QEMU emulator version 5.0.0.
+3. QEMU emulator version 5.0.0
 4. mkfs from util-linux 2.31.1 (for making disk.img, see Makefile for details)
+5. [cargo-binutils](https://github.com/rust-embedded/cargo-binutils) for using `rust-objcopy` and `rust-objdump` tools
+6. [Rboot](https://github.com/hky1999/rboot.git) for bootloader on x86_64
+7. K210 `kflash` tool [kflash.py](https://github.com/kendryte/kflash.py) for [Maix Dock(M1/M1W)](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html) flashing.
+8. `mkimage` u-boot image tool
 
 ## Applications
 
@@ -44,15 +49,10 @@ The examples directory contains example demos.
 
 For build preparation:
 
-Install [cargo-binutils](https://github.com/rust-embedded/cargo-binutils) to use `rust-objcopy` and `rust-objdump` tools:
 
 ```bash
 cargo install cargo-binutils
-```
 
-[Rboot](https://github.com/hky1999/rboot.git) for bootloader on x86_64.
-
-```
 # See .gitmodules for details
 git submodule update --init --recursive
 ```
@@ -60,7 +60,7 @@ git submodule update --init --recursive
 use this lines to build and emulate:
 
 ```
-make ARCH=<arch> APP=<app_dir> APP_BIN=<app_bin> LOG=<log_level> run
+make ARCH=<arch> MACHINE=<platform> APP=<app_dir> APP_BIN=<app_bin> LOG=<log_level> run
 
 # for examples/hello_world
 ARCH=x86_64 APP=hello_world make run

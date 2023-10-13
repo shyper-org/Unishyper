@@ -83,7 +83,7 @@ impl core::fmt::Display for X86_64TrapContextFrame {
     }
 }
 
-impl ContextFrameTrait for X86_64TrapContextFrame { 
+impl ContextFrameTrait for X86_64TrapContextFrame {
     fn init(&mut self, _tid: usize) {
         self.gpr.rflags = 0x1202;
     }

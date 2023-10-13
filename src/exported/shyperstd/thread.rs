@@ -50,7 +50,7 @@ impl Builder {
     {
         let Builder { name, stack_size } = self;
 
-        let stack_size = stack_size.unwrap_or(crate::arch::STACK_SIZE);
+        let stack_size = stack_size.unwrap_or(crate::mm::config::STACK_SIZE);
 
         let my_packet = Arc::new(Packet {
             result: UnsafeCell::new(None),

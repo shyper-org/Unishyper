@@ -93,6 +93,8 @@ pub use mm::heap::Global;
 pub use arch::page_table;
 pub use panic::random_panic;
 
+pub(crate) const MASTER_CPU_ID: usize = 0;
+
 // pub static mut START_CYCLE: u64 = 0;
 
 mod built_info {
@@ -118,25 +120,19 @@ fn print_built_info() {
 
 #[no_mangle]
 pub extern "C" fn loader_main(core_id: usize) {
-    // Init output.
-    //let saki=page_table::page_table().lock();
-    if core_id == 0 {
-        // Init serial output.
+    arch::Arch::exception_init();
+
+    if core_id == MASTER_CPU_ID {
         #[cfg(feature = "serial")]
         drivers::uart::init();
         logger::init();
         print_built_info();
-    }
 
-    arch::Arch::exception_init();
-
-    if core_id == 0 {
         libs::timer::init();
-        mm::heap::init();
-        mm::allocator_init();
-        // After Page allocator and Frame allocator init finished, init user page table.
+
+        mm::init();
         arch::Arch::page_table_init();
-        // debug!("page table init ok");
+        debug!("page table init ok");
 
         #[cfg(feature = "smp")]
         board::launch_other_cores();
@@ -156,13 +152,10 @@ pub extern "C" fn loader_main(core_id: usize) {
         
     // }
     board::init_per_core();
-    println!("core_id iis {}",core_id);
-    info!("per core init ok on core [{}]", core_id);
-    
     // // Init schedule for per core.
     libs::scheduler::init();
-    
-    if core_id == 0 {
+
+    if core_id == MASTER_CPU_ID {
         board::init();
         
         #[cfg(feature = "net")]
@@ -174,21 +167,28 @@ pub extern "C" fn loader_main(core_id: usize) {
         zone::zone_init();
         
         info!("board init ok");
+        #[cfg(not(feature = "std"))]
         extern "Rust" {
             fn main(arg: usize) -> !;
         }
-        let start = if cfg!(feature = "std") {
-            extern "C" {
-                fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
-            }
-            runtime_entry as usize
-        } else {
+        #[cfg(feature = "std")]
+        extern "C" {
+            fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
+        }
+        let start;
+        #[cfg(not(feature = "std"))]
+        {
             fn main_wrapper(main: extern "C" fn(usize), arg: usize) -> ! {
                 main(arg);
                 exit()
             }
-            main_wrapper as usize
-        };
+            start = main_wrapper as usize
+        }
+        #[cfg(feature = "std")]
+        {
+            start = runtime_entry as usize;
+        }
+
         // Init user first thread on core 0 by default.
         let t = libs::thread::thread_alloc(None, Some(core_id), start, main as usize, 123, true);
         libs::thread::thread_wake(&t);

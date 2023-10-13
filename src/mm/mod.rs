@@ -13,7 +13,7 @@ pub use self::page_allocator::Page;
 pub use self::frame_allocator::Frame;
 
 // Only run on core 0.
-pub fn allocator_init() {
+fn allocator_init() {
     match frame_allocator::init() {
         Ok(_) => {
             debug!("frame allocator init ok");
@@ -32,6 +32,11 @@ pub fn allocator_init() {
             warn!("page allocator init failed, error {}", e);
         }
     }
+}
+
+pub fn init() {
+    heap::init();
+    allocator_init();
 }
 
 #[cfg(feature = "terminal")]

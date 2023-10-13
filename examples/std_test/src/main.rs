@@ -6,6 +6,6 @@ use unishyper as _;
 mod test;
 
 fn main() {
-	println!("hello world!");
-	test::run_tests();
+    println!("hello world!");
+    test::run_tests();
 }

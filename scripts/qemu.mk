@@ -19,7 +19,7 @@ QEMU_CMD := ${QEMU_CMD} -cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsave
 endif
 endif
 
-QEMU_CMD :=  ${QEMU_CMD} -smp 2 -m 128M
+QEMU_CMD :=  ${QEMU_CMD} -smp 1 -m 2048
 
 ifeq ($(ARCH), aarch64)
 QEMU_CMD := ${QEMU_CMD} -device loader,file=${OUT_ELF},addr=0x80000000,force-raw=on -kernel ${OUT_BIN}

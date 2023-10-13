@@ -4,7 +4,7 @@ PROFILE ?= release
 
 TOOLCHAIN ?=
 
-LOG ?= debug
+LOG ?= info
 
 BUS ?= mmio
 

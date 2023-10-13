@@ -242,7 +242,6 @@ impl<T: ?Sized> SpinlockIrqSave<T> {
         let backoff = Backoff::new();
         let ticket = self.queue.fetch_add(1, Ordering::Relaxed) + 1;
 
-        
         while self.dequeue.load(Ordering::Acquire) != ticket {
             backoff.spin();
         }

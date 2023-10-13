@@ -16,7 +16,7 @@ use alloc::string::String;
 pub fn main() {
     let heart = vec![240, 159, 146, 151];
     println!(
-        "Hello from Unishyper1 {}",
+        "Hello from Unishyper {}",
         String::from_utf8(heart).unwrap_or_default()
     );
 }

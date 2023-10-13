@@ -10,16 +10,10 @@ pub fn barrier() {
     #[cfg(feature = "smp")]
     {
         use crate::board::BOARD_CORE_NUMBER;
-        let current_value = COUNT.load(Ordering::Acquire);
-        //println!("1.COUNT 的当前值为: {}", current_value);
         let count = COUNT.fetch_add(1, Ordering::AcqRel);
-        let current_value = COUNT.load(Ordering::Acquire);
-        //println!("2.COUNT 的当前值为: {}", current_value);
         let next_count = round_up(count + 1, BOARD_CORE_NUMBER);
-        //println!("next_count is {}",next_count);
         loop {
             if COUNT.load(Ordering::Acquire) >= next_count {
-                //println!("saki.COUNT 的当前值为: {}\nnext_count 的当前值为: {}", current_value,next_count);
                 break;
             }
         }

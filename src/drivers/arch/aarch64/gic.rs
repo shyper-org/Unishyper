@@ -190,11 +190,9 @@ impl InterruptControllerTrait for InterruptController {
             gicd.init();
         }
         crate::util::barrier();
-
         let gicc = &GICC;
         gicd.init_per_core();
         gicc.init();
-        
     }
 
     fn enable(int: Interrupt) {

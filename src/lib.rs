@@ -91,7 +91,6 @@ pub use exported::*;
 pub use arch::irq::disable as irq_disable;
 pub use mm::heap::Global;
 pub use arch::page_table;
-pub use arch::page_table;
 pub use panic::random_panic;
 
 pub(crate) const MASTER_CPU_ID: usize = 0;
@@ -146,16 +145,13 @@ pub extern "C" fn loader_main(core_id: usize) {
     if core_id == MASTER_CPU_ID {
         board::init();
         
-        
         #[cfg(feature = "net")]
         libs::net::init();
         #[cfg(feature = "fs")]
         libs::fs::init();
         
-        
         // #[cfg(feature = "zone")]
         zone::zone_init();
-        
         
         info!("board init ok");
         #[cfg(not(feature = "std"))]
@@ -190,7 +186,6 @@ pub extern "C" fn loader_main(core_id: usize) {
         #[cfg(feature = "terminal")]
         libs::terminal::init();
     }
-    
     
     // Enter first thread.
     // On core 0, this should be user's main thread.

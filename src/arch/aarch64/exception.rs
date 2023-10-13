@@ -41,10 +41,7 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
     let core = crate::libs::cpu::cpu();
     core.set_current_sp(ctx as usize);
 
-    #[cfg(not(feature = "gicv3"))]
     use crate::drivers::gic::INT_TIMER;
-    #[cfg(feature = "gicv3")]
-    use crate::drivers::gicv3::INT_TIMER;
     match irq {
         Some(INT_TIMER) => {
             crate::libs::timer::interrupt();

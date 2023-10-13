@@ -1,0 +1,38 @@
+[package]
+name = "user"
+version = "0.1.0"
+edition = "2021"
+authors = ["hukeyang <hky1999@buaa.edu.cn>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.unishyper]
+path = "../../"
+default-features = false
+
+[features]
+default = ["qemu"]
+qemu = [
+    # "unishyper/smp",
+    # "unishyper/scheduler-percore",
+    "unishyper/qemu",
+    "unishyper/serial",
+    # "unishyper/zone",
+    # "unishyper/unwind",
+    # "unishyper/terminal",
+    # "unishyper/fs",
+    ]
+tx2 = [
+    "unishyper/tx2",
+    "unishyper/serial",
+    # "unishyper/terminal",
+    ]
+shyper = [
+    # "unishyper/smp",
+    "unishyper/shyper",
+    "unishyper/serial",
+    # "unishyper/terminal",
+    # "unishyper/fs",
+    # "unishyper/unilib",
+    # "unishyper/fat",
+    ]

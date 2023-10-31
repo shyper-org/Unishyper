@@ -154,7 +154,6 @@ pub extern "C" fn loader_main(core_id: usize) {
         zone::zone_init();
 
         info!("board init ok");
-        #[cfg(not(feature = "std"))]
         extern "Rust" {
             fn main(arg: usize) -> !;
         }
@@ -178,7 +177,8 @@ pub extern "C" fn loader_main(core_id: usize) {
 
         // Init user first thread on core 0 by default.
         let t = libs::thread::thread_alloc(None, Some(core_id), start, main as usize, 123, true);
-        libs::thread::thread_wake(&t);
+        // libs::thread::thread_wake(&t);
+        t.set_status(Status::Running);
         t.set_in_yield_context();
         arch::Arch::set_thread_id(t.id().as_u64());
         arch::Arch::set_tls_ptr(t.get_tls_ptr() as u64);
@@ -190,7 +190,7 @@ pub extern "C" fn loader_main(core_id: usize) {
     // Enter first thread.
     // On core 0, this should be user's main thread.
     // On other cores, this may be idle thread.
-    let t = libs::cpu::cpu().get_next_thread();
+    let t = libs::cpu::cpu().running_thread().unwrap();
 
     let sp = t.last_stack_pointer();
     debug!("entering first thread on sp {:#x}...", sp);

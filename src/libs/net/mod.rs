@@ -2,10 +2,13 @@ mod addr;
 /// Network stack implement on smoltcp
 #[cfg_attr(feature = "axdriver", path = "axdevice.rs")]
 mod device;
-mod executor;
 mod interface;
 
+#[cfg(feature = "async-net")]
+mod executor;
+
 // tcp api
+#[cfg_attr(feature = "async-net", path = "async_tcp.rs")]
 pub mod tcp;
 // pub(crate) use tcp::*;
 
@@ -13,6 +16,7 @@ pub mod tcp;
 mod udp;
 pub(crate) use udp::AsyncUdpSocket as UdpSocket;
 
+#[cfg_attr(feature = "async-net", path = "async_api.rs")]
 pub mod api;
 
 /// Default keep alive interval in milliseconds

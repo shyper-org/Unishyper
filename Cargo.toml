@@ -168,12 +168,15 @@ unilib = []
 
 ## Network stack
 net = [
-  "dep:async-task",
   "dep:futures-lite",
   "dep:smoltcp",
   "dep:crossbeam-queue",
   "dep:ioslice",
   "dep:no-std-net",
+]
+async-net = [
+	"net",
+	"dep:async-task",
 ]
 axdriver = [
   "dep:driver_virtio",

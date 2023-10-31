@@ -18,7 +18,19 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 extern crate alloc;
 
 extern "C" fn latency_server(_arg: usize) {
-    println!("Server for latency test running, listening for connection on 0.0.0.0:4444");
+    let n_bytes = if let Some(k) = option_env!("K") {
+        k.parse::<usize>().unwrap()
+    } else {
+        1
+    };
+
+    let n_rounds = if let Some(r) = option_env!("R") {
+        r.parse::<usize>().unwrap()
+    } else {
+        1000
+    };
+
+    println!("Server for latency test running {n_bytes} bytes each for {n_rounds} rounds, listening for connection on 0.0.0.0:4444");
 
     irq_disable();
 
@@ -35,8 +47,6 @@ extern "C" fn latency_server(_arg: usize) {
         socket_addr
     );
 
-    let n_bytes = 2048;
-    let n_rounds = 5;
     let mut buf = vec![0; n_bytes];
 
     stream

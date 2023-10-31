@@ -3,22 +3,25 @@ use core::str::FromStr;
 use core::mem::ManuallyDrop;
 use alloc::boxed::Box;
 
+use smoltcp::time::Duration;
+
 use crate::libs::error::ShyperError;
 
 use super::{Handle, IpAddress};
-use super::tcp::TcpSocket;
+use super::tcp::AsyncTcpSocket;
 use super::tcp::Shutdown;
 use super::addr::ipaddr_to_ipaddress;
+use super::executor::block_on;
 
 /// Opens a TCP connection to a remote host.
 #[inline(always)]
 pub fn tcp_stream_connect(
     ip: &[u8],
     port: u16,
-    _timeout: Option<u64>,
+    timeout: Option<u64>,
 ) -> Result<Handle, ShyperError> {
     let local_endpoint = super::interface::get_ephemeral_port()?;
-    let socket = Box::new(TcpSocket::new(local_endpoint));
+    let socket = Box::new(AsyncTcpSocket::new(local_endpoint));
     let address = IpAddress::from_str(str::from_utf8(ip).map_err(|_| ShyperError::InvalidInput)?)
         .map_err(|_| ShyperError::InvalidInput)?;
     debug!(
@@ -27,7 +30,10 @@ pub fn tcp_stream_connect(
         address,
         port
     );
-	socket.connect(address, port, local_endpoint)?;
+    block_on(
+        socket.connect(address, port, local_endpoint),
+        timeout.map(Duration::from_millis),
+    )??;
     debug!(
         "tcp_stream_connect {} to {}:{} success local_endpoint {}",
         crate::libs::thread::current_thread_id(),
@@ -40,7 +46,7 @@ pub fn tcp_stream_connect(
 
 #[inline(always)]
 pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
+    let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
     // let peer_addr = tcp_stream_peer_addr(handle)?;
     // debug!(
     //     "tcp_stream_read on Thread {} from {}:{}",
@@ -48,12 +54,12 @@ pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, Shype
     //     peer_addr.0,
     //     peer_addr.1
     // );
-    socket.read(buffer)
+    block_on(socket.read(buffer), None)?
 }
 
 #[inline(always)]
 pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
+    let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
     // let peer_addr = tcp_stream_peer_addr(handle)?;
     // let s = match str::from_utf8(buffer) {
     //     Ok(v) => v,
@@ -68,7 +74,7 @@ pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ShyperEr
     //     // buffer,
     //     s
     // );
-    socket.write(buffer)
+    block_on(socket.write(buffer), None)?
 }
 
 /// Close a TCP connection
@@ -81,8 +87,8 @@ pub fn tcp_stream_close(handle: Handle) -> Result<(), ShyperError> {
         peer_addr.0,
         peer_addr.1
     );
-    let socket = Box::<TcpSocket>::from(handle);
-    socket.close()
+    let socket = Box::<AsyncTcpSocket>::from(handle);
+    block_on(socket.close(), None)?
 }
 
 #[inline(always)]
@@ -100,7 +106,7 @@ pub fn tcp_stream_shutdown(_handle: Handle, _how: Shutdown) -> Result<(), Shyper
 
 #[inline(always)]
 pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
+    let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
 
     let peer_addr = socket.peer_addr().unwrap();
     let (addr, port) = (ipaddr_to_ipaddress(peer_addr.ip()), peer_addr.port());
@@ -110,7 +116,7 @@ pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperEr
 
 #[inline(always)]
 pub fn tcp_stream_socket_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
+    let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
 
     let local_addr = socket.local_addr().unwrap();
     let (addr, port) = (ipaddr_to_ipaddress(local_addr.ip()), local_addr.port());
@@ -142,8 +148,8 @@ pub fn tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ShyperError> {
 #[inline(always)]
 pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ShyperError> {
     let local_endpoint = port;
-    let socket = Box::new(TcpSocket::new(local_endpoint));
-   	socket.accept()?;
+    let socket = Box::new(AsyncTcpSocket::new(local_endpoint));
+    block_on(socket.accept(), None)??;
 
     debug!(
         "tcp_listener_accept on Thread {} success on ip {:?}, local_endpoint {}",
@@ -166,13 +172,13 @@ pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), Shyper
 /// thereby avoiding the frequent sending of small packets.
 #[inline(always)]
 pub fn tcp_stream_set_no_delay(handle: Handle, mode: bool) -> Result<(), ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
+    let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
     socket.set_no_delay(mode)
 }
 
 #[inline(always)]
 pub fn tcp_stream_no_delay(handle: Handle) -> Result<bool, ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
+    let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
     socket.no_delay()
 }
 
@@ -180,7 +186,7 @@ pub fn tcp_stream_no_delay(handle: Handle) -> Result<bool, ShyperError> {
 pub fn tcp_stream_set_nonblocking(handle: Handle, mode: bool) -> Result<(), ShyperError> {
     // non-blocking mode is currently not support
     // => return only an error, if `mode` is defined as `true`
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
+    let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
     socket.set_nonblocking(mode)
 }
 

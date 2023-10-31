@@ -91,8 +91,6 @@ debug: build
 gdb:
 	$(GDB) $(OUT_ELF) \
 	  -ex 'target remote localhost:1234' \
-	  -ex 'b _start' \
-	  -ex 'b _pop_context_first' \
 	  -ex 'disp /16i $$pc' \
 	  -ex 'set print asm-demangle on' \
 

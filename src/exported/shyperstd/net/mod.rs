@@ -15,7 +15,7 @@
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 
 pub use no_std_net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-pub use tcp::{TcpListener, TcpStream};
+pub use tcp::{TcpListener, TcpStream, Shutdown};
 pub use udp::UdpSocket;
 
 mod tcp;

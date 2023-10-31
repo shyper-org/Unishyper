@@ -11,7 +11,6 @@ pub fn interrupt() {
     // debug!("timer interrupt");
     crate::drivers::timer::next();
     crate::libs::thread::handle_blocked_threads();
-    crate::libs::thread::handle_exit_threads();
     // crate::libs::thread::thread_yield();
 }
 

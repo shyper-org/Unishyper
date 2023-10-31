@@ -9,7 +9,7 @@ use crate::exported::shyperstd::io;
 use crate::libs::error::ShyperError;
 use crate::libs::net::{api, Handle, IpAddress::Ipv4, IpAddress::Ipv6};
 
-use crate::libs::net::tcp::Shutdown;
+pub use crate::libs::net::tcp::Shutdown;
 
 #[derive(Debug, Clone)]
 pub struct Socket(Handle);

@@ -1,7 +1,9 @@
+use core::task::Poll;
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use alloc::boxed::Box;
 
+use futures_lite::future;
 use smoltcp::iface;
 use smoltcp::socket::tcp::{self, ConnectError};
 use smoltcp::time::Duration;
@@ -10,12 +12,12 @@ use no_std_net::SocketAddr;
 
 use crate::libs::error::ShyperError;
 use crate::libs::net::addr::*;
-use super::{now, network_poll};
+use super::now;
 use super::SmoltcpSocketHandle;
 use super::Handle;
 
 #[derive(Debug)]
-pub struct TcpSocket {
+pub struct AsyncTcpSocket {
     handle: SmoltcpSocketHandle,
     port: AtomicU16,
     local_addr: UnsafeCell<IpEndpoint>,
@@ -25,21 +27,21 @@ pub struct TcpSocket {
 
 /// Todo: This interface seems awkward.
 /// We need to find a new way to handle the relationship between `AsyncTcpSocket` and `Handle`.
-impl From<Handle> for Box<TcpSocket> {
+impl From<Handle> for Box<AsyncTcpSocket> {
     fn from(handle: Handle) -> Self {
         let ptr = handle.0;
-        unsafe { Box::from_raw(ptr as *mut TcpSocket) }
+        unsafe { Box::from_raw(ptr as *mut AsyncTcpSocket) }
     }
 }
 
-impl Drop for TcpSocket {
+impl Drop for AsyncTcpSocket {
     fn drop(&mut self) {
-        debug!("TcpSocket drop");
+        debug!("AsyncTcpSocket drop");
         // self.close()
     }
 }
 
-impl TcpSocket {
+impl AsyncTcpSocket {
     pub fn new(port: u16) -> Self {
         let handle = super::NIC
             .lock()
@@ -126,25 +128,7 @@ impl TcpSocket {
         res
     }
 
-    fn block_on<F, T>(&self, mut f: F) -> Result<T, ShyperError>
-    where
-        F: FnMut() -> Result<T, ShyperError>,
-    {
-        if self.is_nonblocking() {
-            f()
-        } else {
-            loop {
-                network_poll();
-                match f() {
-                    Ok(t) => return Ok(t),
-                    Err(ShyperError::WouldBlock) => crate::libs::thread::thread_yield(),
-                    Err(e) => return Err(e),
-                }
-            }
-        }
-    }
-
-    pub fn connect(
+    pub async fn connect(
         &self,
         address: IpAddress,
         port: u16,
@@ -177,51 +161,53 @@ impl TcpSocket {
                 })
         })?;
 
-        // Here our state must be `CONNECTING`, and only one thread can run here.
-        if self.is_nonblocking() {
-            Err(ShyperError::WouldBlock)
-        } else {
-            self.block_on(|| {
-                self.with(|socket| match socket.state() {
-                    tcp::State::Closed | tcp::State::TimeWait => Err(ShyperError::BadAddress),
-                    tcp::State::Listen => Err(ShyperError::BadState),
-                    tcp::State::SynSent | tcp::State::SynReceived => Err(ShyperError::WouldBlock),
-                    _ => {
-                        unsafe {
-                            self.local_addr
-                                .get()
-                                .write(socket.local_endpoint().unwrap());
-                            self.peer_addr
-                                .get()
-                                .write(socket.remote_endpoint().unwrap());
-                        }
-
-                        Ok(self.handle)
+        future::poll_fn(|cx| {
+            self.with(|socket| match socket.state() {
+                tcp::State::Closed | tcp::State::TimeWait => {
+                    Poll::Ready(Err(ShyperError::BadAddress))
+                }
+                tcp::State::Listen => Poll::Ready(Err(ShyperError::BadState)),
+                tcp::State::SynSent | tcp::State::SynReceived => {
+                    socket.register_send_waker(cx.waker());
+                    Poll::Pending
+                }
+                _ => Poll::Ready({
+                    unsafe {
+                        self.local_addr
+                            .get()
+                            .write(socket.local_endpoint().unwrap());
+                        self.peer_addr
+                            .get()
+                            .write(socket.remote_endpoint().unwrap());
                     }
-                })
+
+                    Ok(self.handle)
+                }),
             })
-        }
+        })
+        .await
     }
 
-    pub fn accept(&self) -> Result<(), ShyperError> {
-        self.block_on(|| {
+    pub async fn accept(&self) -> Result<(), ShyperError> {
+        future::poll_fn(|cx| {
             self.with(|socket| match socket.state() {
                 tcp::State::Closed => {
                     let _ = socket.listen(self.port.load(Ordering::Acquire));
-                    Ok(())
+                    Poll::Ready(())
                 }
                 tcp::State::Listen => {
                     debug!("Socket accept success!!");
-                    Ok(())
+                    Poll::Ready(())
                 }
                 _ => {
-                    // socket.register_recv_waker(cx.waker());
-                    Ok(())
+                    socket.register_recv_waker(cx.waker());
+                    Poll::Pending
                 }
             })
-        })?;
+        })
+        .await;
 
-        self.block_on(|| {
+        future::poll_fn(|cx| {
             self.with(|socket| {
                 if socket.is_active() {
                     debug!("Socket is_active state {}", socket.state());
@@ -233,18 +219,22 @@ impl TcpSocket {
                             .get()
                             .write(socket.remote_endpoint().unwrap());
                     }
-                    Ok(())
+                    Poll::Ready(Ok(()))
                 } else {
                     match socket.state() {
                         tcp::State::Closed
                         | tcp::State::Closing
                         | tcp::State::FinWait1
-                        | tcp::State::FinWait2 => Err(ShyperError::Io),
-                        _ => Err(ShyperError::WouldBlock),
+                        | tcp::State::FinWait2 => Poll::Ready(Err(ShyperError::Io)),
+                        _ => {
+                            socket.register_recv_waker(cx.waker());
+                            Poll::Pending
+                        }
                     }
                 }
             })
-        })?;
+        })
+        .await?;
 
         let mut guard = super::NIC.lock();
         let nic = guard.as_nic_mut()?;
@@ -257,13 +247,14 @@ impl TcpSocket {
         Ok(())
     }
 
-    pub fn read(&self, buffer: &mut [u8]) -> Result<usize, ShyperError> {
-        self.block_on(|| {
+    pub async fn read(&self, buffer: &mut [u8]) -> Result<usize, ShyperError> {
+        future::poll_fn(|cx| {
             self.with(|socket| {
                 if !socket.is_active() {
                     warn!("TcpSocket read() socket is not actived");
-                    Err(ShyperError::ConnectionRefused)
+                    Poll::Ready(Err(ShyperError::ConnectionRefused))
                 } else if socket.can_recv() {
+                    Poll::Ready(
                         socket
                             .recv(|data| {
                                 let len = core::cmp::min(buffer.len(), data.len());
@@ -272,39 +263,43 @@ impl TcpSocket {
                             })
                             .map_err(|e| {
                                 warn!("TcpSocket read() error on {}", e);
-                                ShyperError::WouldBlock
-                            })
+                                ShyperError::BadState
+                            }),
+                    )
                 } else {
-                    // socket.register_recv_waker(cx.waker());
-					Err(ShyperError::WouldBlock)
+                    socket.register_recv_waker(cx.waker());
+                    Poll::Pending
                 }
             })
         })
+        .await
     }
 
-    pub fn write(&self, buffer: &[u8]) -> Result<usize, ShyperError> {
+    pub async fn write(&self, buffer: &[u8]) -> Result<usize, ShyperError> {
         let mut pos: usize = 0;
 
         while pos < buffer.len() {
-            let n = self.block_on(|| {
+            let n = future::poll_fn(|cx| {
                 self.with(|socket| {
                     if !socket.is_active() {
                         warn!("TcpSocket write() socket is not actived");
-                        Err(ShyperError::ConnectionRefused)
+                        Poll::Ready(Err(ShyperError::ConnectionRefused))
                     } else if socket.can_send() {
-                        socket.send_slice(&buffer[pos..]).map_err(|e| {
+                        Poll::Ready(socket.send_slice(&buffer[pos..]).map_err(|e| {
                             warn!("TcpSocket write() error on {}", e);
                             ShyperError::BadState
-                        })
+                        }))
                     } else if pos > 0 {
                         // we already send some data => return 0 as signal to stop the
                         // async write
-                        Ok(0)
+                        Poll::Ready(Ok(0))
                     } else {
-                        Err(ShyperError::WouldBlock)
+                        socket.register_send_waker(cx.waker());
+                        Poll::Pending
                     }
                 })
-            })?;
+            })
+            .await?;
 
             if n == 0 {
                 return Ok(pos);
@@ -316,39 +311,41 @@ impl TcpSocket {
         Ok(pos)
     }
 
-    pub fn close(&self) -> Result<(), ShyperError> {
-        self.block_on(|| {
+    pub async fn close(&self) -> Result<(), ShyperError> {
+        future::poll_fn(|cx| {
             self.with(|socket| match socket.state() {
                 tcp::State::FinWait1
                 | tcp::State::FinWait2
                 | tcp::State::Closed
                 | tcp::State::Closing
-                | tcp::State::TimeWait => Err(ShyperError::BadState),
+                | tcp::State::TimeWait => Poll::Ready(Err(ShyperError::BadState)),
                 _ => {
                     if socket.send_queue() > 0 {
-                        // socket.register_send_waker(cx.waker());
-                        Err(ShyperError::WouldBlock)
+                        socket.register_send_waker(cx.waker());
+                        Poll::Pending
                     } else {
                         socket.close();
-                        Ok(())
+                        Poll::Ready(Ok(()))
                     }
                 }
             })
-        })?;
+        })
+        .await?;
 
-        self.block_on(|| {
+        future::poll_fn(|cx| {
             self.with(|socket| match socket.state() {
                 tcp::State::FinWait1
                 | tcp::State::FinWait2
                 | tcp::State::Closed
                 | tcp::State::Closing
-                | tcp::State::TimeWait => Ok(()),
+                | tcp::State::TimeWait => Poll::Ready(Ok(())),
                 _ => {
-                    // socket.register_send_waker(cx.waker());
-                    Err(ShyperError::WouldBlock)
+                    socket.register_send_waker(cx.waker());
+                    Poll::Pending
                 }
             })
         })
+        .await
     }
 }
 

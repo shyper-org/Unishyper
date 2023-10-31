@@ -48,13 +48,13 @@ fn http_server(mut stream: TcpStream) -> io::Result<()> {
     let mut buf = [0u8; 1024];
     stream.read(&mut buf)?;
 
-    println!(
-        "http_server get {}",
-        match core::str::from_utf8(&buf) {
-            Ok(v) => v,
-            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-        }
-    );
+    // println!(
+    //     "http_server get {}",
+    //     match core::str::from_utf8(&buf) {
+    //         Ok(v) => v,
+    //         Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    //     }
+    // );
 
     let reponse = alloc::format!(header!(), CONTENT.len(), CONTENT);
     stream.write_all(reponse.as_bytes())?;
@@ -66,20 +66,20 @@ fn accept_loop() -> io::Result<usize> {
     let listener = TcpListener::bind((LOCAL_IP, LOCAL_PORT))?;
     println!("listen on: http://{}/", listener.socket_addr().unwrap());
 
-    let mut i = 0;
+    let mut _i = 0;
     loop {
         match listener.accept() {
-            Ok((stream, addr)) => {
-                println!("new client {}: {}", i, addr);
+            Ok((stream, _addr)) => {
+                // println!("new client {}: {}", i, addr);
                 thread::spawn(move || match http_server(stream) {
                     Err(e) => println!("client connection error: {:?}", e),
-                    Ok(()) => println!("client {} closed successfully", i),
-                    // Ok(()) => {},
+                    // Ok(()) => println!("client {} closed successfully", i),
+                    Ok(()) => {},
                 });
             }
             Err(e) => return Err(e),
         }
-        i += 1;
+        _i += 1;
     }
 }
 

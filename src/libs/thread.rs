@@ -29,7 +29,7 @@ use zone::ZoneKeys;
 pub const MAIN_THREAD_ID: usize = 100;
 
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug, Ord, PartialOrd)]
-pub struct Tid(usize);
+pub struct Tid(pub usize);
 
 impl Tid {
     /// Alloc global unique id for new thread.
@@ -74,7 +74,7 @@ impl fmt::Display for PrivilegedLevel {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Status {
-    Runnable,
+    Running,
     Ready,
     Blocked,
     Exited,
@@ -83,7 +83,7 @@ pub enum Status {
 impl fmt::Display for Status {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Status::Runnable => write!(f, "Running"),
+            Status::Running => write!(f, "Running"),
             Status::Ready => write!(f, "Ready"),
             Status::Blocked => write!(f, "Blocked"),
             Status::Exited => write!(f, "Exited"),
@@ -94,6 +94,7 @@ impl fmt::Display for Status {
 #[derive(Debug)]
 struct Inner {
     uuid: Tid,
+    idle_thread: bool,
     level: PrivilegedLevel,
     #[allow(unused)]
     stack: Stack,
@@ -214,7 +215,7 @@ impl Thread {
             Some(queue) => {
                 let t = &current_thread;
                 let reason = Status::Blocked;
-                assert_ne!(reason, Status::Runnable);
+                assert_ne!(reason, Status::Running);
                 t.set_status(reason);
                 queue.push_back(t.clone());
             }
@@ -235,6 +236,11 @@ impl Thread {
         self.0.inner_mut.affinity_core
     }
 
+    #[inline]
+    pub fn is_idle(&self) -> bool {
+        self.0.inner.idle_thread
+    }
+
     // pub fn set_core_id(&self, target_core_id: CoreId) {
     //     let mut lock = self.0.inner_mut.core_id.lock();
     //     *lock = target_core_id
@@ -250,17 +256,6 @@ impl Thread {
     pub fn set_status(&self, status: Status) {
         let mut lock = self.0.inner_mut.status.lock();
         *lock = status
-    }
-
-    /// Get if thread is runnable.
-    pub fn runnable(&self) -> bool {
-        let lock = self.0.inner_mut.status.lock();
-        *lock == Status::Runnable
-    }
-
-    pub fn set_exited(&mut self) {
-        let mut lock = self.0.inner_mut.status.lock();
-        *lock = Status::Exited;
     }
 
     /// Get thread privilege level.
@@ -459,7 +454,7 @@ pub fn thread_alloc(
 
     let last_stack_pointer = sp - mem::size_of::<ContextFrame>();
 
-    debug!(
+    trace!(
         "thread alloc start {:#x} entry {:#x} sp {:#x} last_stack_pointer {:#x} size of ContextFrame {:#x}",
         start, entry,
         sp,
@@ -490,14 +485,20 @@ pub fn thread_alloc(
             context_frame
         );
     }
+    let is_idle = if id < Tid(MAIN_THREAD_ID) {
+        true
+    } else {
+        false
+    };
 
     // Init thread local storage region.
     let tls = crate::libs::tls::alloc_thread_local_storage_region(zone_id);
-    debug!("tls_region alloc at {}", tls.get_tls_start());
+    trace!("tls_region alloc at {}", tls.get_tls_start());
 
     let t = Thread(Arc::new(ControlBlock {
         inner: Inner {
             uuid: id,
+            idle_thread: is_idle,
             level: if privilege {
                 PrivilegedLevel::Kernel
             } else {
@@ -519,8 +520,8 @@ pub fn thread_alloc(
             zone_keys: Mutex::new(zone_keys),
         },
     }));
-    let mut map = THREAD_MAP.lock();
-    map.insert(id, t.clone());
+
+    THREAD_MAP.lock().insert(id, t.clone());
 
     THREAD_WAITING_QUEUE
         .lock()
@@ -552,10 +553,8 @@ pub fn thread_destroy(t: &Thread) {
             cpu().set_running_thread(None);
         }
     }
-    let mut name_map = THREAD_NAME_MAP.lock();
-    name_map.remove(&t.id());
-    let mut map = THREAD_MAP.lock();
-    map.remove(&t.id());
+    THREAD_NAME_MAP.lock().remove(&t.id());
+    THREAD_MAP.lock().remove(&t.id());
     THREAD_WAITING_QUEUE.lock().remove(&t.id());
 }
 
@@ -580,10 +579,10 @@ pub fn thread_destroy_by_tid(tid: Tid) {
 static CORE_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
 /// Wake up target thread.
-/// Set its status as Runnable and add it to target cpu's scheduler.
+/// Set its status as Running and add it to target cpu's scheduler.
 pub fn thread_wake(t: &Thread) {
     debug!("thread_wake {}", t.id());
-    t.set_status(Status::Runnable);
+    t.set_status(Status::Ready);
 
     let affinity_core_id = match t.affinity_core() {
         Some(affinity_core_id) => affinity_core_id,
@@ -593,7 +592,7 @@ pub fn thread_wake(t: &Thread) {
     let target_cpu = get_cpu(affinity_core_id);
     target_cpu.scheduler().add(t.clone());
     trace!(
-        "thread_wake set thread [{}] Runnable on core [{}]",
+        "thread_wake set thread [{}] Ready on core [{}]",
         t.id(),
         affinity_core_id
     );
@@ -607,8 +606,8 @@ pub fn thread_wake_by_tid(tid: Tid) {
         return;
     }
     if let Some(t) = thread_lookup(tid) {
-        if t.runnable() {
-            debug!("thread_wake runnable thread {}, just return", t.id());
+        if t.status() == Status::Ready {
+            debug!("thread_wake Ready thread {}, just return", t.id());
             return;
         }
         thread_wake(&t);
@@ -618,10 +617,10 @@ pub fn thread_wake_by_tid(tid: Tid) {
 }
 
 /// Wake up target thread as the next scheduled thread.
-/// Set its status as Runnable and add it to the front of scheduler's queue.
+/// Set its status as Ready and add it to the front of scheduler's queue.
 pub fn thread_wake_to_front(t: &Thread) {
-    debug!("thread_wake set thread {} as next thread", t.id());
-    t.set_status(Status::Runnable);
+    println!("thread_wake set thread {} as next thread", t.id());
+    t.set_status(Status::Ready);
     let affinity_core_id = match t.affinity_core() {
         Some(affinity_core_id) => affinity_core_id,
         None => CORE_COUNTER.fetch_add(1, Ordering::SeqCst) % crate::board::BOARD_CORE_NUMBER,
@@ -652,7 +651,7 @@ pub fn thread_block_current() {
             debug!("Thread[{}]  thread_block_current", current_thread.id());
             let t = &current_thread;
             let reason = Status::Blocked;
-            assert_ne!(reason, Status::Runnable);
+            assert_ne!(reason, Status::Running);
             t.set_status(reason);
         });
     } else {
@@ -686,14 +685,14 @@ pub fn thread_block_current_with_timeout_us(timeout_us: usize) {
 pub fn thread_block_current_with_timeout(timeout_ms: usize) {
     if let Some(current_thread) = cpu().running_thread() {
         irqsave(|| {
-            warn!(
+            debug!(
                 "Thread[{}] thread_block_current_with_timeout {} milliseconds",
                 current_thread.id(),
                 timeout_ms
             );
             let t = &current_thread;
             let reason = Status::Blocked;
-            assert_ne!(reason, Status::Runnable);
+            assert_ne!(reason, Status::Running);
             t.set_status(reason);
             cpu().scheduler().blocked(t.clone(), Some(timeout_ms));
         });
@@ -716,7 +715,7 @@ pub fn thread_join(id: Tid) {
                 Some(queue) => {
                     let t = &current_thread;
                     let reason = Status::Blocked;
-                    assert_ne!(reason, Status::Runnable);
+                    assert_ne!(reason, Status::Running);
                     t.set_status(reason);
                     queue.push_back(t.clone());
                 }
@@ -792,24 +791,34 @@ pub fn current_thread() -> Result<Thread, Error> {
 /// After thread_exit is called, current thread's will be inserted into THREAD_EXIT_QUEUE and be dropped in the future.
 /// This function will call `thread_yield` to schedule to next active thread.
 pub fn thread_exit() -> ! {
-    crate::arch::irq::disable();
-    let mut t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
-    t.set_exited();
-    debug!("thread_exit on Thread [{}]", t.id());
+    let mut tid = crate::libs::thread::Tid(0);
+    let closure = || {
+        let t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
+        t.set_status(Status::Exited);
 
-    handle_waiting_threads(t.id());
+        debug!("thread_exit on Thread [{}] {}", t.id(), t.status());
 
-    // cpu().set_running_thread(Some(t.clone()));
-    // if let Some(current_thread) = cpu().running_thread() {
-    //     if t.id() == current_thread.id() {
-    //         cpu().set_running_thread(None);
-    //     }
-    // }
-    thread_exit_queue().lock().push_back(t);
+        tid = t.id();
+
+        handle_waiting_threads(t.id());
+
+        // cpu().set_running_thread(Some(t.clone()));
+        // if let Some(current_thread) = cpu().running_thread() {
+        //     if t.id() == current_thread.id() {
+        //         cpu().set_running_thread(None);
+        //     }
+        // }
+        thread_exit_queue().lock().push_back(t);
+    };
+
+    crate::util::irqsave(closure);
+
     thread_yield();
-    warn!("thread_exit, should not reach here!!!");
+    warn!("thread_exit {}, should not reach here!!!", tid);
     // crate::arch::irq::enable();
-    loop {}
+    loop {
+        thread_yield();
+    }
 }
 
 #[cfg(feature = "unwind")]
@@ -899,7 +908,7 @@ fn _inner_spawn(
             arg,
             privilege,
         );
-        // If running, set newly allocated thread as Runnable immediately.
+        // If running, set newly allocated thread as Ready immediately.
         if running {
             thread_wake(&child_thread);
         }

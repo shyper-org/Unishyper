@@ -2,10 +2,8 @@ use alloc::boxed::Box;
 use alloc::vec;
 use alloc::collections::BTreeMap;
 use core::sync::atomic::{AtomicU16, Ordering};
-use core::task::Poll;
 use core::ops::DerefMut;
 
-use futures_lite::future;
 use smoltcp::iface::SocketSet;
 use smoltcp::socket::{tcp, udp, AnySocket};
 use smoltcp::time::{Duration, Instant};
@@ -137,6 +135,7 @@ pub fn network_init() {
             crate::libs::thread::thread_block_current_with_timeout(delay_millis as usize);
         }
 
+		#[cfg(feature = "async-net")]
         super::executor::spawn(network_run()).detach();
     } else {
         warn!("network_init, NetworkState is not Initialized!");
@@ -144,9 +143,12 @@ pub fn network_init() {
     info!("network_init() lib init finished");
 }
 
+#[cfg(feature = "async-net")]
 async fn network_run() {
+	use core::task::Poll;
+	
     debug!("network_run");
-    future::poll_fn(|cx| match NIC.lock().deref_mut() {
+    futures_lite::future::poll_fn(|cx| match NIC.lock().deref_mut() {
         NetworkState::Initialized(nic) => {
             nic.poll_common(now());
 

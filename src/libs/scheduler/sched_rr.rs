@@ -2,7 +2,7 @@ use spin::Mutex;
 
 use alloc::collections::{BTreeMap, VecDeque};
 
-use crate::libs::{thread::Thread, timer::current_ms};
+use crate::libs::{thread::Thread, timer::current_ms, thread::Status};
 
 use super::Scheduler;
 
@@ -21,7 +21,12 @@ impl RoundRobinScheduler {
     }
 
     pub fn show_running_threads(&self) {
-        for t in self.running_queue.lock().iter() {
+        let q = self.running_queue.lock();
+        if q.len() == 0 {
+            return;
+        }
+        println!("Show Running {} Threads", q.len());
+        for t in q.iter() {
             println!("Running Thread {:?}", t);
         }
     }
@@ -48,6 +53,7 @@ impl Scheduler for RoundRobinScheduler {
         //     warn!("RoundRobinScheduler running contains {}, checkout why!\n!\n!\n", thread.id());
         //     return;
         // }
+        assert_eq!(thread.status(), Status::Ready);
         self.running_queue.lock().push_back(thread);
     }
 

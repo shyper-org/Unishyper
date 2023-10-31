@@ -11,15 +11,25 @@ use net_tcp_bench::connection;
 use unishyper::*;
 use unishyper::shyperstd as std;
 
-use std::net::{TcpListener, TcpStream};
+use std::net::{TcpListener, TcpStream, Shutdown};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 
 #[macro_use]
 extern crate alloc;
 
 extern "C" fn netdemo_client(_arg: usize) {
-    let n_bytes = 8192;
-    let n_rounds = 1000000;
+    let n_bytes = if let Some(k) = option_env!("K") {
+        k.parse::<usize>().unwrap()
+    } else {
+        1048576
+    };
+
+    let n_rounds = if let Some(r) = option_env!("R") {
+        r.parse::<usize>().unwrap()
+    } else {
+        1000
+    };
+
     let tot_n_bytes = (n_bytes * n_rounds) as u64;
 
     println!(
@@ -52,7 +62,7 @@ extern "C" fn netdemo_client(_arg: usize) {
         }
 
         stream
-            .shutdown(net::Shutdown::Both)
+            .shutdown(Shutdown::Both)
             .expect("shutdown call failed");
 
         println!("Sent everything!");

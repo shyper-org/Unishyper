@@ -61,7 +61,7 @@ pub fn kallocate(size: usize) -> Option<VAddr> {
 
 #[allow(unused_mut)]
 pub fn allocate_region(size: usize, zone_id: Option<ZoneId>) -> Result<MappedRegion, &'static str> {
-    debug!("user allocate region size {:#x} zone {:?}", size, zone_id);
+    trace!("user allocate region size {:#x} zone {:?}", size, zone_id);
     assert!(size > 0);
     assert_eq!(
         size % PAGE_SIZE,

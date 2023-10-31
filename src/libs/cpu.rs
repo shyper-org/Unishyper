@@ -1,7 +1,7 @@
 use spin::Once;
 
 use crate::board::BOARD_CORE_NUMBER;
-use crate::libs::thread::Thread;
+use crate::libs::thread::{Thread, Status};
 use crate::libs::traits::*;
 use crate::libs::scheduler::{Scheduler, ScheduerType};
 
@@ -57,6 +57,9 @@ impl Core {
     }
 
     pub fn set_running_thread(&mut self, t: Option<Thread>) {
+        if t.is_some() {
+            assert_eq!(t.as_ref().unwrap().status(), Status::Running);
+        }
         self.running_thread = t
     }
 
@@ -121,25 +124,43 @@ impl Core {
             )
         });
 
-        // Add prev thread back to scheduler queue.
-        if prev.runnable() {
-            self.scheduler().add(prev.clone());
-        }
-
         // Get next thread from scheduler.
-        let next = self.scheduler().pop().unwrap_or_else(|| {
-            if prev.runnable() {
-                prev.clone()
-            } else {
-                self.idle_thread()
+        let next = match self.scheduler().pop() {
+            Some(t) => t,
+            None => {
+                if prev.status() == Status::Running {
+                    return;
+                } else {
+                    self.idle_thread()
+                }
             }
-        });
+        };
 
-        // debug!("cpu schedule prev {} to next {}", prev.id(), next.id());
+        assert_eq!(
+            next.status(),
+            Status::Ready,
+            "next {} is not ready",
+            next.id()
+        );
 
-        if prev.eq(&next) {
-            return;
+        trace!(
+            "cpu schedule prev {}[{}] next {}[{}]",
+            prev.id(),
+            prev.status(),
+            next.id(),
+            next.status()
+        );
+
+        // Add prev thread back to scheduler queue.
+        if prev.status() == Status::Running {
+            prev.set_status(Status::Ready);
+            if !prev.is_idle() {
+                self.scheduler().add(prev.clone());
+            }
         }
+
+        next.set_status(Status::Running);
+        // debug!("cpu schedule prev {} to next {}", prev.id(), next.id());
 
         unsafe {
             let prev_ctx_ptr = prev.ctx_mut_ptr();
@@ -185,6 +206,7 @@ pub fn get_cpu(core_id: usize) -> &'static mut Core {
 
 #[no_mangle]
 fn idle_thread(_arg: usize) {
+    crate::libs::thread::handle_exit_threads();
     loop {
         crate::arch::Arch::wait_for_interrupt();
     }

@@ -10,7 +10,7 @@ unishyper = {path = "../../", default-features = false, features = ["qemu", "std
 [dependencies.unishyper]
 path = "../../"
 default-features = false
-features = ["terminal"]
+features = ["serial"]
 
 [features]
 qemu = ["unishyper/qemu"]

@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use unishyper::*;
 use unishyper::shyperstd as std;
 
-use std::net::{TcpListener, TcpStream};
+use std::net::{TcpListener, TcpStream, Shutdown};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 
 use net_tcp_bench::connection;
@@ -21,8 +21,17 @@ extern crate alloc;
 extern "C" fn latency_client(_arg: usize) {
     println!("Connecting to the server 10.0.0.2...");
 
-    let n_bytes = 1;
-    let n_rounds = 100;
+    let n_bytes = if let Some(k) = option_env!("K") {
+        k.parse::<usize>().unwrap()
+    } else {
+        1
+    };
+
+    let n_rounds = if let Some(r) = option_env!("R") {
+        r.parse::<usize>().unwrap()
+    } else {
+        1000
+    };
 
     // Create buffers to read/write
     let wbuf: Vec<u8> = vec![0; n_bytes];
@@ -91,7 +100,7 @@ extern "C" fn latency_client(_arg: usize) {
                     }
                 }
                 stream
-                    .shutdown(net::Shutdown::Both)
+                    .shutdown(Shutdown::Both)
                     .expect("shutdown call failed");
                 println!("latency max: {}us, min: {}us", max, min);
                 println!("results: {:?}", results);

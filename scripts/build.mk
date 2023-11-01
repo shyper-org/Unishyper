@@ -3,7 +3,7 @@ OBJCOPY := rust-objcopy
 OBJDUMP := rust-objdump
 
 # Rust flags, for unwind.
-export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes
+export RUSTFLAGS := ${RUSTFLAGS} -C force-frame-pointers=yes -C link-arg=-T$(LD_SCRIPT)
 
 # Cargo flags.
 ifeq (${PROFILE}, release)
@@ -19,7 +19,7 @@ TARGET_CFG := ${TARGET_DESC}
 CARGO_FLAGS := ${CARGO_FLAGS} \
 	-Z build-std=std,panic_unwind
 else
-TARGET_DESC := ${ARCH}${MACHINE}
+TARGET_DESC := ${ARCH}
 TARGET_CFG := $(CURDIR)/cfg/${TARGET_DESC}.json
 CARGO_FLAGS := ${CARGO_FLAGS} \
 	-Z build-std=core,alloc \

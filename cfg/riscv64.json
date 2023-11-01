@@ -6,6 +6,7 @@
   "executables": true,
   "features": "+m,+a,+c",
   "is-builtin": false,
+  "code-model": "medium",
   "linker": "rust-lld",
   "linker-flavor": "ld.lld",
   "linker-is-gnu": true,
@@ -13,10 +14,5 @@
   "max-atomic-width": 64,
   "panic-strategy": "unwind",
   "relocation-model": "static",
-  "target-pointer-width": "64",
-  "pre-link-args": {
-    "ld.lld": [
-      "-Tlinkerriscv-k210.ld"
-    ]
-  }
+  "target-pointer-width": "64"
 }

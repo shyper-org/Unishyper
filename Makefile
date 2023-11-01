@@ -12,6 +12,12 @@ APP ?= hello_world
 
 APP_BIN ?= ${APP}
 
+ifneq ($(findstring $(MACHINE), qemu shyper),) # if findstring not null
+LD_SCRIPT := $(CURDIR)/cfg/$(ARCH)linker.ld
+else
+LD_SCRIPT := $(CURDIR)/cfg/$(ARCH)linker-$(MACHINE).ld
+endif
+
 export MACHINE
 export ARCH
 # Panic Inject Function

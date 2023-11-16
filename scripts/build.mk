@@ -28,7 +28,7 @@ endif
 
 TARGET_DIR := $(CURDIR)/target
 
-APP_DIR := examples/$(APP)
+APP_DIR := $(APP)
 
 OUT_DIR := ${TARGET_DIR}/${TARGET_DESC}/${PROFILE}
 BUILD_ELF := ${OUT_DIR}/${APP_BIN}
@@ -37,6 +37,8 @@ OUT_APP := ${APP_DIR}/$(APP_BIN)_${TARGET_DESC}_${PROFILE}
 OUT_ELF := ${OUT_APP}.elf
 OUT_BIN := ${OUT_APP}.bin
 OUT_ASM := ${OUT_APP}.asm
+
+CARGO_ACTION ?= build
 
 CARGO_ARGS := \
 	--manifest-path ${APP_DIR}/Cargo.toml \
@@ -71,7 +73,7 @@ define rboot_pre
 endef
 
 define cargo_build
-	cargo ${TOOLCHAIN} build $(CARGO_ARGS) --features "${FEATURES}"
+	cargo ${TOOLCHAIN} ${CARGO_ACTION} $(CARGO_ARGS) --features "${FEATURES}"
 	@cp $(BUILD_ELF) $(OUT_ELF)
 	${OBJCOPY} ${OUT_ELF} -O binary ${OUT_BIN}
 	${OBJDUMP} --demangle -d ${OUT_ELF} > ${OUT_ASM}

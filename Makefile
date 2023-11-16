@@ -8,9 +8,9 @@ LOG ?= info
 
 BUS ?= mmio
 
-APP ?= hello_world
+APP ?= examples/hello_world
 
-APP_BIN ?= ${APP}
+APP_BIN ?= ${lastword $(subst /, ,$(APP))}
 
 ifneq ($(findstring $(MACHINE), qemu shyper),) # if findstring not null
 LD_SCRIPT := $(CURDIR)/cfg/$(ARCH)linker.ld
@@ -25,8 +25,8 @@ export PI
 
 EXAMPLE_DIRS := $(shell find examples -maxdepth 1 -mindepth 1 -type d)
 
-ifeq ($(wildcard examples/${APP}),)
-  	$(error Dir "examples/${APP}" not exist, existing examples contain [${EXAMPLE_DIRS}], or you may create your own example using "cargo new --PROJECT_NAME")
+ifeq ($(wildcard ${APP}),)
+  	$(error Dir "${APP}" not exist, or you may create your own example using "cargo new --PROJECT_NAME")
 endif
 
 include scripts/build.mk

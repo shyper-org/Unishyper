@@ -7,7 +7,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use unishyper::*;
 use shyperstd::thread;
 
-const NUM_TASKS: usize = 10;
+const NUM_TASKS: usize = 100;
 static FINISHED_TASKS: AtomicUsize = AtomicUsize::new(0);
 
 #[no_mangle]

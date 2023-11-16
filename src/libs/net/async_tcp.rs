@@ -210,7 +210,6 @@ impl AsyncTcpSocket {
         future::poll_fn(|cx| {
             self.with(|socket| {
                 if socket.is_active() {
-                    debug!("Socket is_active state {}", socket.state());
                     unsafe {
                         self.local_addr
                             .get()
@@ -239,7 +238,6 @@ impl AsyncTcpSocket {
         let mut guard = super::NIC.lock();
         let nic = guard.as_nic_mut()?;
         let socket = nic.get_mut_socket::<tcp::Socket<'_>>(self.handle);
-        debug!("Socket accept state {}", socket.state());
         socket.set_keep_alive(Some(Duration::from_millis(
             super::DEFAULT_KEEP_ALIVE_INTERVAL,
         )));

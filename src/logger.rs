@@ -32,7 +32,8 @@ impl log::Log for SimpleLogger {
             if let Some(m) = record.module_path() {
                 #[cfg(feature = "smp")]
                 {
-                    print!("core[{}][{}]", crate::arch::Arch::core_id(), m);
+                    use crate::libs::traits::ArchTrait;
+					print!("core[{}][{}]", crate::arch::Arch::core_id(), m);
                 }
                 #[cfg(not(feature = "smp"))]
                 print!("[{}]", m);

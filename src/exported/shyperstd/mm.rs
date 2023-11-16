@@ -4,11 +4,11 @@ use crate::mm::address::VAddr;
 pub fn allocate(size: usize) -> VAddr {
     match crate::mm::allocate(size, false) {
         Some(addr) => {
-            return addr;
+            addr
         }
         None => {
             error!("failed to allocate memory of size {}", size);
-            return VAddr::zero();
+            VAddr::zero()
         }
     }
 }
@@ -17,11 +17,11 @@ pub fn allocate(size: usize) -> VAddr {
 pub fn allocate_zone(size: usize) -> VAddr {
     match crate::mm::allocate(size, true) {
         Some(addr) => {
-            return addr;
+            addr
         }
         None => {
             error!("failed to allocate memory of size {}", size);
-            return VAddr::zero();
+            VAddr::zero()
         }
     }
 }

@@ -63,9 +63,9 @@ use this lines to build and emulate:
 make ARCH=<arch> MACHINE=<platform> APP=<app_dir> APP_BIN=<app_bin> LOG=<log_level> run
 
 # for examples/hello_world
-ARCH=x86_64 APP=hello_world make run
+ARCH=x86_64 APP=examples/hello_world make run
 # for examples/net_tcp_bench
-ARCH=aarch64 APP=net_tcp_bench APP_BIN=server-bw NET=y make run
+ARCH=aarch64 APP=examples/net_tcp_bench APP_BIN=server-bw NET=y make run
 ```
 
 ## Terminal Support

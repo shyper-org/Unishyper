@@ -47,13 +47,20 @@ impl Core {
         self.current_stack_pointer
     }
 
-    // thread
     pub fn running_thread(&self) -> Option<Thread> {
         self.running_thread.clone()
     }
 
+	#[allow(unused)]
     fn running_thread_ref(&self) -> Option<&Thread> {
         self.running_thread.as_ref()
+    }
+
+    pub fn set_running_idle(&mut self) {
+        let t = self.idle_thread();
+        t.set_in_yield_context();
+        t.set_status(Status::Running);
+        self.running_thread = Some(self.idle_thread());
     }
 
     pub fn set_running_thread(&mut self, t: Option<Thread>) {
@@ -117,7 +124,7 @@ impl Core {
 
     pub fn schedule(&mut self) {
         // Get prev thread.
-        let prev = self.running_thread_ref().unwrap_or_else(|| {
+        let prev = self.running_thread().unwrap_or_else(|| {
             panic!(
                 "No running thread on core [{}], something is wrong!!!",
                 crate::arch::Arch::core_id()
@@ -136,19 +143,24 @@ impl Core {
             }
         };
 
-        assert_eq!(
-            next.status(),
-            Status::Ready,
-            "next {} is not ready",
-            next.id()
-        );
+        self.__inner_schedule(prev, next)
+    }
 
-        trace!(
+    #[inline(always)]
+    pub fn __inner_schedule(&mut self, prev: Thread, next: Thread) {
+        debug!(
             "cpu schedule prev {}[{}] next {}[{}]",
             prev.id(),
             prev.status(),
             next.id(),
             next.status()
+        );
+
+        assert_eq!(
+            next.status(),
+            Status::Ready,
+            "next {} is not ready",
+            next.id()
         );
 
         // Add prev thread back to scheduler queue.
@@ -193,9 +205,9 @@ pub fn cpu() -> &'static mut Core {
     // On x86_64, currently we use raw_cpuid::CpuId::new() to get CPU id.
     // But it takes a lot of clock cycle overhead.
     // Todo: we need to find a better way to store core id in x86.
-    // let core_id = crate::arch::Arch::core_id();
-    // unsafe { &mut CORES[core_id] }
-    unsafe { &mut CORES[0] }
+    let core_id = crate::arch::Arch::core_id();
+    unsafe { &mut CORES[core_id] }
+    // unsafe { &mut CORES[0] }
 }
 
 /// Get target CPU structure of given cpu id.
@@ -206,7 +218,7 @@ pub fn get_cpu(core_id: usize) -> &'static mut Core {
 
 #[no_mangle]
 fn idle_thread(_arg: usize) {
-    crate::libs::thread::handle_exit_threads();
+    debug!("enter idle thread");
     loop {
         crate::arch::Arch::wait_for_interrupt();
     }

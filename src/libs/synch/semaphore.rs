@@ -1,12 +1,13 @@
 use crate::libs::thread::{
     current_thread, thread_block_current, thread_wake_to_front, Thread, thread_yield,
 };
+
 use alloc::collections::VecDeque;
 
 use super::spinlock::SpinlockIrqSave;
 
 struct SemaphoreState {
-    value: usize,
+    value: isize,
     queue: Option<VecDeque<Thread>>,
 }
 
@@ -24,7 +25,7 @@ unsafe impl Sync for Semaphore {}
 unsafe impl Send for Semaphore {}
 
 impl Semaphore {
-    pub const fn new(value: usize) -> Self {
+    pub const fn new(value: isize) -> Self {
         Semaphore {
             inner: SpinlockIrqSave::new(SemaphoreState { value, queue: None }),
         }
@@ -43,7 +44,7 @@ impl Semaphore {
             match current_thread() {
                 Ok(t) => {
                     let mut inner = self.inner.lock();
-                    if inner.value == 0 {
+                    if inner.value <= 0 {
                         thread_block_current();
                         if let Some(queue) = &mut inner.queue {
                             queue.push_back(t.clone());
@@ -59,7 +60,7 @@ impl Semaphore {
                     } else {
                         // Successfully acquired the semaphore.
                         inner.value -= 1;
-                        trace!(
+                        debug!(
                             "semaphore acquire success, current value {}, return",
                             inner.value
                         );
@@ -92,7 +93,7 @@ impl Semaphore {
             if let Some(t) = queue.pop_front() {
                 /* Before yield, we need to drop the lock. */
                 drop(inner);
-                thread_wake_to_front(&t);
+                thread_wake_to_front(t);
             }
         }
     }

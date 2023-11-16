@@ -216,7 +216,12 @@ impl TcpSocket {
                 }
                 _ => {
                     // socket.register_recv_waker(cx.waker());
-                    Ok(())
+                    warn!(
+                        "Socket accept port {} invalid state {}!!",
+                        self.port.load(Ordering::Acquire),
+                        socket.state()
+                    );
+                    Err(ShyperError::WouldBlock)
                 }
             })
         })?;
@@ -224,7 +229,6 @@ impl TcpSocket {
         self.block_on(|| {
             self.with(|socket| {
                 if socket.is_active() {
-                    debug!("Socket is_active state {}", socket.state());
                     unsafe {
                         self.local_addr
                             .get()
@@ -249,7 +253,6 @@ impl TcpSocket {
         let mut guard = super::NIC.lock();
         let nic = guard.as_nic_mut()?;
         let socket = nic.get_mut_socket::<tcp::Socket<'_>>(self.handle);
-        debug!("Socket accept state {}", socket.state());
         socket.set_keep_alive(Some(Duration::from_millis(
             super::DEFAULT_KEEP_ALIVE_INTERVAL,
         )));
@@ -264,19 +267,19 @@ impl TcpSocket {
                     warn!("TcpSocket read() socket is not actived");
                     Err(ShyperError::ConnectionRefused)
                 } else if socket.can_recv() {
-                        socket
-                            .recv(|data| {
-                                let len = core::cmp::min(buffer.len(), data.len());
-                                buffer[..len].copy_from_slice(&data[..len]);
-                                (len, len)
-                            })
-                            .map_err(|e| {
-                                warn!("TcpSocket read() error on {}", e);
-                                ShyperError::WouldBlock
-                            })
+                    socket
+                        .recv(|data| {
+                            let len = core::cmp::min(buffer.len(), data.len());
+                            buffer[..len].copy_from_slice(&data[..len]);
+                            (len, len)
+                        })
+                        .map_err(|e| {
+                            warn!("TcpSocket read() error on {}", e);
+                            ShyperError::WouldBlock
+                        })
                 } else {
                     // socket.register_recv_waker(cx.waker());
-					Err(ShyperError::WouldBlock)
+                    Err(ShyperError::WouldBlock)
                 }
             })
         })

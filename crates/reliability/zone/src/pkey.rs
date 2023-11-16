@@ -44,11 +44,11 @@ pub fn switch_from_privilege(ori_pkru: u32) {
 bitflags! {
     pub struct ZoneKeys: u32 {
         /// Use a relative timeout
-        const KEY_0_NOREAD = 0b01 << (2*0);
-        const KEY_0_NOWRITE = 0b10 << (2*0);
+        const KEY_0_NOREAD = 0b01;
+        const KEY_0_NOWRITE = 0b10;
 
-        const KEY_1_NOREAD = 0b01 << (2*1);
-        const KEY_1_NOWRITE = 0b10 << (2*1);
+        const KEY_1_NOREAD = 0b01 << 2;
+        const KEY_1_NOWRITE = 0b10 << 2;
 
         const KEY_2_NOREAD = 0b01 << (2*2);
         const KEY_2_NOWRITE = 0b10 << (2*2);
@@ -128,18 +128,14 @@ pub fn zone_init() {
 
 pub fn zone_alloc() -> Option<ZoneId> {
     let mut global_zone = GLOBAL_ZONES.lock();
-    let allocated_zone = global_zone.first_false_index().unwrap_or_else(|| {
-        // warn!("No free zones, use ZONE_ID_SHARED {ZONE_ID_SHARED} by default");
-        ZONE_ID_SHARED
-    });
+    let allocated_zone = global_zone.first_false_index().unwrap_or(ZONE_ID_SHARED);
 
     global_zone.set(allocated_zone, true);
 
-    return Some(allocated_zone);
+    Some(allocated_zone)
 }
 
 pub fn zone_free(zone_id: ZoneId) {
-    assert!(zone_id < ZONE_ID_PRIVILEGED, "unexpected zone id");
     let mut global_zone = GLOBAL_ZONES.lock();
     global_zone.set(zone_id, false);
 }

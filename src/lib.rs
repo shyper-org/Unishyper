@@ -93,6 +93,10 @@ pub use mm::heap::Global;
 pub use arch::page_table;
 pub use panic::random_panic;
 
+// pub fn core_id() -> usize{
+// 	arch::Arch::core_id()
+// }
+
 pub(crate) const MASTER_CPU_ID: usize = 0;
 
 // pub static mut START_CYCLE: u64 = 0;
@@ -175,17 +179,13 @@ pub extern "C" fn loader_main(core_id: usize) {
             start = runtime_entry as usize;
         }
 
-        // Init user first thread on core 0 by default.
-        let t = libs::thread::thread_alloc(None, Some(core_id), start, main as usize, 123, true);
-        // libs::thread::thread_wake(&t);
-        t.set_status(Status::Running);
-        t.set_in_yield_context();
-        arch::Arch::set_thread_id(t.id().as_u64());
-        arch::Arch::set_tls_ptr(t.get_tls_ptr() as u64);
-        libs::cpu::cpu().set_running_thread(Some(t));
         #[cfg(feature = "terminal")]
         libs::terminal::init();
-    }
+
+		crate::libs::thread::init_main_thread(core_id, (start, main as usize));
+    } else {
+		crate::libs::thread::init_secondary_thread(core_id);
+	}
 
     // Enter first thread.
     // On core 0, this should be user's main thread.

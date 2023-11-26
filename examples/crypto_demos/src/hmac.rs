@@ -41,6 +41,8 @@ pub fn hmac_sign_and_verify() {
 
 // Using the one-shot API.
 pub fn hmac_sign_and_verify_one_shot() {
+    println!("Enter hmac test...");
+
     let msg = "hello, world";
 
     // The sender generates a secure key value and signs the message with it.

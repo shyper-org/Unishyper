@@ -22,6 +22,8 @@ fn sha256_digest<R: Read>(mut reader: R) -> Result<Digest, &'static str> {
 }
 
 pub fn sha256_test() {
+    println!("Enter SHA-256 test...");
+
     let input = "hello".as_bytes();
 
     let reader = BufReader::new(input);

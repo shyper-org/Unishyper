@@ -74,7 +74,7 @@ fn accept_loop() -> io::Result<usize> {
                 thread::spawn(move || match http_server(stream) {
                     Err(e) => println!("client connection error: {:?}", e),
                     // Ok(()) => println!("client {} closed successfully", i),
-                    Ok(()) => {},
+                    Ok(()) => {}
                 });
             }
             Err(e) => return Err(e),

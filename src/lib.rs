@@ -182,10 +182,10 @@ pub extern "C" fn loader_main(core_id: usize) {
         #[cfg(feature = "terminal")]
         libs::terminal::init();
 
-		crate::libs::thread::init_main_thread(core_id, (start, main as usize));
+        crate::libs::thread::init_main_thread(core_id, (start, main as usize));
     } else {
-		crate::libs::thread::init_secondary_thread(core_id);
-	}
+        crate::libs::thread::init_secondary_thread(core_id);
+    }
 
     // Enter first thread.
     // On core 0, this should be user's main thread.

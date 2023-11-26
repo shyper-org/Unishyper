@@ -12,10 +12,14 @@ extern crate data_encoding;
 use unishyper::*;
 // use unishyper::shyperstd as std;
 
+#[allow(unused)]
 mod hmac;
+#[allow(unused)]
 mod pbkdf2;
+#[allow(unused)]
 mod sha256;
 
+#[allow(unused)]
 mod hmac_verify_hack;
 
 #[no_mangle]
@@ -27,7 +31,7 @@ fn main() {
     // hmac::hmac_sign_and_verify();
     // hmac::hmac_sign_and_verify_one_shot();
 
-    // pbkdf2::pbkdf2_test();
+    pbkdf2::pbkdf2_test();
 
-    hmac_verify_hack::hmac_sign_verify();
+    // hmac_verify_hack::hmac_sign_verify();
 }

@@ -3,7 +3,7 @@ use spin::Once;
 use crate::board::BOARD_CORE_NUMBER;
 use crate::libs::thread::{Thread, Status};
 use crate::libs::traits::*;
-use crate::libs::scheduler::{Scheduler, ScheduerType};
+use crate::libs::scheduler::{Scheduler, SchedulerType};
 
 pub type CoreId = usize;
 
@@ -12,7 +12,7 @@ pub struct Core {
     running_thread: Option<Thread>,
     current_stack_pointer: usize,
     idle_thread: Once<Thread>,
-    sched: ScheduerType,
+    sched: SchedulerType,
     #[cfg(target_arch = "x86_64")]
     arch_specific_data: crate::arch::Cpu,
 }
@@ -26,7 +26,7 @@ const CORE: Core = Core {
     running_thread: None,
     current_stack_pointer: 0xDEAD_BEEF,
     idle_thread: Once::new(),
-    sched: ScheduerType::None,
+    sched: SchedulerType::None,
     #[cfg(target_arch = "x86_64")]
     arch_specific_data: crate::arch::Cpu::new(),
 };
@@ -51,7 +51,7 @@ impl Core {
         self.running_thread.clone()
     }
 
-	#[allow(unused)]
+    #[allow(unused)]
     fn running_thread_ref(&self) -> Option<&Thread> {
         self.running_thread.as_ref()
     }
@@ -100,7 +100,7 @@ impl Core {
         }
     }
 
-    pub fn set_scheduler(&mut self, scheduler: ScheduerType) {
+    pub fn set_scheduler(&mut self, scheduler: SchedulerType) {
         self.sched = scheduler;
         let core_id = crate::arch::Arch::core_id();
         info!("Scheduler init ok on core [{}]", core_id);
@@ -109,17 +109,14 @@ impl Core {
 
     pub fn scheduler(&self) -> &impl Scheduler {
         match &self.sched {
-            ScheduerType::None => {
+            SchedulerType::None => {
                 debug!("cpu scheduler  at {:#p}", &self.sched);
                 panic!("scheduler is None");
             }
-            ScheduerType::PerCoreSchedRoundRobin(rr) => rr,
-            ScheduerType::GlobalSchedRoundRobin => crate::libs::scheduler::global_scheduler(),
+            SchedulerType::PerCoreSchedRoundRobin(rr) => rr,
+            SchedulerType::GlobalSchedRoundRobin => crate::libs::scheduler::global_scheduler(),
+            SchedulerType::GlobalSchedCFS(_) => todo!(),
         }
-    }
-
-    pub fn get_next_thread(&mut self) -> Thread {
-        self.scheduler().pop().unwrap_or_else(|| self.idle_thread())
     }
 
     pub fn schedule(&mut self) {
@@ -187,6 +184,8 @@ impl Core {
             }
             let next_stack_pointer = next.last_stack_pointer();
             self.set_running_thread(Some(next));
+
+            drop(prev);
 
             if next_is_not_run {
                 // debug!("switch_to_trap_ctx on {:#x}", next_stack_pointer);

@@ -188,7 +188,7 @@ extern "C" fn thread_entry(entry: usize) -> ! {
 /// Returns the task reference.
 pub fn spawn_raw(f: Box<dyn FnOnce()>, name: Option<String>, stack_size: usize) -> Thread {
     let t = Thread::new(f, name, stack_size);
-    thread_wake(&t);
+    thread_wake(t.clone());
     t
 }
 
@@ -203,6 +203,10 @@ impl Thread {
             0,
             false,
         )
+    }
+
+    fn get_ref_count(&self) -> usize {
+        Arc::strong_count(&self.0)
     }
 
     pub(crate) fn join(&self) {
@@ -317,7 +321,7 @@ impl Thread {
     pub fn handle_waiting_threads(&self) {
         let mut wait_queue = self.0.inner_mut.waiting_queue.lock();
         while let Some(t) = wait_queue.pop_front() {
-            thread_wake(&t);
+            thread_wake(t);
         }
     }
 
@@ -360,7 +364,7 @@ pub fn init_main_thread(core_id: usize, entry_tuple: (usize, usize)) {
     crate::arch::Arch::set_thread_id(t.id().as_u64());
     crate::arch::Arch::set_tls_ptr(t.get_tls_ptr() as u64);
 
-	thread_spawn_privilege(gc_thread, 0, "gc_thread");
+    thread_spawn_privilege(gc_thread, 0, "gc_thread");
 
     // debug!("init_main_thread {}", t.id());
     crate::libs::cpu::cpu().set_running_thread(Some(t));
@@ -572,15 +576,16 @@ pub fn thread_lookup(tid: Tid) -> Option<Thread> {
 /// Destory target thread.
 /// Remove it from THREAD_NAME_MAP and THREAD_MAP.
 #[inline(always)]
-pub fn thread_destroy(t: &Thread) {
-    debug!("Destroy thread {}", t.id());
+pub fn thread_destroy(t: Thread) {
+    debug!("Destroy thread {} ref count {}", t.id(), t.get_ref_count());
     if let Some(current_thread) = cpu().running_thread() {
         if t.id() == current_thread.id() {
             cpu().set_running_thread(None);
         }
     }
-    THREAD_NAME_MAP.lock().remove(&t.id());
-    THREAD_MAP.lock().remove(&t.id());
+
+    let _ = THREAD_NAME_MAP.lock().remove(&t.id());
+    let _ = THREAD_MAP.lock().remove(&t.id());
 }
 
 /// Destory target thread by thread id.
@@ -595,7 +600,7 @@ pub fn thread_destroy_by_tid(tid: Tid) {
             warn!("Try to kill kernel thread[{}], return", tid);
             return;
         }
-        thread_destroy(&t);
+        thread_destroy(t);
     } else {
         warn!("Thread [{}] not exist!!!", tid);
     }
@@ -605,7 +610,7 @@ static CORE_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
 /// Wake up target thread.
 /// Set its status as Running and add it to target cpu's scheduler.
-pub fn thread_wake(t: &Thread) {
+pub fn thread_wake(t: Thread) {
     debug!("thread_wake {}", t.id());
     t.set_status(Status::Ready);
 
@@ -615,12 +620,14 @@ pub fn thread_wake(t: &Thread) {
     };
 
     let target_cpu = get_cpu(affinity_core_id);
-    target_cpu.scheduler().add(t.clone());
+
     trace!(
         "thread_wake set thread [{}] Ready on core [{}]",
         t.id(),
         affinity_core_id
     );
+
+    target_cpu.scheduler().add(t);
 }
 
 /// Wake up target thread by thread id.
@@ -635,7 +642,7 @@ pub fn thread_wake_by_tid(tid: Tid) {
             debug!("thread_wake Ready thread {}, just return", t.id());
             return;
         }
-        thread_wake(&t);
+        thread_wake(t);
     } else {
         warn!("Thread [{}] not exist!!!", tid);
     }
@@ -736,7 +743,7 @@ pub fn handle_blocked_threads() {
     use crate::libs::timer::current_ms;
     while let Some(t) = cpu().scheduler().get_wakeup_thread_by_time(current_ms()) {
         debug!("handle_blocked_threads: thread [{}] is wake up", t.id());
-        thread_wake(&t);
+        thread_wake(t);
     }
 }
 
@@ -745,7 +752,7 @@ pub fn handle_blocked_threads() {
 pub fn handle_exit_threads() {
     let mut exited_thread_queue = get_thread_exit_queue().lock();
     while let Some(t) = exited_thread_queue.pop_front() {
-        thread_destroy(&t);
+        thread_destroy(t);
     }
 }
 
@@ -783,17 +790,17 @@ pub fn current_thread() -> Result<Thread, Error> {
 pub fn thread_exit() -> ! {
     crate::arch::irq::disable();
     let t = current_thread().unwrap_or_else(|_| panic!("failed to get current thread"));
+
     t.set_status(Status::Exited);
     t.handle_waiting_threads();
-    debug!("thread_exit on Thread [{}] {}", t.id(), t.status());
 
-	get_thread_exit_queue().lock().push_back(t);
+    get_thread_exit_queue().lock().push_back(t);
 
-	if get_thread_exit_queue().lock().len() > ZOMBIE_THREAD_NUM_MAX {
-		EXIT_SEM.release();
-	}
+    if get_thread_exit_queue().lock().len() > ZOMBIE_THREAD_NUM_MAX {
+        EXIT_SEM.release();
+    }
 
-	thread_yield();
+    thread_yield();
 
     warn!(
         "thread_exit {}, should not reach here!!!",
@@ -892,11 +899,14 @@ fn _inner_spawn(
             arg,
             privilege,
         );
+
+        tid = child_thread.id();
+
         // If running, set newly allocated thread as Ready immediately.
         if running {
-            thread_wake(&child_thread);
+            thread_wake(child_thread);
         }
-        tid = child_thread.id();
+
         // If appointing thread name, insert it into THREAD_NAME_MAP.
         if let Some(name) = name {
             let mut map = THREAD_NAME_MAP.lock();
@@ -951,9 +961,9 @@ static EXIT_SEM: Semaphore = Semaphore::new(-1);
 
 extern "C" fn gc_thread(_arg: usize) {
     loop {
-		debug!("enter gc_thread");
+        debug!("enter gc_thread");
         EXIT_SEM.acquire();
-		debug!("gc_thread acquire");
+
         handle_exit_threads();
     }
 }

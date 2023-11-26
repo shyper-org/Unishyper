@@ -88,12 +88,22 @@ unsafe impl GlobalAlloc for SpinlockIrqSaveHeapAllocator {
             .alloc(layout)
             .ok()
             .map_or(0 as *mut u8, |allocation| allocation.as_ptr());
-        // println!("GlobalAlloc alloc success at {:#x}", res as usize);
+        // println!(
+        //     "GlobalAlloc {} alloc success at {:#p} {:?}",
+        //     crate::libs::thread::current_thread_id(),
+        //     res,
+        //     layout,
+        // );
         res
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // println!("GlobalAlloc dealloc at {:#x} {:?}", ptr as usize, layout);
+        // println!(
+        //     "GlobalAlloc {} dealloc success at {:#p} {:?}",
+        //     crate::libs::thread::current_thread_id(),
+        //     ptr,
+        //     layout,
+        // );
         self.0.lock().dealloc(NonNull::new_unchecked(ptr), layout)
     }
 }

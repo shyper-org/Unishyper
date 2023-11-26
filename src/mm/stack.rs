@@ -26,12 +26,14 @@ pub struct Stack {
     guard_page: AllocatedPages,
     region: MappedRegion,
 }
+
 impl Deref for Stack {
     type Target = MappedRegion;
     fn deref(&self) -> &MappedRegion {
         &self.region
     }
 }
+
 impl DerefMut for Stack {
     fn deref_mut(&mut self) -> &mut MappedRegion {
         &mut self.region
@@ -128,7 +130,8 @@ fn inner_alloc_stack(
     // trace!("stack_pages {:?}", &stack_pages);
     trace!(
         "stack_region {:#?}\n mapped success with zone_id {}",
-        &stack_region, zone_id
+        &stack_region,
+        zone_id
     );
     Some(Stack {
         guard_page,

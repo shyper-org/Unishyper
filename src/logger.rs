@@ -33,7 +33,7 @@ impl log::Log for SimpleLogger {
                 #[cfg(feature = "smp")]
                 {
                     use crate::libs::traits::ArchTrait;
-					print!("core[{}][{}]", crate::arch::Arch::core_id(), m);
+                    print!("core[{}][{}]", crate::arch::Arch::core_id(), m);
                 }
                 #[cfg(not(feature = "smp"))]
                 print!("[{}]", m);

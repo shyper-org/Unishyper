@@ -1,4 +1,4 @@
-mod addr;
+pub mod addr;
 /// Network stack implement on smoltcp
 #[cfg_attr(feature = "axdriver", path = "axdevice.rs")]
 mod device;
@@ -19,9 +19,6 @@ pub(crate) use udp::AsyncUdpSocket as UdpSocket;
 #[cfg_attr(feature = "async-net", path = "async_api.rs")]
 pub mod api;
 
-/// Default keep alive interval in milliseconds
-const DEFAULT_KEEP_ALIVE_INTERVAL: u64 = 75000;
-
 pub(crate) use interface::network_init as init;
 pub(crate) use interface::network_poll;
 pub(crate) use interface::now;
@@ -29,7 +26,6 @@ pub(crate) use interface::NIC;
 
 pub(crate) type SmoltcpSocketHandle = smoltcp::iface::SocketHandle;
 
-#[derive(Debug, Clone, Copy)]
-pub struct Handle(pub usize);
+pub type Handle = i32;
 
-pub(crate) use smoltcp::wire::IpAddress;
+// pub(crate) use smoltcp::wire::IpAddress;

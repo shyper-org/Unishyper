@@ -1,13 +1,15 @@
+mod sched_cfs;
 mod sched_rr;
 
-pub enum ScheduerType {
-    /// No SMP support, no scheduler.
+pub enum SchedulerType {
+    /// No scheduler.
     None,
     /// Scheduling on multiple cores with each queue in each processor.
     PerCoreSchedRoundRobin(sched_rr::RoundRobinScheduler),
     /// Scheduling on multiple cores with a global queue.
     GlobalSchedRoundRobin,
-    // CFS,
+    /// Scheduling on multiple cores with a global CFS scheduler.
+    GlobalSchedCFS(sched_cfs::CFSScheduler),
 }
 
 use crate::libs::thread::Thread;
@@ -22,12 +24,12 @@ pub trait Scheduler {
 pub fn init() {
     if cfg!(feature = "scheduler-percore") {
         let core_scheduler =
-            ScheduerType::PerCoreSchedRoundRobin(sched_rr::RoundRobinScheduler::new());
+            SchedulerType::PerCoreSchedRoundRobin(sched_rr::RoundRobinScheduler::new());
         crate::libs::cpu::cpu().set_scheduler(core_scheduler);
         info!("Per core scheduler init ok");
     } else {
         debug!("Init global scheduler...");
-        crate::libs::cpu::cpu().set_scheduler(ScheduerType::GlobalSchedRoundRobin);
+        crate::libs::cpu::cpu().set_scheduler(SchedulerType::GlobalSchedRoundRobin);
         info!("Global scheduler init ok");
     }
 }
@@ -44,7 +46,7 @@ pub fn global_scheduler() -> &'static sched_rr::RoundRobinScheduler {
     }
 }
 
-// static SCHEDULER: ScheduerType = ScheduerType::None;
+// static SCHEDULER: SchedulerType = SchedulerType::None;
 
 // pub fn scheduler() -> &mut impl Scheduler {
 //     match &mut self.sched {

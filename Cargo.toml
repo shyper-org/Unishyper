@@ -2,25 +2,25 @@
 resolver = "2"
 
 members = [
-  "examples/no_std_test",
-  "examples/std_test",
-  "examples/fs_demo",
-  "examples/net_demos",
-  "examples/net_tcp_bench",
-  "examples/fault_recover",
-  "examples/isolation_test",
-  "examples/threading",
-  "examples/hello_world",
-  "examples/httpd",
-  "examples/benches",
-  "examples/crypto_demos",
-  "crates/reliability/inject",
-  "crates/reliability/zone_protected",
-  "crates/reliability/zone",
-  "crates/drivers/driver_common",
-  "crates/drivers/driver_virtio",
-  "crates/drivers/driver_net",
-  "crates/drivers/driver_pci",
+	"examples/no_std_test",
+	"examples/std_test",
+	"examples/fs_demo",
+	"examples/net_demos",
+	"examples/net_tcp_bench",
+	"examples/fault_recover",
+	"examples/isolation_test",
+	"examples/threading",
+	"examples/hello_world",
+	"examples/httpd",
+	"examples/benches",
+	"examples/crypto_demos",
+	"crates/reliability/inject",
+	"crates/reliability/zone_protected",
+	"crates/reliability/zone",
+	"crates/drivers/driver_common",
+	"crates/drivers/driver_virtio",
+	"crates/drivers/driver_net",
+	"crates/drivers/driver_pci",
 ]
 
 exclude = ["rboot", "examples/rust-tcp-io-perf"]
@@ -38,35 +38,48 @@ name = "unishyper"
 [dependencies]
 bit_field = "0.7.0"
 buddy_system_allocator = "0.8.0"
-bitmaps = {version = "3.2.0", default-features = false}
+bitmaps = { version = "3.2.0", default-features = false }
 cfg-if = "1.0.0"
-crossbeam-utils = {version = "0.8.11", default-features = false, features = ["nightly"]}
+crossbeam-utils = { version = "0.8.11", default-features = false, features = [
+	"nightly",
+] }
 derive_more = "0.99.17"
 intrusive-collections = "0.9"
-lazy_static = {version = "1.4", features = ["spin_no_std"]}
-log = {version = "0.4.14"}
+lazy_static = { version = "1.4", features = ["spin_no_std"] }
+log = { version = "0.4.14" }
 # log = {version = "0.4.14", features = ["max_level_trace", "release_max_level_trace"]}
 # log = {version = "0.4.14", features = ["max_level_debug", "release_max_level_debug"]}
 # log = {version = "0.4.14", features = ["max_level_info", "release_max_level_info"]}
 spin = "0.9.8"
 static_assertions = "1.1.0"
-tock-registers = {version = "0.7.0", default-features = false, features = ["register_types"]}
+tock-registers = { version = "0.7.0", default-features = false, features = [
+	"register_types",
+] }
 zerocopy = "0.5.0"
 
 ## Optional dependencies.
-ahash = {version = "0.8", optional = true, default-features = false}
-async-task = {version = "4.2", optional = true, default-features = false}
-addr2line = {version = "0.20.0", optional = true, default-features = false, features = ["rustc-demangle", "object", "endian-reader"], git= "https://github.com/hky1999/addr2line"}
-bitflags = {version = "1.3.2", optional = true, default-features = false}
-crossbeam-queue = {version = "0.3.5", optional = true, default-features = false, features = ["alloc"]}
-fallible-iterator = {version = "0.2.0", default-features = false, optional = true}
-futures-lite = {version = "1.11", optional = true, default-features = false, features = ["alloc"]}
-hashbrown = {version = "0.13.1", optional = true, default-features = false}
-ioslice = {version = "0.6.0-alpha.2", optional = true, default-features = false}
-libm = {version = "0.2", optional = true, default-features = false}
-lru = {version = "0.11.0", optional = true}
-no-std-net = {version = "0.6.0", optional = true}
-xmas-elf = {version = "0.8.0", optional = true}
+ahash = { version = "0.8", optional = true, default-features = false }
+async-task = { version = "4.2", optional = true, default-features = false }
+addr2line = { version = "0.20.0", optional = true, default-features = false, features = [
+	"rustc-demangle",
+	"object",
+	"endian-reader",
+], git = "https://github.com/hky1999/addr2line" }
+bitflags = { version = "1.3.2", optional = true, default-features = false }
+crossbeam-queue = { version = "0.3.5", optional = true, default-features = false, features = [
+	"alloc",
+] }
+fallible-iterator = { version = "0.2.0", default-features = false, optional = true }
+futures-lite = { version = "1.11", optional = true, default-features = false, features = [
+	"alloc",
+] }
+hashbrown = { version = "0.13.1", optional = true, default-features = false }
+ioslice = { version = "0.6.0-alpha.2", optional = true, default-features = false }
+libm = { version = "0.2", optional = true, default-features = false }
+lru = { version = "0.11.0", optional = true }
+no-std-net = { version = "0.6.0", optional = true }
+xmas-elf = { version = "0.8.0", optional = true }
+pflock = { version = "0.2", optional = true }
 
 ## Local dependencies port from ArceOS: https://github.com/rcore-os/arceos.
 # driver = { path = "crates/drivers/driver" }
@@ -77,16 +90,19 @@ driver_pci = { path = "crates/drivers/driver_pci", optional = true }
 
 
 [target.'cfg(target_arch = "aarch64")'.dependencies]
-cortex-a = {git = "https://github.com/hky1999/cortex-a"}
-gimli = {version = "0.19.0", default-features = false, features = ["read", "alloc"]}
+cortex-a = { git = "https://github.com/hky1999/cortex-a" }
+gimli = { version = "0.19.0", default-features = false, features = [
+	"read",
+	"alloc",
+] }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 # apic = {git = "https://github.com/hky1999/apic-rs"}
 x2apic = "0.4"
 pic8259 = "0.10.1"
 raw-cpuid = "10.6.1"
-rboot = {git = "https://github.com/hky1999/rboot.git", default-features = false}
-bitflags = {version = "1.3.2", default-features = false}
+rboot = { git = "https://github.com/hky1999/rboot.git", default-features = false }
+bitflags = { version = "1.3.2", default-features = false }
 x86_64 = "0.14.2"
 
 [target.'cfg(target_arch = "riscv64")'.dependencies]
@@ -98,18 +114,18 @@ git = "https://github.com/rcore-os/smoltcp.git"
 # version = "0.10"
 default-features = false
 features = [
-  "alloc",
-  "async",
-  "log",
-  "medium-ethernet",
-  "proto-ipv4",
-  "proto-ipv6",
-  "socket-tcp",
-  "socket-udp",
-  "socket-dns",
-  "socket-icmp",
-  "socket-raw",
-   # Enable for increased output  # "log",  # "verbose",
+	"alloc",
+	"async",
+	"log",
+	"medium-ethernet",
+	"proto-ipv4",
+	"proto-ipv6",
+	"socket-tcp",
+	"socket-udp",
+	"socket-dns",
+	"socket-icmp",
+	"socket-raw",
+	# Enable for increased output  # "log",  # "verbose",
 ]
 optional = true
 
@@ -136,7 +152,16 @@ chrono = "0.4.23"
 gethostname = "0.4.3"
 
 [features]
-default = ["qemu", "terminal", "fat", "fs", "unilib", "log-level-info", "zone", "net"]
+default = [
+	"qemu",
+	"terminal",
+	"fat",
+	"fs",
+	"unilib",
+	"log-level-info",
+	"zone",
+	"net",
+]
 
 # Modular
 ## Platforms
@@ -151,37 +176,28 @@ smp = []
 scheduler-global = ["smp"]
 scheduler-percore = ["smp"]
 ## Rust std | no_std support
-std = ["serial", "ahash", "hashbrown", "bitflags", "libm"]
+std = ["serial", "dep:ahash", "dep:hashbrown", "dep:bitflags", "libm"]
 alloc = []
 
 ## File system
-fat = [
-  "fatfs",
-  "lru",
-]
-fs = [
-  "dep:ioslice",
-  "libm",
-]
+fat = ["fatfs", "lru"]
+fs = ["dep:ioslice", "libm"]
 ## Unilib interface enable
 unilib = []
 
 ## Network stack
 net = [
-  "dep:futures-lite",
-  "dep:smoltcp",
-  "dep:crossbeam-queue",
-  "dep:ioslice",
-  "dep:no-std-net",
+	"dep:futures-lite",
+	"dep:smoltcp",
+	"dep:crossbeam-queue",
+	"dep:ioslice",
+	"dep:no-std-net",
+	"dep:pflock",
+	"dep:ahash",
+	"dep:hashbrown",
 ]
-async-net = [
-	"net",
-	"dep:async-task",
-]
-axdriver = [
-  "dep:driver_virtio",
-  "dep:driver_net",
-]
+async-net = ["net", "dep:async-task"]
+axdriver = ["dep:driver_virtio", "dep:driver_net"]
 ## Driver bus
 pci = ["dep:driver_pci"]
 mmio = []
@@ -194,15 +210,8 @@ terminal = ["serial"]
 ## Zone isolation(only supported in x86_64 currently)
 zone = []
 ## Unwind
-unwind = [
-  "fallible-iterator",
-  "xmas-elf",
-  "addr2line",
-]
-unwind-test = [
-  "dep:inject",
-  "unwind",
-]
+unwind = ["fallible-iterator", "xmas-elf", "addr2line"]
+unwind-test = ["dep:inject", "unwind"]
 
 # Control log level
 log-level-off = ["log/max_level_off", "log/release_max_level_off"]

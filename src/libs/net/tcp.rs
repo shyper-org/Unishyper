@@ -1,46 +1,74 @@
 use core::cell::UnsafeCell;
-use core::sync::atomic::{AtomicBool, AtomicU16, Ordering};
-use alloc::boxed::Box;
+use core::sync::atomic::{AtomicU8, AtomicBool, Ordering};
 
 use smoltcp::iface;
 use smoltcp::socket::tcp::{self, ConnectError};
-use smoltcp::time::Duration;
-use smoltcp::wire::{IpAddress, IpEndpoint};
+// use smoltcp::time::Duration;
+use smoltcp::wire::{IpEndpoint, IpListenEndpoint};
 use no_std_net::SocketAddr;
 
 use crate::libs::error::ShyperError;
 use crate::libs::net::addr::*;
 use super::{now, network_poll};
 use super::SmoltcpSocketHandle;
-use super::Handle;
+use super::interface::{get_ephemeral_port, check_local_endpoint};
+
+// State transitions:
+// CLOSED -(connect)-> BUSY -> CONNECTING -> CONNECTED -(shutdown)-> BUSY -> CLOSED
+//       |
+//       |-(listen)-> BUSY -> LISTENING -(shutdown)-> BUSY -> CLOSED
+//       |
+//        -(bind)-> BUSY -> CLOSED
+const STATE_CLOSED: u8 = 0;
+const STATE_BUSY: u8 = 1;
+const STATE_CONNECTING: u8 = 2;
+const STATE_CONNECTED: u8 = 3;
+const STATE_LISTENING: u8 = 4;
 
 #[derive(Debug)]
 pub struct TcpSocket {
-    handle: SmoltcpSocketHandle,
-    port: AtomicU16,
+    state: AtomicU8,
+    handle: UnsafeCell<SmoltcpSocketHandle>,
     local_addr: UnsafeCell<IpEndpoint>,
     peer_addr: UnsafeCell<IpEndpoint>,
     nonblocking: AtomicBool,
 }
 
-/// Todo: This interface seems awkward.
-/// We need to find a new way to handle the relationship between `AsyncTcpSocket` and `Handle`.
-impl From<Handle> for Box<TcpSocket> {
-    fn from(handle: Handle) -> Self {
-        let ptr = handle.0;
-        unsafe { Box::from_raw(ptr as *mut TcpSocket) }
-    }
-}
+unsafe impl Sync for TcpSocket {}
 
 impl Drop for TcpSocket {
     fn drop(&mut self) {
         debug!("TcpSocket drop");
-        // self.close()
+        self.close().expect("TcpSocket drop() close failed");
+        super::NIC
+            .lock()
+            .as_nic_mut()
+            .unwrap()
+            .remove_tcp_handle(self.get_socket_handle());
     }
 }
 
+// impl Clone for TcpSocket {
+//     fn clone(&self) -> Self {
+//         let handle = super::NIC
+//             .lock()
+//             .as_nic_mut()
+//             .unwrap()
+//             .create_tcp_handle()
+//             .unwrap();
+
+//         Self {
+//             state: AtomicU8::new(self.get_state()),
+//             handle,
+//             local_addr: UnsafeCell::new(unsafe { self.local_addr.get().read() }),
+//             peer_addr: UnsafeCell::new(unsafe { self.peer_addr.get().read() }),
+//             nonblocking: AtomicBool::new(self.is_nonblocking()),
+//         }
+//     }
+// }
+
 impl TcpSocket {
-    pub fn new(port: u16) -> Self {
+    pub fn new() -> Self {
         let handle = super::NIC
             .lock()
             .as_nic_mut()
@@ -48,8 +76,8 @@ impl TcpSocket {
             .create_tcp_handle()
             .unwrap();
         Self {
-            handle,
-            port: AtomicU16::new(port),
+            state: AtomicU8::new(STATE_CLOSED),
+            handle: UnsafeCell::new(handle),
             local_addr: UnsafeCell::new(UNSPECIFIED_ENDPOINT),
             peer_addr: UnsafeCell::new(UNSPECIFIED_ENDPOINT),
             nonblocking: AtomicBool::new(false),
@@ -104,77 +132,102 @@ impl TcpSocket {
         })
     }
 
-    fn with<R>(&self, f: impl FnOnce(&mut tcp::Socket<'_>) -> R) -> R {
-        let mut guard = super::NIC.lock();
-        let nic = guard.as_nic_mut().unwrap();
-        let result = f(nic.get_mut_socket::<tcp::Socket<'_>>(self.handle));
-        // To flush send buffers.
-        // After using the socket, the network interface has to poll the nic,
-        // This is required to flush all send buffers.
-        nic.poll_common(now());
-        result
-    }
-
-    fn with_context<R>(&self, f: impl FnOnce(&mut tcp::Socket<'_>, &mut iface::Context) -> R) -> R {
-        let mut guard = super::NIC.lock();
-        let nic = guard.as_nic_mut().unwrap();
-        let res = {
-            let (s, cx) = nic.get_socket_and_context::<tcp::Socket<'_>>(self.handle);
-            f(s, cx)
-        };
-        nic.poll_common(now());
-        res
-    }
-
-    fn block_on<F, T>(&self, mut f: F) -> Result<T, ShyperError>
-    where
-        F: FnMut() -> Result<T, ShyperError>,
-    {
-        if self.is_nonblocking() {
-            f()
-        } else {
-            loop {
-                network_poll();
-                match f() {
-                    Ok(t) => return Ok(t),
-                    Err(ShyperError::WouldBlock) => crate::libs::thread::thread_yield(),
-                    Err(e) => return Err(e),
-                }
+    /// Binds an unbound socket to the given address and port.
+    ///
+    /// If the given port is 0, it generates one automatically.
+    ///
+    /// It's must be called before [`listen`](Self::listen) and
+    /// [`accept`](Self::accept).
+    pub fn bind(&self, mut local_addr: SocketAddr) -> Result<(), ShyperError> {
+        debug!("TcpSocket bind at {:?}", local_addr);
+        self.update_state(STATE_CLOSED, STATE_CLOSED, || {
+            // TODO: check addr is available
+            if local_addr.port() == 0 {
+                local_addr.set_port(get_ephemeral_port()?);
+            } else if check_local_endpoint(local_addr.port()) {
+                warn!("socket bind() failed:, port has been occupied");
+                return Err(ShyperError::AddrInUse);
             }
-        }
+            // SAFETY: no other threads can read or write `self.local_addr` as we
+            // have changed the state to `BUSY`.
+            unsafe {
+                let old = self.local_addr.get().read();
+                if old != UNSPECIFIED_ENDPOINT {
+                    warn!("socket bind() failed: already bound");
+                    return Err(ShyperError::InvalidInput);
+                }
+                self.local_addr
+                    .get()
+                    .write(socketaddr_to_ipendpoint(local_addr));
+            }
+            Ok(())
+        })
+        .unwrap_or_else(|_| {
+            warn!("socket bind() failed: already bound");
+            Err(ShyperError::InvalidInput)
+        })
     }
 
-    pub fn connect(
-        &self,
-        address: IpAddress,
-        port: u16,
-        local_endpoint: u16,
-    ) -> Result<SmoltcpSocketHandle, ShyperError> {
-        debug!(
-            "tcp_stream_connect {} to ip {}:{}, local_endpoint {}",
-            crate::libs::thread::current_thread_id(),
-            address,
-            port,
-            local_endpoint
-        );
-        self.with_context(|socket, cx| {
-            socket
-                .connect(
-                    cx,
-                    (address, port),
-                    local_endpoint,
-                    // LOCAL_ENDPOINT.fetch_add(1, Ordering::SeqCst),
-                )
-                .or_else(|e| match e {
-                    ConnectError::InvalidState => {
-                        warn!("socket connect() failed on {}", e);
-                        Err(ShyperError::BadState)
-                    }
-                    ConnectError::Unaddressable => {
-                        warn!("socket connect() failed on {}", e);
-                        Err(ShyperError::ConnectionRefused)
-                    }
-                })
+    /// Starts listening on the bound address and port.
+    ///
+    /// It's must be called after [`bind`](Self::bind) and before
+    /// [`accept`](Self::accept).
+    pub fn listen(&self) -> Result<(), ShyperError> {
+        debug!("TcpSocket listen");
+        self.update_state(STATE_CLOSED, STATE_LISTENING, || {
+            let bound_endpoint = self.bound_endpoint()?;
+            debug!("TcpSocket listen at {}", bound_endpoint);
+
+            unsafe {
+                (*self.local_addr.get()).port = bound_endpoint.port;
+            }
+            self.with(|socket| {
+                if !socket.is_open() {
+                    socket.listen(bound_endpoint).or_else(|e| {
+                        warn!("socket listen() failed: ListenError {}", e);
+                        Err(ShyperError::AddrInUse)
+                    })
+                } else {
+                    warn!("socket listen() failed: socket is already open");
+                    Err(ShyperError::AddrInUse)
+                }
+            })?;
+            debug!("TCP socket listening on {}", bound_endpoint);
+            Ok(())
+        })
+        .unwrap_or(Ok(())) // ignore simultaneous `listen`s.
+    }
+
+    pub fn connect(&self, remote_addr: SocketAddr) -> Result<(), ShyperError> {
+        debug!("TcpSocket connect to {:?}", remote_addr);
+
+        self.update_state(STATE_CLOSED, STATE_CONNECTING, || {
+            let remote_endpoint = socketaddr_to_ipendpoint(remote_addr);
+            let local_endpoint = self.bound_endpoint()?;
+            debug!(
+                "tcp_stream_connect {} to remote {}, local {}",
+                crate::libs::thread::current_thread_id(),
+                remote_addr,
+                local_endpoint
+            );
+            self.with_context(|socket, cx| {
+                socket
+                    .connect(cx, remote_endpoint, local_endpoint)
+                    .or_else(|e| match e {
+                        ConnectError::InvalidState => {
+                            warn!("socket connect() failed on {}", e);
+                            Err(ShyperError::BadState)
+                        }
+                        ConnectError::Unaddressable => {
+                            warn!("socket connect() failed on {}", e);
+                            Err(ShyperError::ConnectionRefused)
+                        }
+                    })
+            })
+        })
+        .unwrap_or_else(|_| {
+            warn!("socket connect() failed: already connected");
+            Err(ShyperError::AlreadyExists)
         })?;
 
         // Here our state must be `CONNECTING`, and only one thread can run here.
@@ -187,80 +240,101 @@ impl TcpSocket {
                     tcp::State::Listen => Err(ShyperError::BadState),
                     tcp::State::SynSent | tcp::State::SynReceived => Err(ShyperError::WouldBlock),
                     _ => {
+                        let local_endpoint = socket.local_endpoint().unwrap();
+                        let remote_endpoint = socket.remote_endpoint().unwrap();
+                        debug!(
+                            "TcpSocket connect success remote {} local {}",
+                            remote_endpoint, local_endpoint
+                        );
                         unsafe {
-                            self.local_addr
-                                .get()
-                                .write(socket.local_endpoint().unwrap());
-                            self.peer_addr
-                                .get()
-                                .write(socket.remote_endpoint().unwrap());
+                            self.local_addr.get().write(local_endpoint);
+                            self.peer_addr.get().write(remote_endpoint);
                         }
 
-                        Ok(self.handle)
+                        Ok(())
                     }
                 })
             })
         }
     }
 
-    pub fn accept(&self) -> Result<(), ShyperError> {
-        self.block_on(|| {
-            self.with(|socket| match socket.state() {
-                tcp::State::Closed => {
-                    let _ = socket.listen(self.port.load(Ordering::Acquire));
-                    Ok(())
-                }
-                tcp::State::Listen => {
-                    debug!("Socket accept success!!");
-                    Ok(())
-                }
-                _ => {
-                    // socket.register_recv_waker(cx.waker());
-                    warn!(
-                        "Socket accept port {} invalid state {}!!",
-                        self.port.load(Ordering::Acquire),
-                        socket.state()
-                    );
-                    Err(ShyperError::WouldBlock)
-                }
-            })
-        })?;
+    /// Accepts a new connection.
+    ///
+    /// This function will block the calling thread until a new TCP connection
+    /// is established. When established, a new [`TcpSocket`] is returned.
+    ///
+    /// It's must be called after [`bind`](Self::bind) and [`listen`](Self::listen).
+    pub fn accept(&self) -> Result<Self, ShyperError> {
+        if !self.is_listening() {
+            warn!("socket accept() failed: not listen");
+            return Err(ShyperError::InvalidInput);
+        }
+
+        debug!("TcpSocket accept()");
 
         self.block_on(|| {
-            self.with(|socket| {
-                if socket.is_active() {
-                    unsafe {
-                        self.local_addr
-                            .get()
-                            .write(socket.local_endpoint().unwrap());
-                        self.peer_addr
-                            .get()
-                            .write(socket.remote_endpoint().unwrap());
+            let mut guard = super::NIC.lock();
+            let nic = guard.as_nic_mut().unwrap();
+
+            let socket = nic.get_mut_socket::<tcp::Socket<'_>>(self.get_socket_handle());
+
+            if socket.is_active() {
+                let remote_endpoint = socket.remote_endpoint().unwrap();
+                let local_endpoint = socket.local_endpoint().unwrap();
+                drop(socket);
+
+                debug!(
+                    "TcpSocket accept local {}, remote {}",
+                    local_endpoint, remote_endpoint
+                );
+
+                // Create new SocketHandle and listen for next socket connect.
+                let new_handle = nic.create_tcp_handle().unwrap();
+                nic.get_mut_socket::<tcp::Socket<'_>>(new_handle)
+                    .listen(local_endpoint)
+                    .expect("socket accept() failed: newly created SocketHandle listen failed");
+
+                // Replace self SocketHandle with newly created SocketHandle.
+                let old_handle = unsafe { self.handle.get().replace(new_handle) };
+
+                // Return connected TcpSocket with ori SocketHandle.
+                let new_socket =
+                    TcpSocket::new_connected(old_handle, local_endpoint, remote_endpoint);
+
+                // To flush send buffers.
+                // After using the socket, the network interface has to poll the nic,
+                // This is required to flush all send buffers.
+                nic.poll_common(now());
+
+                Ok(new_socket)
+            } else {
+                match socket.state() {
+                    tcp::State::Closed
+                    | tcp::State::Closing
+                    | tcp::State::FinWait1
+                    | tcp::State::FinWait2 => {
+                        warn!(
+                            "socket accept() failed: state {} mis-matched",
+                            socket.state()
+                        );
+                        Err(ShyperError::Io)
                     }
-                    Ok(())
-                } else {
-                    match socket.state() {
-                        tcp::State::Closed
-                        | tcp::State::Closing
-                        | tcp::State::FinWait1
-                        | tcp::State::FinWait2 => Err(ShyperError::Io),
-                        _ => Err(ShyperError::WouldBlock),
-                    }
+                    _ => Err(ShyperError::WouldBlock),
                 }
-            })
-        })?;
-
-        let mut guard = super::NIC.lock();
-        let nic = guard.as_nic_mut()?;
-        let socket = nic.get_mut_socket::<tcp::Socket<'_>>(self.handle);
-        socket.set_keep_alive(Some(Duration::from_millis(
-            super::DEFAULT_KEEP_ALIVE_INTERVAL,
-        )));
-
-        Ok(())
+            }
+        })
     }
 
     pub fn read(&self, buffer: &mut [u8]) -> Result<usize, ShyperError> {
+        debug!("TcpSocket read()");
+
+        if self.is_connecting() {
+            return Err(ShyperError::WouldBlock);
+        } else if !self.is_connected() {
+            warn!("TcpSocket read() failed");
+            return Err(ShyperError::NotConnected);
+        }
+
         self.block_on(|| {
             self.with(|socket| {
                 if !socket.is_active() {
@@ -286,6 +360,15 @@ impl TcpSocket {
     }
 
     pub fn write(&self, buffer: &[u8]) -> Result<usize, ShyperError> {
+        debug!("TcpSocket write() {} bytes", buffer.len());
+
+        if self.is_connecting() {
+            return Err(ShyperError::WouldBlock);
+        } else if !self.is_connected() {
+            warn!("TcpSocket write() failed");
+            return Err(ShyperError::NotConnected);
+        }
+
         let mut pos: usize = 0;
 
         while pos < buffer.len() {
@@ -320,6 +403,8 @@ impl TcpSocket {
     }
 
     pub fn close(&self) -> Result<(), ShyperError> {
+        debug!("TcpSocket close()");
+
         self.block_on(|| {
             self.with(|socket| match socket.state() {
                 tcp::State::FinWait1
@@ -355,22 +440,144 @@ impl TcpSocket {
     }
 }
 
-// extern "C" fn nic_thread(_: usize) {
-//     info!("[nic_thread] Enter super::NIC thread\n*********************************************\n");
-//     loop {
-//         debug!("[nic_thread] enter netwait");
+/// Private methods
+impl TcpSocket {
+    /// Creates a new TCP socket that is already connected.
+    const fn new_connected(
+        handle: SmoltcpSocketHandle,
+        local_addr: IpEndpoint,
+        peer_addr: IpEndpoint,
+    ) -> Self {
+        Self {
+            state: AtomicU8::new(STATE_CONNECTED),
+            handle: UnsafeCell::new(handle),
+            local_addr: UnsafeCell::new(local_addr),
+            peer_addr: UnsafeCell::new(peer_addr),
+            nonblocking: AtomicBool::new(false),
+        }
+    }
 
-//         netwait();
+    #[inline]
+    fn get_socket_handle(&self) -> SmoltcpSocketHandle {
+        unsafe { self.handle.get().read() }
+    }
 
-//         debug!("[nic_thread] netwait finished, try to call nic.poll_common");
+    #[inline]
+    fn get_state(&self) -> u8 {
+        self.state.load(Ordering::Acquire)
+    }
 
-//         if let NetworkState::Initialized(nic) = super::NIC.lock().deref_mut() {
-//             // debug!("NetworkState Initialized success, poll_common");
-//             nic.poll_common(Instant::from_millis(current_ms() as i64));
-//             nic.wake();
-//         }
-//     }
-// }
+    #[inline]
+    fn set_state(&self, state: u8) {
+        self.state.store(state, Ordering::Release);
+    }
+
+    /// Update the state of the socket atomically.
+    ///
+    /// If the current state is `expect`, it first changes the state to `STATE_BUSY`,
+    /// then calls the given function. If the function returns `Ok`, it changes the
+    /// state to `new`, otherwise it changes the state back to `expect`.
+    ///
+    /// It returns `Ok` if the current state is `expect`, otherwise it returns
+    /// the current state in `Err`.
+    fn update_state<F, T>(&self, expect: u8, new: u8, f: F) -> Result<Result<T, ShyperError>, u8>
+    where
+        F: FnOnce() -> Result<T, ShyperError>,
+    {
+        match self
+            .state
+            .compare_exchange(expect, STATE_BUSY, Ordering::Acquire, Ordering::Acquire)
+        {
+            Ok(_) => {
+                let res = f();
+                if res.is_ok() {
+                    self.set_state(new);
+                } else {
+                    self.set_state(expect);
+                }
+                Ok(res)
+            }
+            Err(old) => Err(old),
+        }
+    }
+
+    fn with<R>(&self, f: impl FnOnce(&mut tcp::Socket<'_>) -> R) -> R {
+        let mut guard = super::NIC.lock();
+        let nic = guard.as_nic_mut().unwrap();
+        let result = f(nic.get_mut_socket::<tcp::Socket<'_>>(self.get_socket_handle()));
+        // To flush send buffers.
+        // After using the socket, the network interface has to poll the nic,
+        // This is required to flush all send buffers.
+        nic.poll_common(now());
+        result
+    }
+
+    fn with_context<R>(&self, f: impl FnOnce(&mut tcp::Socket<'_>, &mut iface::Context) -> R) -> R {
+        let mut guard = super::NIC.lock();
+        let nic = guard.as_nic_mut().unwrap();
+        let res = {
+            let (s, cx) = nic.get_socket_and_context::<tcp::Socket<'_>>(self.get_socket_handle());
+            f(s, cx)
+        };
+        nic.poll_common(now());
+        res
+    }
+
+    /// Block the current thread until the given function completes or fails.
+    ///
+    /// If the socket is non-blocking, it calls the function once and returns
+    /// immediately. Otherwise, it may call the function multiple times if it
+    /// returns [`Err(WouldBlock)`](AxError::WouldBlock).
+    fn block_on<F, T>(&self, mut f: F) -> Result<T, ShyperError>
+    where
+        F: FnMut() -> Result<T, ShyperError>,
+    {
+        if self.is_nonblocking() {
+            f()
+        } else {
+            loop {
+                network_poll();
+                match f() {
+                    Ok(t) => return Ok(t),
+                    Err(ShyperError::WouldBlock) => crate::libs::thread::thread_yield(),
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+    }
+
+    #[inline]
+    fn is_connecting(&self) -> bool {
+        self.get_state() == STATE_CONNECTING
+    }
+
+    #[inline]
+    fn is_connected(&self) -> bool {
+        self.get_state() == STATE_CONNECTED
+    }
+
+    #[inline]
+    fn is_listening(&self) -> bool {
+        self.get_state() == STATE_LISTENING
+    }
+
+    fn bound_endpoint(&self) -> Result<IpListenEndpoint, ShyperError> {
+        // SAFETY: no other threads can read or write `self.local_addr`.
+        let local_addr = unsafe { self.local_addr.get().read() };
+        let port = if local_addr.port != 0 {
+            local_addr.port
+        } else {
+            get_ephemeral_port()?
+        };
+        assert_ne!(port, 0);
+        let addr = if !is_unspecified(local_addr.addr) {
+            Some(local_addr.addr)
+        } else {
+            None
+        };
+        Ok(IpListenEndpoint { addr, port })
+    }
+}
 
 /// Possible values which can be passed to the [`TcpStream::shutdown`] method.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

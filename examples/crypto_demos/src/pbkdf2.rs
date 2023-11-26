@@ -73,6 +73,8 @@ impl PasswordDatabase {
 }
 
 pub fn pbkdf2_test() {
+    println!("Enter pbkdf2 test...");
+
     // Normally these parameters would be loaded from a configuration file.
     let mut db = PasswordDatabase {
         pbkdf2_iterations: NonZeroU32::new(100_000).unwrap(),

@@ -134,7 +134,7 @@ pub fn futex_wake(address: &AtomicU32, count: i32) -> i32 {
     let mut woken = 0;
     while woken != count || count == i32::MAX {
         match queue.get_mut().pop_front() {
-            Some(t) => thread_wake(&t),
+            Some(t) => thread_wake(t),
             None => break,
         }
         woken = woken.saturating_add(1);

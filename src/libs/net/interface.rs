@@ -60,6 +60,10 @@ impl<'a> NetworkInterface<'a> {
         Ok(tcp_handle)
     }
 
+    pub fn remove_tcp_handle(&mut self, handle: SmoltcpSocketHandle) {
+        self.sockets.remove(handle);
+    }
+
     pub fn create_udp_handle(&mut self) -> Result<SmoltcpSocketHandle, ()> {
         // Must fit mDNS payload of at least one packet
         let udp_rx_buffer =
@@ -135,7 +139,7 @@ pub fn network_init() {
             crate::libs::thread::thread_block_current_with_timeout(delay_millis as usize);
         }
 
-		#[cfg(feature = "async-net")]
+        #[cfg(feature = "async-net")]
         super::executor::spawn(network_run()).detach();
     } else {
         warn!("network_init, NetworkState is not Initialized!");
@@ -145,8 +149,8 @@ pub fn network_init() {
 
 #[cfg(feature = "async-net")]
 async fn network_run() {
-	use core::task::Poll;
-	
+    use core::task::Poll;
+
     debug!("network_run");
     futures_lite::future::poll_fn(|cx| match NIC.lock().deref_mut() {
         NetworkState::Initialized(nic) => {

@@ -1,92 +1,75 @@
-use core::str;
-use core::str::FromStr;
-use core::mem::ManuallyDrop;
-use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
+use core::sync::atomic::{AtomicI32, Ordering};
+
+use pflock::PFLock;
 
 use crate::libs::error::ShyperError;
 
-use super::{Handle, IpAddress};
+use super::Handle;
 use super::tcp::TcpSocket;
 use super::tcp::Shutdown;
-use super::addr::ipaddr_to_ipaddress;
+use super::addr::SocketAddr;
+
+/// Atomic counter to determine the next unused file descriptor.
+static FD_COUNTER: AtomicI32 = AtomicI32::new(3);
+
+/// Mapping between file descriptor and the referenced object.
+static FD_MAP: PFLock<BTreeMap<Handle, Arc<TcpSocket>>> =
+    PFLock::new(BTreeMap::<Handle, Arc<TcpSocket>>::new());
+
+pub(crate) fn get_object(fd: Handle) -> Result<Arc<TcpSocket>, ShyperError> {
+    Ok((*(FD_MAP.read().get(&fd).ok_or(ShyperError::NotFound)?)).clone())
+}
+
+pub(crate) fn remove_object(fd: Handle) -> Result<Arc<TcpSocket>, ShyperError> {
+    if fd <= 2 {
+        Err(ShyperError::InvalidInput)
+    } else {
+        Ok(FD_MAP.write().remove(&fd).ok_or(ShyperError::NotFound)?)
+    }
+}
+
+pub(crate) fn insert_object(fd: Handle, obj: TcpSocket) -> Option<Arc<TcpSocket>> {
+    FD_MAP.write().insert(fd, Arc::new(obj))
+}
+
+#[inline(always)]
+pub fn tcp_socket() -> Result<Handle, ShyperError> {
+    let fd = FD_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let socket = TcpSocket::new();
+    let _ = insert_object(fd, socket);
+    Ok(fd)
+}
 
 /// Opens a TCP connection to a remote host.
 #[inline(always)]
-pub fn tcp_stream_connect(
-    ip: &[u8],
-    port: u16,
-    _timeout: Option<u64>,
-) -> Result<Handle, ShyperError> {
-    let local_endpoint = super::interface::get_ephemeral_port()?;
-    let socket = Box::new(TcpSocket::new(local_endpoint));
-    let address = IpAddress::from_str(str::from_utf8(ip).map_err(|_| ShyperError::InvalidInput)?)
-        .map_err(|_| ShyperError::InvalidInput)?;
-    debug!(
-        "tcp_stream_connect {} to {}:{}",
-        crate::libs::thread::current_thread_id(),
-        address,
-        port
-    );
-	socket.connect(address, port, local_endpoint)?;
-    debug!(
-        "tcp_stream_connect {} to {}:{} success local_endpoint {}",
-        crate::libs::thread::current_thread_id(),
-        address,
-        port,
-        local_endpoint
-    );
-    Ok(Handle(Box::into_raw(socket) as *mut _ as usize))
+pub fn tcp_stream_connect(fd: Handle, addr: SocketAddr) -> Result<(), ShyperError> {
+    get_object(fd)?.connect(addr)
 }
 
 #[inline(always)]
-pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
-    // let peer_addr = tcp_stream_peer_addr(handle)?;
-    // debug!(
-    //     "tcp_stream_read on Thread {} from {}:{}",
-    //     crate::libs::thread::current_thread_id(),
-    //     peer_addr.0,
-    //     peer_addr.1
-    // );
-    socket.read(buffer)
+pub fn tcp_stream_read(fd: Handle, buffer: &mut [u8]) -> Result<usize, ShyperError> {
+    get_object(fd)?.read(buffer)
 }
 
 #[inline(always)]
-pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
-    // let peer_addr = tcp_stream_peer_addr(handle)?;
-    // let s = match str::from_utf8(buffer) {
-    //     Ok(v) => v,
-    //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-    // };
-    // debug!(
-    //     "tcp_stream_write T[{}] to {}:{}, len {},\n{}",
-    //     crate::libs::thread::current_thread_id(),
-    //     peer_addr.0,
-    //     peer_addr.1,
-    //     buffer.len(),
-    //     // buffer,
-    //     s
-    // );
-    socket.write(buffer)
+pub fn tcp_stream_write(fd: Handle, buffer: &[u8]) -> Result<usize, ShyperError> {
+    get_object(fd)?.write(buffer)
 }
 
 /// Close a TCP connection
 #[inline(always)]
-pub fn tcp_stream_close(handle: Handle) -> Result<(), ShyperError> {
-    let peer_addr = tcp_stream_peer_addr(handle)?;
-    debug!(
-        "tcp_stream_close T[{}] ip {}:{}",
-        crate::libs::thread::current_thread_id(),
-        peer_addr.0,
-        peer_addr.1
-    );
-    let socket = Box::<TcpSocket>::from(handle);
-    socket.close()
+pub fn tcp_close(fd: Handle) -> Result<(), ShyperError> {
+    let socket = remove_object(fd)?;
+    // See `Drop` implemented for `TcpSocket`.
+    drop(socket);
+
+    Ok(())
 }
 
 #[inline(always)]
-pub fn tcp_stream_shutdown(_handle: Handle, _how: Shutdown) -> Result<(), ShyperError> {
+pub fn tcp_stream_shutdown(_fd: Handle, _how: Shutdown) -> Result<(), ShyperError> {
     // match how {
     //     Shutdown::Read => {
     //         // warn!("Shutdown::Read is not implemented");
@@ -99,65 +82,47 @@ pub fn tcp_stream_shutdown(_handle: Handle, _how: Shutdown) -> Result<(), Shyper
 }
 
 #[inline(always)]
-pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
-
-    let peer_addr = socket.peer_addr().unwrap();
-    let (addr, port) = (ipaddr_to_ipaddress(peer_addr.ip()), peer_addr.port());
-
-    Ok((addr, port))
+pub fn tcp_stream_peer_addr(fd: Handle) -> Result<SocketAddr, ShyperError> {
+    get_object(fd)?.peer_addr()
 }
 
 #[inline(always)]
-pub fn tcp_stream_socket_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
-
-    let local_addr = socket.local_addr().unwrap();
-    let (addr, port) = (ipaddr_to_ipaddress(local_addr.ip()), local_addr.port());
-
-    Ok((addr, port))
+pub fn tcp_socket_addr(fd: Handle) -> Result<SocketAddr, ShyperError> {
+    get_object(fd)?.local_addr()
 }
 
 #[inline(always)]
-pub fn tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ShyperError> {
-    let ip = str::from_utf8(ip).map_err(|_| ShyperError::InvalidInput)?;
-    let port = if port == 0 {
-        super::interface::get_ephemeral_port()?
-    } else if !super::interface::check_local_endpoint(port) {
-        port
-    } else {
-        warn!("tcp_listener_bind failed, port has been occupied");
-        return Err(ShyperError::ConnectionRefused);
-    };
-    debug!(
-        "tcp_listener_bind T[{}] success on ip {:?} port {}",
-        crate::libs::thread::current_thread_id(),
-        ip,
-        port
-    );
-    Ok(port)
+pub fn tcp_bind(fd: Handle, addr: SocketAddr) -> Result<(), ShyperError> {
+    let socket = get_object(fd)?;
+    socket.bind(addr)
+}
+
+#[inline(always)]
+pub fn tcp_listen(fd: Handle, _backlog: usize) -> Result<(), ShyperError> {
+    let socket = get_object(fd)?;
+    socket.listen()
 }
 
 /// Wait for connection at specified address.
 #[inline(always)]
-pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ShyperError> {
-    let local_endpoint = port;
-    let socket = Box::new(TcpSocket::new(local_endpoint));
-   	socket.accept()?;
+pub fn tcp_accept(fd: Handle) -> Result<(Handle, SocketAddr), ShyperError> {
+    let socket = get_object(fd)?;
+    let new_socket = socket.accept()?;
+
+    let peer_addr = new_socket.peer_addr()?;
 
     debug!(
-        "tcp_listener_accept on Thread {} success on ip {:?}, local_endpoint {}",
+        "tcp_listener_accept on Thread {} success on {}, remote {}",
         crate::libs::thread::current_thread_id(),
-        socket.local_addr().unwrap(),
-        local_endpoint
+        new_socket.local_addr()?,
+        new_socket.peer_addr()?,
     );
 
-    let peer_addr = socket.peer_addr()?;
-    let (addr, port) = (ipaddr_to_ipaddress(peer_addr.ip()), peer_addr.port());
+    let new_fd = FD_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-    let handle = Handle(Box::into_raw(socket) as *mut _ as usize);
+    let _ = insert_object(new_fd, new_socket);
 
-    Ok((handle, addr, port))
+    Ok((new_fd, peer_addr))
 }
 
 /// If set, this option disables the Nagle algorithm. This means that segments are
@@ -165,23 +130,21 @@ pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), Shyper
 /// When not set, data is buffered until there is a sufficient amount to send out,
 /// thereby avoiding the frequent sending of small packets.
 #[inline(always)]
-pub fn tcp_stream_set_no_delay(handle: Handle, mode: bool) -> Result<(), ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
-    socket.set_no_delay(mode)
+pub fn tcp_stream_set_no_delay(fd: Handle, mode: bool) -> Result<(), ShyperError> {
+    get_object(fd)?.set_no_delay(mode)
 }
 
 #[inline(always)]
-pub fn tcp_stream_no_delay(handle: Handle) -> Result<bool, ShyperError> {
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
-    socket.no_delay()
+pub fn tcp_stream_no_delay(fd: Handle) -> Result<bool, ShyperError> {
+    get_object(fd)?.no_delay()
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_nonblocking(handle: Handle, mode: bool) -> Result<(), ShyperError> {
+pub fn tcp_stream_set_nonblocking(fd: Handle, mode: bool) -> Result<(), ShyperError> {
     // non-blocking mode is currently not support
     // => return only an error, if `mode` is defined as `true`
-    let socket = ManuallyDrop::new(Box::<TcpSocket>::from(handle));
-    socket.set_nonblocking(mode)
+
+    get_object(fd)?.set_nonblocking(mode)
 }
 
 #[inline(always)]

@@ -504,6 +504,8 @@ impl NetworkInterface for VirtioNetDriver {
                     buff_ptr.offset(isize::try_from(core::mem::size_of::<VirtioNetHdr>()).unwrap())
                 };
 
+                // debug!("get_tx_buffer buff_ptr {:p} len {}", buff_ptr, len);
+
                 Ok((buff_ptr, Box::into_raw(Box::new(buff_tkn)) as usize))
             }
             None => Err(()),
@@ -518,6 +520,8 @@ impl NetworkInterface for VirtioNetDriver {
         // This does not result in a new assignment, or in a drop of the BufferToken, which
         // would be dangerous, as the memory is freed then.
         let tkn = *unsafe { Box::from_raw(tkn_handle as *mut BufferToken) };
+
+        // debug!("send_tx_buffer len {}", _len);
 
         tkn.provide()
             .dispatch_await(Rc::clone(&self.send_vqs.poll_queue), false);

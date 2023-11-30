@@ -83,8 +83,13 @@ impl ArchTrait for Arch {
     fn set_thread_id(_tid: u64) {}
 
     fn get_tls_ptr() -> *const u8 {
-        0xDEAD_BEEF as *const u8
+        let tp;
+        unsafe { core::arch::asm!("mv {}, tp", out(reg) tp) };
+        tp
     }
 
-    fn set_tls_ptr(_tls_ptr: u64) {}
+    fn set_tls_ptr(tls_ptr: u64) {
+        debug!("set tls ptr to {:#x}", tls_ptr);
+        unsafe { core::arch::asm!("mv tp, {}", in(reg) tls_ptr) }
+    }
 }

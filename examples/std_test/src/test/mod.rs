@@ -21,6 +21,11 @@ pub fn current_cycle() -> usize {
     }
 }
 
+#[cfg(target_arch = "riscv64")]
+pub fn current_cycle() -> usize {
+    0
+}
+
 /// Function and Performance tests for rust-shyperOS.
 pub fn run_tests() {
     println!("generate_tests:");

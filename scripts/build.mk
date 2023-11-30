@@ -14,7 +14,11 @@ endif
 
 ifneq ($(TOOLCHAIN),)
 TOOLCHAIN := +${TOOLCHAIN}
+ifeq ($(ARCH), riscv64)
+TARGET_DESC := ${ARCH}gc-unknown-shyper
+else
 TARGET_DESC := ${ARCH}-unknown-shyper
+endif
 TARGET_CFG := ${TARGET_DESC}
 CARGO_FLAGS := ${CARGO_FLAGS} \
 	-Z build-std=std,panic_unwind
@@ -74,7 +78,7 @@ endef
 
 define cargo_build
 	cargo ${TOOLCHAIN} ${CARGO_ACTION} $(CARGO_ARGS) --features "${FEATURES}"
-	@cp $(BUILD_ELF) $(OUT_ELF)
+	cp $(BUILD_ELF) $(OUT_ELF)
 	${OBJCOPY} ${OUT_ELF} -O binary ${OUT_BIN}
 	${OBJDUMP} --demangle -d ${OUT_ELF} > ${OUT_ASM}
 endef

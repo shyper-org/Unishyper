@@ -1,7 +1,7 @@
 .global push_context
 push_context:
     # csrrw sp, sscratch, sp // (sp, sscratch) -> (kernel sp, thread sp)
-    addi  sp, sp, -0x110 // size of ContextFrame
+    addi  sp, sp, -{size_of_context_frame} // size of ContextFrame
     sd x1, 1 * 8(sp)
     //this x2 is kernel sp
     sd x3, 3 * 8(sp)
@@ -34,7 +34,7 @@ push_context:
     sd x30, 30 * 8(sp)
     sd x31, 31 * 8(sp)
 
-    addi s0, sp, 0x110
+    addi s0, sp, {size_of_context_frame}
     // |core_id| <-- sscratch
     // |-------|
     // |       |
@@ -55,15 +55,15 @@ push_context:
 
 .global _pop_context_first // pop_context_first(*ctx, core_id)
 _pop_context_first:
-    // |core_id| <-- sp + 0x110
+    // |core_id| <-- sp + {size_of_context_frame}
     // |-------|
     // |       |
     // |__ctx__| <-- sp
     mv sp, a0
-    sd a1, 0x110(sp)
+    sd a1, {size_of_context_frame}(sp)
 pop_context:
     // kernel sp points to bottom of a context frame
-    addi s0, sp, 0x110 // size of ContextFrame
+    addi s0, sp, {size_of_context_frame} // size of ContextFrame
     # csrw sscratch, s0 // save kernel sp back to sscratch
     ld s1, 32 * 8(sp)
     ld s2, 33 * 8(sp)

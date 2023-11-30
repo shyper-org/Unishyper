@@ -8,7 +8,11 @@ use crate::libs::traits::InterruptControllerTrait;
 use super::ContextFrame;
 
 core::arch::global_asm!(include_str!("start.S"));
-core::arch::global_asm!(include_str!("exception.S"));
+
+core::arch::global_asm!(
+    include_str!("exception.S"),
+    size_of_context_frame = const core::mem::size_of::<ContextFrame>()
+);
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {

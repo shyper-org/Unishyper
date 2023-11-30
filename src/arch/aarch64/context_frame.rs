@@ -41,11 +41,13 @@ pub struct TrapContextFrame {
     elr: u64, // 32 * 8
     /// Stack pointer.
     sp: u64, // 33 * 8
+    // Thread local storage.
+    tpidr: u64, // 34 * 8
     /// It's a mark showing the thread is yield from irq or thread_yield.
     /// These two conditions may result in different context restore processes.
     /// 1. from irq: pop_context_first
     /// 2. from yield: see switch.S for details.
-    from_interrupt: bool, // 34 * 8
+    from_interrupt: bool, // 35 * 8
 }
 
 /// Saved hardware states of a task.
@@ -141,7 +143,9 @@ impl core::fmt::Display for TrapContextFrame {
 }
 
 impl ContextFrameTrait for TrapContextFrame {
-    fn init(&mut self, _tid: usize) {}
+    fn init(&mut self, _tid: usize, tls_area: usize) {
+        self.tpidr = tls_area as u64
+    }
 
     fn exception_pc(&self) -> usize {
         self.elr as usize

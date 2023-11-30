@@ -34,7 +34,7 @@ impl core::fmt::Display for Riscv64TrapContextFrame {
 }
 
 impl ContextFrameTrait for Riscv64TrapContextFrame {
-    fn init(&mut self, _tid: usize) {
+    fn init(&mut self, _tid: usize, tls_area: usize) {
         self.sstatus = (SSTATUS::SD::SET
             + SSTATUS::FS.val(0b11)
             // The SUM (permit Supervisor User Memory access) bit
@@ -58,6 +58,8 @@ impl ContextFrameTrait for Riscv64TrapContextFrame {
             // The supervisor can disable indivdual interrupt sources using the sie register.
             + SSTATUS::SIE.val(0))
         .value;
+        // Thread local Storage, `tp` register.
+        self.gpr[4] = tls_area as u64;
     }
     fn exception_pc(&self) -> usize {
         self.sepc as usize
@@ -118,6 +120,9 @@ pub struct ThreadContext {
     pub s9: usize,
     pub s10: usize,
     pub s11: usize,
+
+    pub tp: usize,
+    // TODO: FP states
 }
 
 impl ThreadContext {
@@ -162,6 +167,7 @@ macro_rules! save_yield_context {
             sd  s9, 11*8(a0)
             sd  s10, 12*8(a0)
             sd  s11, 13*8(a0)
+            sd  tp, 14*8(a0)
 			"#
         )
     };
@@ -172,6 +178,7 @@ macro_rules! restore_yield_context {
     () => {
         concat!(
             r#"
+			ld 	tp, 14*8(a1)
             ld  s11, 13*8(a1)
             ld  s10, 12*8(a1)
             ld  s9, 11*8(a1)

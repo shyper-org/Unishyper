@@ -362,7 +362,7 @@ pub fn init_main_thread(core_id: usize, entry_tuple: (usize, usize)) {
 
     use crate::libs::traits::ArchTrait;
     crate::arch::Arch::set_thread_id(t.id().as_u64());
-    crate::arch::Arch::set_tls_ptr(t.get_tls_ptr() as u64);
+    // crate::arch::Arch::set_tls_ptr(t.get_tls_ptr() as u64);
 
     thread_spawn_privilege(gc_thread, 0, "gc_thread");
 
@@ -494,6 +494,11 @@ pub fn thread_alloc(
         last_stack_pointer,
         mem::size_of::<ContextFrame>()
     );
+
+    // Init thread local storage region.
+    let tls = crate::libs::tls::alloc_thread_local_storage_region(zone_id);
+    debug!("tls_region alloc at {}", tls.get_tls_start());
+
     // Init thread context in stack region.
     unsafe {
         core::ptr::write_bytes(
@@ -505,7 +510,7 @@ pub fn thread_alloc(
             .as_mut_ptr::<ContextFrame>()
             .as_mut()
             .unwrap();
-        context_frame.init(id.as_u64() as usize);
+        context_frame.init(id.as_u64() as usize, tls.get_tls_start().value());
         context_frame.set_exception_pc(start);
         context_frame.set_gpr(0, entry);
         context_frame.set_gpr(1, arg);
@@ -523,10 +528,6 @@ pub fn thread_alloc(
     } else {
         false
     };
-
-    // Init thread local storage region.
-    let tls = crate::libs::tls::alloc_thread_local_storage_region(zone_id);
-    trace!("tls_region alloc at {}", tls.get_tls_start());
 
     let t = Thread(Arc::new(ControlBlock {
         inner: Inner {
@@ -560,7 +561,7 @@ pub fn thread_alloc(
     #[cfg(feature = "zone")]
     zone::switch_from_privilege(ori_pkru);
     debug!(
-        "thread_alloc success id [{}]\n\t\t\t\t\t\tsp [{} to 0x{:016x}]",
+        "thread_alloc success id [{}]\n\t\t\tsp [{} to {:#x}]",
         id, stack_start, sp
     );
     t

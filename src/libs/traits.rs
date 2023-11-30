@@ -26,7 +26,7 @@ pub trait ArchTrait {
 }
 
 pub trait ContextFrameTrait {
-    fn init(&mut self, tid: usize);
+    fn init(&mut self, tid: usize, tls_area: usize);
     /// Get context frame's execption return address.
     fn exception_pc(&self) -> usize;
     /// Set context frame's execption return address.

@@ -176,7 +176,7 @@ impl ArchTrait for Arch {
     fn set_thread_id(_tid: u64) {}
 
     fn get_tls_ptr() -> *const u8 {
-        0xDEAD_BEEF as *const u8 as *const u8
+        0xDEAD_BEEF as *const u8
     }
 
     fn set_tls_ptr(_tls_ptr: u64) {}

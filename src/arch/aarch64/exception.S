@@ -1,12 +1,10 @@
-.equ SIZE_OF_CONTEXT_FRAME, 0x120
-
 /// Unlike the exception handler in rustpi,
 /// (https://github.com/tonnylyz/rustpie/blob/master/src/arch/aarch64/exception.S)
 /// We use thread's own stack to store context.
 /// But this may disobey ARM's exception handler rule, who knows?
 .macro VECTOR handler
     // Current sp is kernel_sp.
-    sub	sp, sp, #SIZE_OF_CONTEXT_FRAME
+    sub	sp, sp, {size_of_context_frame}
     stp x0, x1,  [sp, #(0 * 16)]
     stp x2, x3,  [sp, #(1 * 16)]
     stp x4, x5,  [sp, #(2 * 16)]
@@ -29,7 +27,8 @@
     stp x0, x1,  [sp, #(16 * 16)]
     // Mark context as "from irq".
     mov x0, 1
-    str x0, [sp, #(34 * 8)]
+    mrs x1, tpidr_el0
+    stp x0, x1,  [sp, #(17 * 16)]
     mov fp, 0
     mov x0, sp
     bl  \handler
@@ -55,9 +54,11 @@ pop_context:
     mov x0, #0x45
     ldr x1, [sp, #(32 * 8)] // elr
     ldr x2, [sp, #(33 * 8)] // sp
+    ldr x3, [sp, #(34 * 8)] // tpidr
     msr spsr_el1, x0
     msr elr_el1, x1
     msr sp_el0, x2
+	msr tpidr_el0, x3
     ldp x0, x1,  [sp, #(0 * 16)]
     ldp x2, x3,  [sp, #(1 * 16)]
     ldp x4, x5,  [sp, #(2 * 16)]
@@ -74,7 +75,7 @@ pop_context:
     ldp x26,x27, [sp, #(13 * 16)]
     ldp x28,x29, [sp, #(14 * 16)]
     ldr x30, [sp, #(15 * 16)]
-    add	sp, sp, #SIZE_OF_CONTEXT_FRAME
+    add	sp, sp, {size_of_context_frame}
     eret
 
 .section .text.vector

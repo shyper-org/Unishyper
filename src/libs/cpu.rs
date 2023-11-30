@@ -177,7 +177,7 @@ impl Core {
             // assert!(Arc::strong_count(&prev) > 1);
             // assert!(Arc::strong_count(&next) >= 1);
             crate::arch::Arch::set_thread_id(next.id().as_u64());
-            crate::arch::Arch::set_tls_ptr(next.get_tls_ptr() as u64);
+            // crate::arch::Arch::set_tls_ptr(next.get_tls_ptr() as u64);
             let next_is_not_run = next.in_trap_context();
             if next_is_not_run {
                 next.set_in_yield_context();

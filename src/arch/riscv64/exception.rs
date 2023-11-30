@@ -4,7 +4,10 @@ use tock_registers::interfaces::{Readable, Writeable, ReadWriteable};
 use crate::arch::ContextFrame;
 use crate::libs::traits::*;
 
-core::arch::global_asm!(include_str!("exception.S"));
+core::arch::global_asm!(
+    include_str!("exception.S"),
+    size_of_context_frame = const core::mem::size_of::<ContextFrame>()
+);
 
 // Interrupt Exception_Code Description
 //      1        1          Supervisor software interrupt
@@ -70,7 +73,8 @@ unsafe extern "C" fn exception_entry(ctx: *mut ContextFrame) {
         warn!("SCAUSE {:016x}", cause);
         warn!("SEPC {:016x}", ctx.read().exception_pc());
         warn!("FAR  {:016x}", crate::arch::Arch::fault_address());
-        panic!("Unhandled kernel exception");
+        // panic!("Unhandled kernel exception");
+        loop {}
     }
 }
 

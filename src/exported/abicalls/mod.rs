@@ -4,6 +4,12 @@ mod tcp;
 #[cfg(feature = "net")]
 pub use tcp::*;
 
+#[cfg(feature = "net")]
+mod udp;
+
+#[cfg(feature = "net")]
+pub use udp::*;
+
 mod tls;
 pub use tls::*;
 

@@ -38,7 +38,7 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
     //     DAIF.get(),
     //     ctx
     // );
-    // println!("{}", ctx.read());
+    // println!("current_el_spx_irq\n{}", ctx.read());
 
     // Store current context's pointer on current core struct.
     // Note: ctx is just a pointer to current core stack.
@@ -81,7 +81,6 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
             panic!("GIC unknown irq")
         }
     }
-    if irq.is_some() {}
     // debug!(
     //     "current_el_spx_irq call pop_context, cur_sp {:x}",
     //     core.current_sp()

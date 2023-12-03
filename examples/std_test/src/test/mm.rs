@@ -20,14 +20,12 @@ pub fn test_mm_alloc() {
         let cnt_1: usize;
         let mut cnt_inside = 0;
         for _j in 0..100 {
-            unsafe {
-                let start = current_cycle();
-                let res = Global.allocate(layout);
-                // let res = Global.allocate_zeroed(layout);
-                let end = current_cycle();
-                res_list.push(res);
-                cnt_inside = cnt_inside + (end - start);
-            }
+            let start = current_cycle();
+            let res = Global.allocate(layout);
+            // let res = Global.allocate_zeroed(layout);
+            let end = current_cycle();
+            res_list.push(res);
+            cnt_inside = cnt_inside + (end - start);
         }
         cnt = cnt_inside / 100;
         println!("main thread, round [{}] allocate {} cycles", i, cnt);

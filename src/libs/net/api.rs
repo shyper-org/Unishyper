@@ -1,6 +1,7 @@
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use core::sync::atomic::{AtomicI32, Ordering};
+use core::net::SocketAddr;
 
 use pflock::PFLock;
 
@@ -9,7 +10,6 @@ use crate::libs::error::ShyperError;
 use super::Handle;
 use super::tcp::TcpSocket;
 use super::tcp::Shutdown;
-use super::addr::SocketAddr;
 
 /// Atomic counter to determine the next unused file descriptor.
 static FD_COUNTER: AtomicI32 = AtomicI32::new(3);
@@ -44,23 +44,30 @@ pub fn tcp_socket() -> Result<Handle, ShyperError> {
 
 /// Opens a TCP connection to a remote host.
 #[inline(always)]
-pub fn tcp_stream_connect(fd: Handle, addr: SocketAddr) -> Result<(), ShyperError> {
+pub fn tcp_connect(fd: Handle, addr: SocketAddr) -> Result<(), ShyperError> {
+    debug!("tcp_connect() fd {} addr {}", fd, addr);
+
     get_object(fd)?.connect(addr)
 }
 
 #[inline(always)]
-pub fn tcp_stream_read(fd: Handle, buffer: &mut [u8]) -> Result<usize, ShyperError> {
+pub fn tcp_read(fd: Handle, buffer: &mut [u8]) -> Result<usize, ShyperError> {
+    debug!("tcp_read() fd {} len {} Bytes", fd, buffer.len());
+
     get_object(fd)?.read(buffer)
 }
 
 #[inline(always)]
-pub fn tcp_stream_write(fd: Handle, buffer: &[u8]) -> Result<usize, ShyperError> {
+pub fn tcp_write(fd: Handle, buffer: &[u8]) -> Result<usize, ShyperError> {
+    debug!("tcp_write() fd {} len {} Bytes", fd, buffer.len());
     get_object(fd)?.write(buffer)
 }
 
 /// Close a TCP connection
 #[inline(always)]
 pub fn tcp_close(fd: Handle) -> Result<(), ShyperError> {
+    debug!("tcp_close() fd {}", fd);
+
     let socket = remove_object(fd)?;
     // See `Drop` implemented for `TcpSocket`.
     drop(socket);
@@ -69,20 +76,20 @@ pub fn tcp_close(fd: Handle) -> Result<(), ShyperError> {
 }
 
 #[inline(always)]
-pub fn tcp_stream_shutdown(_fd: Handle, _how: Shutdown) -> Result<(), ShyperError> {
+pub fn tcp_shutdown(_fd: Handle, _how: Shutdown) -> Result<(), ShyperError> {
     // match how {
     //     Shutdown::Read => {
     //         // warn!("Shutdown::Read is not implemented");
     //         Ok(())
     //     }
-    //     Shutdown::Write => tcp_stream_close(handle),
-    //     Shutdown::Both => tcp_stream_close(handle),
+    //     Shutdown::Write => tcp_close(handle),
+    //     Shutdown::Both => tcp_close(handle),
     // }
     Ok(())
 }
 
 #[inline(always)]
-pub fn tcp_stream_peer_addr(fd: Handle) -> Result<SocketAddr, ShyperError> {
+pub fn tcp_peer_addr(fd: Handle) -> Result<SocketAddr, ShyperError> {
     get_object(fd)?.peer_addr()
 }
 
@@ -112,7 +119,7 @@ pub fn tcp_accept(fd: Handle) -> Result<(Handle, SocketAddr), ShyperError> {
     let peer_addr = new_socket.peer_addr()?;
 
     debug!(
-        "tcp_listener_accept on Thread {} success on {}, remote {}",
+        "tcp_accept on Thread {} success on {}, remote {}",
         crate::libs::thread::current_thread_id(),
         new_socket.local_addr()?,
         new_socket.peer_addr()?,
@@ -130,17 +137,17 @@ pub fn tcp_accept(fd: Handle) -> Result<(Handle, SocketAddr), ShyperError> {
 /// When not set, data is buffered until there is a sufficient amount to send out,
 /// thereby avoiding the frequent sending of small packets.
 #[inline(always)]
-pub fn tcp_stream_set_no_delay(fd: Handle, mode: bool) -> Result<(), ShyperError> {
+pub fn tcp_set_no_delay(fd: Handle, mode: bool) -> Result<(), ShyperError> {
     get_object(fd)?.set_no_delay(mode)
 }
 
 #[inline(always)]
-pub fn tcp_stream_no_delay(fd: Handle) -> Result<bool, ShyperError> {
+pub fn tcp_no_delay(fd: Handle) -> Result<bool, ShyperError> {
     get_object(fd)?.no_delay()
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_nonblocking(fd: Handle, mode: bool) -> Result<(), ShyperError> {
+pub fn tcp_set_nonblocking(fd: Handle, mode: bool) -> Result<(), ShyperError> {
     // non-blocking mode is currently not support
     // => return only an error, if `mode` is defined as `true`
 
@@ -148,61 +155,63 @@ pub fn tcp_stream_set_nonblocking(fd: Handle, mode: bool) -> Result<(), ShyperEr
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_read_timeout(
-    _handle: Handle,
-    timeout: Option<u64>,
-) -> Result<(), ShyperError> {
+pub fn tcp_set_read_timeout(_fd: Handle, timeout: Option<u64>) -> Result<(), ShyperError> {
     if timeout.is_none() {
         return Ok(());
     }
-    warn!("tcp_stream_set_read_timeout is not supported");
-    Err(ShyperError::Unsupported)
+    warn!("tcp_set_read_timeout is not supported");
+    Ok(())
 }
 
 #[inline(always)]
-pub fn tcp_stream_get_read_timeout(_handle: Handle) -> Result<Option<u64>, ShyperError> {
-    warn!("tcp_stream_get_read_timeout is not supported");
+pub fn tcp_get_read_timeout(_fd: Handle) -> Result<Option<u64>, ShyperError> {
+    warn!("tcp_get_read_timeout is not supported");
     Ok(None)
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_write_timeout(
-    _handle: Handle,
-    timeout: Option<u64>,
-) -> Result<(), ShyperError> {
+pub fn tcp_set_write_timeout(_fd: Handle, timeout: Option<u64>) -> Result<(), ShyperError> {
     if timeout.is_none() {
         return Ok(());
     }
-    warn!("tcp_stream_set_write_timeout is not supported");
-    Err(ShyperError::Unsupported)
+    warn!("tcp_set_write_timeout is not supported");
+    Ok(())
 }
 
 #[inline(always)]
-pub fn tcp_stream_get_write_timeout(_handle: Handle) -> Result<Option<u64>, ShyperError> {
-    warn!("tcp_stream_get_write_timeout is not supported");
+pub fn tcp_get_write_timeout(_fd: Handle) -> Result<Option<u64>, ShyperError> {
+    warn!("tcp_get_write_timeout is not supported");
     Ok(None)
 }
 
 #[inline(always)]
-pub fn tcp_stream_duplicate(_handle: Handle) -> Result<Handle, ShyperError> {
-    warn!("tcp_stream_duplicate is not supported");
+pub fn tcp_duplicate(_fd: Handle) -> Result<Handle, ShyperError> {
+    warn!("tcp_duplicate is not supported");
     Err(ShyperError::Unsupported)
 }
 
 #[inline(always)]
-pub fn tcp_stream_peek(_handle: Handle, _buf: &mut [u8]) -> Result<usize, ShyperError> {
-    warn!("tcp_stream_peek is not supported");
-    Err(ShyperError::Unsupported)
+pub fn tcp_peek(_fd: Handle, _buf: &mut [u8]) -> Result<usize, ShyperError> {
+    warn!("tcp_peek is not supported");
+    Ok(0)
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_tll(_handle: Handle, _ttl: u32) -> Result<(), ShyperError> {
-    warn!("tcp_stream_set_tll is not supported");
-    Err(ShyperError::Unsupported)
+pub fn tcp_set_tll(_fd: Handle, _ttl: u32) -> Result<(), ShyperError> {
+    warn!("tcp_set_tll is not supported");
+    Ok(())
 }
 
 #[inline(always)]
-pub fn tcp_stream_get_tll(_handle: Handle) -> Result<u32, ShyperError> {
-    warn!("tcp_stream_get_tll is not supported");
-    Err(ShyperError::Unsupported)
+pub fn tcp_get_tll(_fd: Handle) -> Result<u32, ShyperError> {
+    warn!("tcp_get_tll is not supported");
+    Ok(0)
+}
+
+#[inline(always)]
+pub fn udp_socket() -> Result<Handle, ShyperError> {
+    let fd = FD_COUNTER.fetch_add(1, Ordering::SeqCst);
+    // let socket = TcpSocket::new();
+    // let _ = insert_object(fd, socket);
+    Ok(fd)
 }

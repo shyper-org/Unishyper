@@ -6,8 +6,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 /// A bitset that can be used synchronously.
 pub(super) struct SyncBitset([AtomicUsize; TLS_KEYS_BITSET_SIZE]);
 
-pub(super) const SYNC_BITSET_INIT: SyncBitset =
-    SyncBitset([AtomicUsize::new(0), AtomicUsize::new(0)]);
+pub(super) const SYNC_BITSET_INIT: SyncBitset = SyncBitset([const { AtomicUsize::new(0) }; 16]);
 
 impl SyncBitset {
     pub fn get(&self, index: usize) -> bool {

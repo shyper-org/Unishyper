@@ -15,17 +15,13 @@ use super::executor::block_on;
 
 /// Opens a TCP connection to a remote host.
 #[inline(always)]
-pub fn tcp_stream_connect(
-    ip: &[u8],
-    port: u16,
-    timeout: Option<u64>,
-) -> Result<Handle, ShyperError> {
+pub fn tcp_connect(ip: &[u8], port: u16, timeout: Option<u64>) -> Result<Handle, ShyperError> {
     let local_endpoint = super::interface::get_ephemeral_port()?;
     let socket = Box::new(AsyncTcpSocket::new(local_endpoint));
     let address = IpAddress::from_str(str::from_utf8(ip).map_err(|_| ShyperError::InvalidInput)?)
         .map_err(|_| ShyperError::InvalidInput)?;
     debug!(
-        "tcp_stream_connect {} to {}:{}",
+        "tcp_connect {} to {}:{}",
         crate::libs::thread::current_thread_id(),
         address,
         port
@@ -35,7 +31,7 @@ pub fn tcp_stream_connect(
         timeout.map(Duration::from_millis),
     )??;
     debug!(
-        "tcp_stream_connect {} to {}:{} success local_endpoint {}",
+        "tcp_connect {} to {}:{} success local_endpoint {}",
         crate::libs::thread::current_thread_id(),
         address,
         port,
@@ -45,11 +41,11 @@ pub fn tcp_stream_connect(
 }
 
 #[inline(always)]
-pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ShyperError> {
+pub fn tcp_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, ShyperError> {
     let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
-    // let peer_addr = tcp_stream_peer_addr(handle)?;
+    // let peer_addr = tcp_peer_addr(handle)?;
     // debug!(
-    //     "tcp_stream_read on Thread {} from {}:{}",
+    //     "tcp_read on Thread {} from {}:{}",
     //     crate::libs::thread::current_thread_id(),
     //     peer_addr.0,
     //     peer_addr.1
@@ -58,15 +54,15 @@ pub fn tcp_stream_read(handle: Handle, buffer: &mut [u8]) -> Result<usize, Shype
 }
 
 #[inline(always)]
-pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ShyperError> {
+pub fn tcp_write(handle: Handle, buffer: &[u8]) -> Result<usize, ShyperError> {
     let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
-    // let peer_addr = tcp_stream_peer_addr(handle)?;
+    // let peer_addr = tcp_peer_addr(handle)?;
     // let s = match str::from_utf8(buffer) {
     //     Ok(v) => v,
     //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
     // };
     // debug!(
-    //     "tcp_stream_write T[{}] to {}:{}, len {},\n{}",
+    //     "tcp_write T[{}] to {}:{}, len {},\n{}",
     //     crate::libs::thread::current_thread_id(),
     //     peer_addr.0,
     //     peer_addr.1,
@@ -79,10 +75,10 @@ pub fn tcp_stream_write(handle: Handle, buffer: &[u8]) -> Result<usize, ShyperEr
 
 /// Close a TCP connection
 #[inline(always)]
-pub fn tcp_stream_close(handle: Handle) -> Result<(), ShyperError> {
-    let peer_addr = tcp_stream_peer_addr(handle)?;
+pub fn tcp_close(handle: Handle) -> Result<(), ShyperError> {
+    let peer_addr = tcp_peer_addr(handle)?;
     debug!(
-        "tcp_stream_close T[{}] ip {}:{}",
+        "tcp_close T[{}] ip {}:{}",
         crate::libs::thread::current_thread_id(),
         peer_addr.0,
         peer_addr.1
@@ -92,20 +88,20 @@ pub fn tcp_stream_close(handle: Handle) -> Result<(), ShyperError> {
 }
 
 #[inline(always)]
-pub fn tcp_stream_shutdown(_handle: Handle, _how: Shutdown) -> Result<(), ShyperError> {
+pub fn tcp_shutdown(_handle: Handle, _how: Shutdown) -> Result<(), ShyperError> {
     // match how {
     //     Shutdown::Read => {
     //         // warn!("Shutdown::Read is not implemented");
     //         Ok(())
     //     }
-    //     Shutdown::Write => tcp_stream_close(handle),
-    //     Shutdown::Both => tcp_stream_close(handle),
+    //     Shutdown::Write => tcp_close(handle),
+    //     Shutdown::Both => tcp_close(handle),
     // }
     Ok(())
 }
 
 #[inline(always)]
-pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperError> {
+pub fn tcp_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperError> {
     let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
 
     let peer_addr = socket.peer_addr().unwrap();
@@ -115,7 +111,7 @@ pub fn tcp_stream_peer_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperEr
 }
 
 #[inline(always)]
-pub fn tcp_stream_socket_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperError> {
+pub fn tcp_socket_addr(handle: Handle) -> Result<(IpAddress, u16), ShyperError> {
     let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
 
     let local_addr = socket.local_addr().unwrap();
@@ -125,18 +121,18 @@ pub fn tcp_stream_socket_addr(handle: Handle) -> Result<(IpAddress, u16), Shyper
 }
 
 #[inline(always)]
-pub fn tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ShyperError> {
+pub fn tcp_bind(ip: &[u8], port: u16) -> Result<u16, ShyperError> {
     let ip = str::from_utf8(ip).map_err(|_| ShyperError::InvalidInput)?;
     let port = if port == 0 {
         super::interface::get_ephemeral_port()?
     } else if !super::interface::check_local_endpoint(port) {
         port
     } else {
-        warn!("tcp_listener_bind failed, port has been occupied");
+        warn!("tcp_bind failed, port has been occupied");
         return Err(ShyperError::ConnectionRefused);
     };
     debug!(
-        "tcp_listener_bind T[{}] success on ip {:?} port {}",
+        "tcp_bind T[{}] success on ip {:?} port {}",
         crate::libs::thread::current_thread_id(),
         ip,
         port
@@ -146,13 +142,13 @@ pub fn tcp_listener_bind(ip: &[u8], port: u16) -> Result<u16, ShyperError> {
 
 /// Wait for connection at specified address.
 #[inline(always)]
-pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), ShyperError> {
+pub fn tcp_accept(port: u16) -> Result<(Handle, IpAddress, u16), ShyperError> {
     let local_endpoint = port;
     let socket = Box::new(AsyncTcpSocket::new(local_endpoint));
     block_on(socket.accept(), None)??;
 
     debug!(
-        "tcp_listener_accept on Thread {} success on ip {:?}, local_endpoint {}",
+        "tcp_accept on Thread {} success on ip {:?}, local_endpoint {}",
         crate::libs::thread::current_thread_id(),
         socket.local_addr().unwrap(),
         local_endpoint
@@ -171,19 +167,19 @@ pub fn tcp_listener_accept(port: u16) -> Result<(Handle, IpAddress, u16), Shyper
 /// When not set, data is buffered until there is a sufficient amount to send out,
 /// thereby avoiding the frequent sending of small packets.
 #[inline(always)]
-pub fn tcp_stream_set_no_delay(handle: Handle, mode: bool) -> Result<(), ShyperError> {
+pub fn tcp_set_no_delay(handle: Handle, mode: bool) -> Result<(), ShyperError> {
     let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
     socket.set_no_delay(mode)
 }
 
 #[inline(always)]
-pub fn tcp_stream_no_delay(handle: Handle) -> Result<bool, ShyperError> {
+pub fn tcp_no_delay(handle: Handle) -> Result<bool, ShyperError> {
     let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
     socket.no_delay()
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_nonblocking(handle: Handle, mode: bool) -> Result<(), ShyperError> {
+pub fn tcp_set_nonblocking(handle: Handle, mode: bool) -> Result<(), ShyperError> {
     // non-blocking mode is currently not support
     // => return only an error, if `mode` is defined as `true`
     let socket = ManuallyDrop::new(Box::<AsyncTcpSocket>::from(handle));
@@ -191,61 +187,55 @@ pub fn tcp_stream_set_nonblocking(handle: Handle, mode: bool) -> Result<(), Shyp
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_read_timeout(
-    _handle: Handle,
-    timeout: Option<u64>,
-) -> Result<(), ShyperError> {
+pub fn tcp_set_read_timeout(_handle: Handle, timeout: Option<u64>) -> Result<(), ShyperError> {
     if timeout.is_none() {
         return Ok(());
     }
-    warn!("tcp_stream_set_read_timeout is not supported");
+    warn!("tcp_set_read_timeout is not supported");
     Err(ShyperError::Unsupported)
 }
 
 #[inline(always)]
-pub fn tcp_stream_get_read_timeout(_handle: Handle) -> Result<Option<u64>, ShyperError> {
-    warn!("tcp_stream_get_read_timeout is not supported");
+pub fn tcp_get_read_timeout(_handle: Handle) -> Result<Option<u64>, ShyperError> {
+    warn!("tcp_get_read_timeout is not supported");
     Ok(None)
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_write_timeout(
-    _handle: Handle,
-    timeout: Option<u64>,
-) -> Result<(), ShyperError> {
+pub fn tcp_set_write_timeout(_handle: Handle, timeout: Option<u64>) -> Result<(), ShyperError> {
     if timeout.is_none() {
         return Ok(());
     }
-    warn!("tcp_stream_set_write_timeout is not supported");
+    warn!("tcp_set_write_timeout is not supported");
     Err(ShyperError::Unsupported)
 }
 
 #[inline(always)]
-pub fn tcp_stream_get_write_timeout(_handle: Handle) -> Result<Option<u64>, ShyperError> {
-    warn!("tcp_stream_get_write_timeout is not supported");
+pub fn tcp_get_write_timeout(_handle: Handle) -> Result<Option<u64>, ShyperError> {
+    warn!("tcp_get_write_timeout is not supported");
     Ok(None)
 }
 
 #[inline(always)]
-pub fn tcp_stream_duplicate(_handle: Handle) -> Result<Handle, ShyperError> {
-    warn!("tcp_stream_duplicate is not supported");
+pub fn tcp_duplicate(_handle: Handle) -> Result<Handle, ShyperError> {
+    warn!("tcp_duplicate is not supported");
     Err(ShyperError::Unsupported)
 }
 
 #[inline(always)]
-pub fn tcp_stream_peek(_handle: Handle, _buf: &mut [u8]) -> Result<usize, ShyperError> {
-    warn!("tcp_stream_peek is not supported");
+pub fn tcp_peek(_handle: Handle, _buf: &mut [u8]) -> Result<usize, ShyperError> {
+    warn!("tcp_peek is not supported");
     Err(ShyperError::Unsupported)
 }
 
 #[inline(always)]
-pub fn tcp_stream_set_tll(_handle: Handle, _ttl: u32) -> Result<(), ShyperError> {
-    warn!("tcp_stream_set_tll is not supported");
+pub fn tcp_set_tll(_handle: Handle, _ttl: u32) -> Result<(), ShyperError> {
+    warn!("tcp_set_tll is not supported");
     Err(ShyperError::Unsupported)
 }
 
 #[inline(always)]
-pub fn tcp_stream_get_tll(_handle: Handle) -> Result<u32, ShyperError> {
-    warn!("tcp_stream_get_tll is not supported");
+pub fn tcp_get_tll(_handle: Handle) -> Result<u32, ShyperError> {
+    warn!("tcp_get_tll is not supported");
     Err(ShyperError::Unsupported)
 }

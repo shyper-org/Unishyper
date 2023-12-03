@@ -77,7 +77,6 @@ hashbrown = { version = "0.13.1", optional = true, default-features = false }
 ioslice = { version = "0.6.0-alpha.2", optional = true, default-features = false }
 libm = { version = "0.2", optional = true, default-features = false }
 lru = { version = "0.11.0", optional = true }
-no-std-net = { version = "0.6.0", optional = true }
 xmas-elf = { version = "0.8.0", optional = true }
 pflock = { version = "0.2", optional = true }
 
@@ -191,7 +190,6 @@ net = [
 	"dep:smoltcp",
 	"dep:crossbeam-queue",
 	"dep:ioslice",
-	"dep:no-std-net",
 	"dep:pflock",
 	"dep:ahash",
 	"dep:hashbrown",

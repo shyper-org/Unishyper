@@ -68,9 +68,9 @@ impl ArchPageTableEntryTrait for RISCV64PageTableEntry {
     fn make_table(frame_pa: usize) -> Self {
         RISCV64PageTableEntry(
             (TABLE_DESCRIPTOR::NEXT_LEVEL_TABLE_PPN.val((frame_pa >> PAGE_SHIFT) as u64)
-                + TABLE_DESCRIPTOR::DIRTY::True
-                + TABLE_DESCRIPTOR::ACCESSED::True
-                + TABLE_DESCRIPTOR::USER::True
+                + TABLE_DESCRIPTOR::DIRTY::False
+                + TABLE_DESCRIPTOR::ACCESSED::False
+                + TABLE_DESCRIPTOR::USER::False
                 + TABLE_DESCRIPTOR::VALID::True)
                 .value as usize,
         )
@@ -141,7 +141,7 @@ impl core::convert::From<Entry> for RISCV64PageTableEntry {
             } + PAGE_DESCRIPTOR::DIRTY::True
                 + PAGE_DESCRIPTOR::ACCESSED::True
                 + PAGE_DESCRIPTOR::VALID::True
-                // + PAGE_DESCRIPTOR::USER::True
+                + PAGE_DESCRIPTOR::USER::True
                 + PAGE_DESCRIPTOR::OUTPUT_PPN.val((pte.ppn()) as u64))
             .value as usize,
         );
@@ -252,7 +252,7 @@ impl PageTableTrait for RISCV64PageTable {
             l1e.set_entry(va.l2x(), l2e);
         }
         l2e.set_entry(va.l3x(), RISCV64PageTableEntry::from(Entry::new(attr, pa)));
-        // crate::arch::Arch::invalidate_tlb();
+        crate::arch::Arch::invalidate_tlb();
         // self.dump_entry_flags_of_va(va);
         Ok(())
     }

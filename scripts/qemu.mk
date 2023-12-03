@@ -67,12 +67,12 @@ QEMU_CMD := ${QEMU_CMD} \
 endif
 endif
 
-QEMU_COMMON_OPTIONS := -serial stdio -display none -s
+QEMU_COMMON_OPTIONS := -serial stdio -display none
 
 define qemu_run
   ${QEMU_CMD} ${QEMU_COMMON_OPTIONS}
 endef
 
 define qemu_debug
-  ${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -S
+  ${QEMU_CMD} ${QEMU_COMMON_OPTIONS} -s -S
 endef

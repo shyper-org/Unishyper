@@ -26,8 +26,8 @@
     mrs x1, sp_el0
     stp x0, x1,  [sp, #(16 * 16)]
     // Mark context as "from irq".
-    mov x0, 1
-    mrs x1, tpidr_el0
+	mrs x0, tpidr_el0
+    mov x1, 1
     stp x0, x1,  [sp, #(17 * 16)]
     mov fp, 0
     mov x0, sp

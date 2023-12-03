@@ -2,13 +2,13 @@ use core::task::Poll;
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use alloc::boxed::Box;
+use core::net::SocketAddr;
 
 use futures_lite::future;
 use smoltcp::iface;
 use smoltcp::socket::tcp::{self, ConnectError};
 use smoltcp::time::Duration;
 use smoltcp::wire::{IpAddress, IpEndpoint};
-use no_std_net::SocketAddr;
 
 use crate::libs::error::ShyperError;
 use crate::libs::net::addr::*;
@@ -135,7 +135,7 @@ impl AsyncTcpSocket {
         local_endpoint: u16,
     ) -> Result<SmoltcpSocketHandle, ShyperError> {
         debug!(
-            "tcp_stream_connect {} to ip {}:{}, local_endpoint {}",
+            "tcp_connect {} to ip {}:{}, local_endpoint {}",
             crate::libs::thread::current_thread_id(),
             address,
             port,

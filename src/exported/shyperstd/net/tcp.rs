@@ -1,7 +1,7 @@
 use alloc::fmt;
 use core::time::Duration;
 use ioslice::{IoSlice, IoSliceMut};
-use super::{SocketAddr, ToSocketAddrs};
+use super::addr::{SocketAddr, ToSocketAddrs};
 
 use crate::exported::shyperstd::io;
 use crate::libs::error::ShyperError;
@@ -39,39 +39,39 @@ impl TcpStream {
         super::each_addr(addr, |addr: io::Result<&SocketAddr>| {
             let addr = *addr?;
             let fd = api::tcp_socket()?;
-            api::tcp_stream_connect(fd, addr)?;
+            api::tcp_connect(fd, addr)?;
 
             Ok(TcpStream(fd))
         })
     }
 
     pub fn set_read_timeout(&self, duration: Option<Duration>) -> io::Result {
-        api::tcp_stream_set_read_timeout(self.0, duration.map(|d| d.as_millis() as u64))
+        api::tcp_set_read_timeout(self.0, duration.map(|d| d.as_millis() as u64))
     }
 
     pub fn set_write_timeout(&self, duration: Option<Duration>) -> io::Result {
-        api::tcp_stream_set_write_timeout(self.0, duration.map(|d| d.as_millis() as u64))
+        api::tcp_set_write_timeout(self.0, duration.map(|d| d.as_millis() as u64))
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        let duration = api::tcp_stream_get_read_timeout(self.0)?;
+        let duration = api::tcp_get_read_timeout(self.0)?;
 
         Ok(duration.map(|d| Duration::from_millis(d)))
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        let duration = api::tcp_stream_get_write_timeout(self.0)?;
+        let duration = api::tcp_get_write_timeout(self.0)?;
 
         Ok(duration.map(|d| Duration::from_millis(d)))
     }
 
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
-        api::tcp_stream_peek(self.0, buf)
+        api::tcp_peek(self.0, buf)
     }
 
     pub fn read(&self, buffer: &mut [u8]) -> io::Result<usize> {
         // self.read_vectored(&mut [IoSliceMut::new(buffer)])
-        let ret = api::tcp_stream_read(self.0, &mut buffer[0..])?;
+        let ret = api::tcp_read(self.0, &mut buffer[0..])?;
         Ok(ret)
     }
 
@@ -84,7 +84,7 @@ impl TcpStream {
         let mut size: usize = 0;
 
         for i in ioslice.iter_mut() {
-            let ret = api::tcp_stream_read(self.0, &mut i[0..])?;
+            let ret = api::tcp_read(self.0, &mut i[0..])?;
 
             if ret != 0 {
                 size += ret;
@@ -101,7 +101,7 @@ impl TcpStream {
 
     pub fn write(&self, buffer: &[u8]) -> io::Result<usize> {
         // self.write_vectored(&[IoSlice::new(buffer)])
-        let size = api::tcp_stream_write(self.0, buffer)?;
+        let size = api::tcp_write(self.0, buffer)?;
         Ok(size)
     }
 
@@ -121,7 +121,7 @@ impl TcpStream {
         let mut size: usize = 0;
 
         for i in ioslice.iter() {
-            size += api::tcp_stream_write(self.0, i)?;
+            size += api::tcp_write(self.0, i)?;
         }
 
         Ok(size)
@@ -133,7 +133,7 @@ impl TcpStream {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        api::tcp_stream_peer_addr(self.0)
+        api::tcp_peer_addr(self.0)
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
@@ -141,7 +141,7 @@ impl TcpStream {
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result {
-        api::tcp_stream_shutdown(self.0, how)
+        api::tcp_shutdown(self.0, how)
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
@@ -157,19 +157,19 @@ impl TcpStream {
     }
 
     pub fn set_nodelay(&self, mode: bool) -> io::Result {
-        api::tcp_stream_set_no_delay(self.0, mode)
+        api::tcp_set_no_delay(self.0, mode)
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        api::tcp_stream_no_delay(self.0)
+        api::tcp_no_delay(self.0)
     }
 
     pub fn set_ttl(&self, tll: u32) -> io::Result {
-        api::tcp_stream_set_tll(self.0, tll)
+        api::tcp_set_tll(self.0, tll)
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        api::tcp_stream_get_tll(self.0)
+        api::tcp_get_tll(self.0)
     }
 
     pub fn take_error(&self) -> io::Result {
@@ -177,7 +177,7 @@ impl TcpStream {
     }
 
     pub fn set_nonblocking(&self, mode: bool) -> io::Result {
-        api::tcp_stream_set_nonblocking(self.0, mode)
+        api::tcp_set_nonblocking(self.0, mode)
     }
 }
 

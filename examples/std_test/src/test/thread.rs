@@ -2,8 +2,8 @@ use std::thread;
 
 use super::current_cycle;
 
-const WARNUP_ROUND: usize = 10000;
-const N_ROUND: usize = 10000;
+const WARNUP_ROUND: usize = 100;
+const N_ROUND: usize = 100;
 
 pub fn test_thread_spawn() {
     let mut results = vec![];

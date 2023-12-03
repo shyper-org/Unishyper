@@ -17,9 +17,6 @@ extern crate alloc;
 extern "C" fn netdemo_server(_arg: usize) {
     println!("Server for latency test running, listening for connection on 0.0.0.0:4444");
 
-    let listener =
-        TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 4444)).unwrap();
-
     let n_bytes = if let Some(k) = option_env!("K") {
         k.parse::<usize>().unwrap()
     } else {
@@ -29,10 +26,18 @@ extern "C" fn netdemo_server(_arg: usize) {
     let n_rounds = if let Some(r) = option_env!("R") {
         r.parse::<usize>().unwrap()
     } else {
-        1000
+        100
     };
 
     let tot_n_bytes = (n_rounds * n_bytes) as u64;
+
+    println!(
+        "{n_bytes} Bytes for {n_rounds} Rounds, {} KB in total",
+        tot_n_bytes / 1024
+    );
+
+    let listener =
+        TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 4444)).unwrap();
 
     println!("********network  bind ******");
 

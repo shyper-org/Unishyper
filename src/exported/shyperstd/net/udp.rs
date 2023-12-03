@@ -2,7 +2,7 @@ use crate::exported::shyperstd::io;
 use crate::libs::net as net_impl;
 use crate::libs::error::ShyperError;
 
-use no_std_net::{SocketAddr, ToSocketAddrs};
+use super::addr::{SocketAddr, ToSocketAddrs};
 
 /// A UDP socket.
 pub struct UdpSocket(net_impl::UdpSocket);

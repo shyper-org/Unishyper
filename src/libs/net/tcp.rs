@@ -1,12 +1,13 @@
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicU8, AtomicBool, Ordering};
+use core::net::SocketAddr;
 
 use smoltcp::iface;
-use smoltcp::socket::tcp::{self, ConnectError};
+use smoltcp::socket::tcp::{self, ConnectError, State};
 // use smoltcp::time::Duration;
 use smoltcp::wire::{IpEndpoint, IpListenEndpoint};
-use no_std_net::SocketAddr;
 
+use crate::exported::shyperstd::io::PollState;
 use crate::libs::error::ShyperError;
 use crate::libs::net::addr::*;
 use super::{now, network_poll};
@@ -205,12 +206,12 @@ impl TcpSocket {
             let remote_endpoint = socketaddr_to_ipendpoint(remote_addr);
             let local_endpoint = self.bound_endpoint()?;
             debug!(
-                "tcp_stream_connect {} to remote {}, local {}",
+                "tcp_connect {} to remote {}, local {}",
                 crate::libs::thread::current_thread_id(),
                 remote_addr,
                 local_endpoint
             );
-            self.with_context(|socket, cx| {
+            let (local_endpoint, remote_endpoint) = self.with_context(|socket, cx| {
                 socket
                     .connect(cx, remote_endpoint, local_endpoint)
                     .or_else(|e| match e {
@@ -222,8 +223,19 @@ impl TcpSocket {
                             warn!("socket connect() failed on {}", e);
                             Err(ShyperError::ConnectionRefused)
                         }
-                    })
-            })
+                    })?;
+                Ok((
+                    socket.local_endpoint().unwrap(),
+                    socket.remote_endpoint().unwrap(),
+                ))
+            })?;
+            unsafe {
+                // SAFETY: no other threads can read or write these fields as we
+                // have changed the state to `STATE_BUSY`.
+                self.local_addr.get().write(local_endpoint);
+                self.peer_addr.get().write(remote_endpoint);
+            }
+            Ok(())
         })
         .unwrap_or_else(|_| {
             warn!("socket connect() failed: already connected");
@@ -235,25 +247,15 @@ impl TcpSocket {
             Err(ShyperError::WouldBlock)
         } else {
             self.block_on(|| {
-                self.with(|socket| match socket.state() {
-                    tcp::State::Closed | tcp::State::TimeWait => Err(ShyperError::BadAddress),
-                    tcp::State::Listen => Err(ShyperError::BadState),
-                    tcp::State::SynSent | tcp::State::SynReceived => Err(ShyperError::WouldBlock),
-                    _ => {
-                        let local_endpoint = socket.local_endpoint().unwrap();
-                        let remote_endpoint = socket.remote_endpoint().unwrap();
-                        debug!(
-                            "TcpSocket connect success remote {} local {}",
-                            remote_endpoint, local_endpoint
-                        );
-                        unsafe {
-                            self.local_addr.get().write(local_endpoint);
-                            self.peer_addr.get().write(remote_endpoint);
-                        }
-
-                        Ok(())
-                    }
-                })
+                let PollState { writable, .. } = self.poll_connect()?;
+                if !writable {
+                    Err(ShyperError::WouldBlock)
+                } else if self.get_state() == STATE_CONNECTED {
+                    Ok(())
+                } else {
+                    warn!("socket connect() failed, bad state");
+                    Err(ShyperError::ConnectionRefused)
+                }
             })
         }
     }
@@ -281,7 +283,7 @@ impl TcpSocket {
             if socket.is_active() {
                 let remote_endpoint = socket.remote_endpoint().unwrap();
                 let local_endpoint = socket.local_endpoint().unwrap();
-                drop(socket);
+                // let _ = drop(socket);
 
                 debug!(
                     "TcpSocket accept local {}, remote {}",
@@ -309,10 +311,7 @@ impl TcpSocket {
                 Ok(new_socket)
             } else {
                 match socket.state() {
-                    tcp::State::Closed
-                    | tcp::State::Closing
-                    | tcp::State::FinWait1
-                    | tcp::State::FinWait2 => {
+                    State::Closed | State::Closing | State::FinWait1 | State::FinWait2 => {
                         warn!(
                             "socket accept() failed: state {} mis-matched",
                             socket.state()
@@ -329,6 +328,7 @@ impl TcpSocket {
         debug!("TcpSocket read()");
 
         if self.is_connecting() {
+            warn!("TcpSocket write() failed on STATE_CONNECTING");
             return Err(ShyperError::WouldBlock);
         } else if !self.is_connected() {
             warn!("TcpSocket read() failed");
@@ -363,9 +363,10 @@ impl TcpSocket {
         debug!("TcpSocket write() {} bytes", buffer.len());
 
         if self.is_connecting() {
+            warn!("TcpSocket write() failed on STATE_CONNECTING");
             return Err(ShyperError::WouldBlock);
         } else if !self.is_connected() {
-            warn!("TcpSocket write() failed");
+            warn!("TcpSocket write() failed not connected");
             return Err(ShyperError::NotConnected);
         }
 
@@ -407,11 +408,11 @@ impl TcpSocket {
 
         self.block_on(|| {
             self.with(|socket| match socket.state() {
-                tcp::State::FinWait1
-                | tcp::State::FinWait2
-                | tcp::State::Closed
-                | tcp::State::Closing
-                | tcp::State::TimeWait => Err(ShyperError::BadState),
+                State::FinWait1
+                | State::FinWait2
+                | State::Closed
+                | State::Closing
+                | State::TimeWait => Err(ShyperError::BadState),
                 _ => {
                     if socket.send_queue() > 0 {
                         // socket.register_send_waker(cx.waker());
@@ -426,17 +427,31 @@ impl TcpSocket {
 
         self.block_on(|| {
             self.with(|socket| match socket.state() {
-                tcp::State::FinWait1
-                | tcp::State::FinWait2
-                | tcp::State::Closed
-                | tcp::State::Closing
-                | tcp::State::TimeWait => Ok(()),
+                State::FinWait1
+                | State::FinWait2
+                | State::Closed
+                | State::Closing
+                | State::TimeWait => Ok(()),
                 _ => {
                     // socket.register_send_waker(cx.waker());
                     Err(ShyperError::WouldBlock)
                 }
             })
         })
+    }
+
+    /// Whether the socket is readable or writable.
+    pub fn poll(&self) -> Result<PollState, ShyperError> {
+        match self.get_state() {
+            STATE_CONNECTING => self.poll_connect(),
+            STATE_CONNECTED => self.poll_stream(),
+            // This is different from ArceOS's listen_table design.
+            // STATE_LISTENING => self.poll_listener(),
+            _ => Ok(PollState {
+                readable: false,
+                writable: false,
+            }),
+        }
     }
 }
 
@@ -576,6 +591,42 @@ impl TcpSocket {
             None
         };
         Ok(IpListenEndpoint { addr, port })
+    }
+
+    fn poll_connect(&self) -> Result<PollState, ShyperError> {
+        let writable = self.with(|socket| match socket.state() {
+            State::SynSent => false, // wait for connection
+            State::Established => {
+                self.set_state(STATE_CONNECTED); // connected
+                debug!(
+                    "TCP socket {}: connected to {}",
+                    socket.local_endpoint().unwrap(),
+                    socket.remote_endpoint().unwrap(),
+                );
+                true
+            }
+            _ => {
+                unsafe {
+                    self.local_addr.get().write(UNSPECIFIED_ENDPOINT);
+                    self.peer_addr.get().write(UNSPECIFIED_ENDPOINT);
+                }
+                self.set_state(STATE_CLOSED); // connection failed
+                true
+            }
+        });
+        Ok(PollState {
+            readable: false,
+            writable,
+        })
+    }
+
+    fn poll_stream(&self) -> Result<PollState, ShyperError> {
+        self.with(|socket| {
+            Ok(PollState {
+                readable: !socket.may_recv() || socket.can_recv(),
+                writable: !socket.may_send() || socket.can_send(),
+            })
+        })
     }
 }
 

@@ -12,7 +12,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(target_pointer_width = "64")]
 const USIZE_BITS: usize = 64;
-const TLS_KEYS: usize = 128; // Same as POSIX minimum
+const TLS_KEYS: usize = 1024; // Same as POSIX minimum
 const TLS_KEYS_BITSET_SIZE: usize = (TLS_KEYS + (USIZE_BITS - 1)) / USIZE_BITS;
 
 static TLS_KEY_IN_USE: SyncBitset = SYNC_BITSET_INIT;
@@ -93,7 +93,7 @@ impl ThreadTls {
 
 impl Drop for ThreadTls {
     fn drop(&mut self) {
-        trace!("ThreadTls drop , start at {}", self.get_tls_start());
+        debug!("ThreadTls drop , start at {}", self.get_tls_start());
         let self_tls = unsafe { &*(self.get_tls_start().as_ptr::<u8>() as *const Tls) };
         let value_with_destructor = |key: usize| {
             let ptr = TLS_DESTRUCTOR[key].load(Ordering::Relaxed);
@@ -146,7 +146,8 @@ impl Tls {
         unsafe { Self::current() }.data[index].set(ptr::null_mut());
         // let key = Key::from_index(index);
         // debug!(
-        //     "tls key create, index {}, key: {:?} usize {}",
+        //     "{} tls key create, index {}, key: {:?} usize {}",
+        //     crate::libs::thread::current_thread_id(),
         //     index,
         //     key,
         //     key.as_usize()
@@ -159,7 +160,8 @@ impl Tls {
         assert!(TLS_KEY_IN_USE.get(index));
 
         // debug!(
-        //     "tls key set to value {:x} , index {}, key: {:?} usize {}",
+        //     "{} tls key set to value {:x} , index {}, key: {:?} usize {}",
+        //     crate::libs::thread::current_thread_id(),
         //     value as usize,
         //     index,
         //     key,
@@ -173,7 +175,8 @@ impl Tls {
         assert!(TLS_KEY_IN_USE.get(index));
         // let value = unsafe { Self::current() }.data[index].get();
         // debug!(
-        //     "tls key get the value {:x} , index {}, key: {:?} usize {}",
+        //     "{} tls key get the value {:x} , index {}, key: {:?} usize {}",
+        //     crate::libs::thread::current_thread_id(),
         //     value as usize,
         //     index,
         //     key,
@@ -184,7 +187,8 @@ impl Tls {
 
     pub fn destroy(key: Key) {
         // debug!(
-        //     "tls key destroy, index {}, key: {:?} usize {}",
+        //     "{} tls key destroy, index {}, key: {:?} usize {}",
+        //     crate::libs::thread::current_thread_id(),
         //     key.to_index(),
         //     key,
         //     key.as_usize()

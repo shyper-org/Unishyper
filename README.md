@@ -64,8 +64,17 @@ make ARCH=<arch> MACHINE=<platform> APP=<app_dir> APP_BIN=<app_bin> LOG=<log_lev
 
 # for examples/hello_world
 ARCH=x86_64 APP=examples/hello_world make run
+
 # for examples/net_tcp_bench
 ARCH=aarch64 APP=examples/net_tcp_bench APP_BIN=server-bw NET=y make run
+
+# To build with Rust std, install the modified toolchain and link it as `shyper``.
+ARCH=aarch64 TOOLCHAIN=shyper APP=examples/httpd NET=y make run
+ARCH=riscv64 TOOLCHAIN=shyper APP=examples/std_test make LOG=debug run
+# I think there is some pending thing to be done with tls under `x86_64-unknown-shyper`, and I may fix it recently (If I have time).
+# Other commands you may refer to...
+ARCH=riscv64 APP=examples/threading make run
+ARCH=aarch64 APP=examples/net_demos APP_BIN=http-server NET=y LOG=info BUS=mmio make run
 ```
 
 ## Terminal Support

@@ -41,7 +41,7 @@ pub struct TrapContextFrame {
     elr: u64, // 32 * 8
     /// Stack pointer.
     sp: u64, // 33 * 8
-    // Thread local storage.
+    /// Thread local storage.
     tpidr: u64, // 34 * 8
     /// It's a mark showing the thread is yield from irq or thread_yield.
     /// These two conditions may result in different context restore processes.
@@ -129,9 +129,10 @@ impl core::fmt::Display for TrapContextFrame {
         writeln!(f, "spsr:{:016x}", self.spsr)?;
         write!(f, "elr: {:016x}", self.elr)?;
         writeln!(f, "   sp:  {:016x}", self.sp)?;
+        write!(f, "tls:  {:016x}", self.tpidr)?;
         writeln!(
             f,
-            "this thread recently yield from '{}'",
+            "	from '{}'",
             if self.from_interrupt {
                 "interrupt"
             } else {
@@ -252,9 +253,11 @@ macro_rules! restore_trap_context {
             mov x0, #0x45
             ldr x1, [sp, #(32 * 8)] // elr
             ldr x2, [sp, #(33 * 8)] // sp
+			ldr x3, [sp, #(34 * 8)] // tpidr
             msr spsr_el1, x0
             msr elr_el1, x1
             msr sp_el0, x2
+			msr tpidr_el0, x3
             ldp x0, x1,  [sp, #(0 * 16)]
             ldp x2, x3,  [sp, #(1 * 16)]
             ldp x4, x5,  [sp, #(2 * 16)]

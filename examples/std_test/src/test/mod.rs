@@ -29,7 +29,7 @@ pub fn current_cycle() -> usize {
 /// Function and Performance tests for rust-shyperOS.
 pub fn run_tests() {
     println!("generate_tests:");
-    // thread::test_thread_switch();
-    // thread::test_thread_spawn();
+    thread::test_thread_switch();
+    thread::test_thread_spawn();
     mm::test_mm_alloc();
 }

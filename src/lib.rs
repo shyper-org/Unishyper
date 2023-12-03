@@ -158,31 +158,36 @@ pub extern "C" fn loader_main(core_id: usize) {
         zone::zone_init();
 
         info!("board init ok");
-        extern "Rust" {
-            fn main(arg: usize) -> !;
-        }
-        #[cfg(feature = "std")]
-        extern "C" {
-            fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
-        }
+
         let start;
+        let first_arg;
         #[cfg(not(feature = "std"))]
         {
-            fn main_wrapper(main: extern "C" fn(usize), arg: usize) -> ! {
-                main(arg);
+            extern "Rust" {
+                fn main(arg: usize) -> !;
+            }
+            fn main_wrapper(main: extern "C" fn(usize), argc: usize) -> ! {
+                main(argc);
                 exit()
             }
-            start = main_wrapper as usize
+            start = main_wrapper as usize;
+            first_arg = main as usize;
         }
         #[cfg(feature = "std")]
         {
+            // See our modified Rust toolchain at https://gitee.com/unishyper/rust.
+            // File path: library/std/src/sys/shyper/mod.rs.
+            extern "C" {
+                fn runtime_entry(argc: i32, argv: *const *const u8, env: *const *const u8) -> !;
+            }
             start = runtime_entry as usize;
+            first_arg = 0;
         }
 
         #[cfg(feature = "terminal")]
         libs::terminal::init();
 
-        crate::libs::thread::init_main_thread(core_id, (start, main as usize));
+        crate::libs::thread::init_main_thread(core_id, (start, first_arg));
     } else {
         crate::libs::thread::init_secondary_thread(core_id);
     }

@@ -73,8 +73,7 @@ unsafe extern "C" fn exception_entry(ctx: *mut ContextFrame) {
         warn!("SCAUSE {:016x}", cause);
         warn!("SEPC {:016x}", ctx.read().exception_pc());
         warn!("FAR  {:016x}", crate::arch::Arch::fault_address());
-        // panic!("Unhandled kernel exception");
-        loop {}
+        panic!("Unhandled kernel exception");
     }
 }
 
@@ -91,5 +90,5 @@ pub fn init() {
     // modifies the privilege with which S-mode loads and stores access virtual memory.
     // When SUM=0, S-mode memory accesses to pages that are accessible by U-mode (U=1 in Figure 4.18) will fault.
     // When SUM=1, these accesses are permitted.
-    SSTATUS.write(SSTATUS::SUM::SET);
+    SSTATUS.modify(SSTATUS::SUM::SET);
 }

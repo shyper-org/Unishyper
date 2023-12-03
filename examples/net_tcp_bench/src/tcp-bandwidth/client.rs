@@ -27,14 +27,16 @@ extern "C" fn netdemo_client(_arg: usize) {
     let n_rounds = if let Some(r) = option_env!("R") {
         r.parse::<usize>().unwrap()
     } else {
-        1000
+        100
     };
 
     let tot_n_bytes = (n_bytes * n_rounds) as u64;
 
     println!(
-        "client send {} rounds for {} bytes, total {} bytes",
-        n_rounds, n_bytes, tot_n_bytes
+        "client send {} rounds for {} bytes, total {} KB",
+        n_rounds,
+        n_bytes,
+        tot_n_bytes / 1024
     );
 
     if let Ok(mut stream) = TcpStream::connect(SocketAddr::new(

@@ -1,11 +1,13 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 use spin::RwLock;
 
-use no_std_net::SocketAddr;
+use core::net::SocketAddr;
 use smoltcp::wire::{IpEndpoint, IpListenEndpoint};
 use smoltcp::socket::udp::{self, BindError, SendError};
 
 use crate::libs::error::ShyperError;
+
+use crate::exported::shyperstd::io::PollState;
 
 use super::SmoltcpSocketHandle;
 use super::addr::*;
@@ -190,21 +192,21 @@ impl AsyncUdpSocket {
         Ok(())
     }
 
-    // Whether the socket is readable or writable.
-    // pub fn poll(&self) -> Result<PollState> {
-    //     if self.local_addr.read().is_none() {
-    //         return Ok(PollState {
-    //             readable: false,
-    //             writable: false,
-    //         });
-    //     }
-    //     SOCKET_SET.with_socket_mut::<udp::Socket, _, _>(self.handle, |socket| {
-    //         Ok(PollState {
-    //             readable: socket.can_recv(),
-    //             writable: socket.can_send(),
-    //         })
-    //     })
-    // }
+    /// Whether the socket is readable or writable.
+    pub fn poll(&self) -> Result<PollState, ShyperError> {
+        if self.local_addr.read().is_none() {
+            return Ok(PollState {
+                readable: false,
+                writable: false,
+            });
+        }
+        self.with(|socket| {
+            Ok(PollState {
+                readable: socket.can_recv(),
+                writable: socket.can_send(),
+            })
+        })
+    }
 }
 
 /// Private methods

@@ -1,6 +1,6 @@
 use smoltcp::wire::{IpAddress, IpEndpoint, Ipv4Address};
 
-pub use no_std_net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+use core::net::{IpAddr, SocketAddr};
 
 pub const fn ipaddr_to_ipaddress(ip: IpAddr) -> IpAddress {
     match ip {

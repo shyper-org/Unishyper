@@ -145,13 +145,13 @@ impl Core {
 
     #[inline(always)]
     pub fn __inner_schedule(&mut self, prev: Thread, next: Thread) {
-        debug!(
-            "cpu schedule prev {}[{}] next {}[{}]",
-            prev.id(),
-            prev.status(),
-            next.id(),
-            next.status()
-        );
+        // debug!(
+        //     "cpu schedule prev {}[{}] next {}[{}]",
+        //     prev.id(),
+        //     prev.status(),
+        //     next.id(),
+        //     next.status()
+        // );
 
         assert_eq!(
             next.status(),

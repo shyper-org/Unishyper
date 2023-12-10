@@ -141,7 +141,7 @@ impl core::convert::From<Entry> for RISCV64PageTableEntry {
             } + PAGE_DESCRIPTOR::DIRTY::True
                 + PAGE_DESCRIPTOR::ACCESSED::True
                 + PAGE_DESCRIPTOR::VALID::True
-                + PAGE_DESCRIPTOR::USER::True
+                // + PAGE_DESCRIPTOR::USER::True
                 + PAGE_DESCRIPTOR::OUTPUT_PPN.val((pte.ppn()) as u64))
             .value as usize,
         );

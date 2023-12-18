@@ -123,7 +123,7 @@ pub trait PosixFileSystemInner {
 pub struct AtaError;
 
 pub trait BlkIO {
-    fn read(&self, sector: usize, count: usize) -> Result<(), AtaError>;
+    fn read(&mut self, sector: usize, count: usize) -> Result<(), AtaError>;
     fn write(&self, sector: usize, count: usize) -> Result<(), AtaError>;
     fn get_data(&self, offset: usize) -> &[u8];
     fn get_data_mut(&mut self, offset: usize) -> &mut [u8];

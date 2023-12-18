@@ -206,7 +206,7 @@ impl BlkInterface for VirtioBlkDriver {
         self.request_vq.poll();
         match resp.status {
             RespStatus::Ok => {
-                trace!("read_block() resp status ok");
+                debug!("read_block() resp status ok");
             }
             _ => {
                 warn!("read_block() resp status {:?}", resp.status);
@@ -215,11 +215,9 @@ impl BlkInterface for VirtioBlkDriver {
     }
 
     fn write_block(&mut self, sector: usize, count: usize, buf: usize) {
-        trace!(
+        debug!(
             "write_block() sector {} count {} buf 0x{:x}",
-            sector,
-            count,
-            buf
+            sector, count, buf
         );
         let len = count * BLK_SIZE;
         let mut buf = unsafe { slice::from_raw_parts_mut(buf as *mut u8, len) };
@@ -255,7 +253,7 @@ impl BlkInterface for VirtioBlkDriver {
         self.request_vq.poll();
         match resp.status {
             RespStatus::Ok => {
-                trace!("write_block() resp status ok");
+                debug!("write_block() resp status ok");
             }
             _ => {
                 warn!("write_block() resp status {:?}", resp.status);

@@ -5,8 +5,6 @@ use crate::drivers::blk;
 use crate::libs::fs::interface::{BlkIO, AtaError};
 use crate::libs::fs::fat::diskcursor::BSIZE;
 
-use lru::LruCache;
-
 // reference: https://github.com/rafalh/rust-fatfs/issues/55
 // https://github.com/x37v/stm32h7xx-hal/blob/xnor/fatfs/src/sdmmc.rs#L1392-L1697
 #[derive(Debug, Clone)]
@@ -34,7 +32,7 @@ impl DataBlock {
 }
 
 impl BlkIO for DataBlock {
-    fn read(&self, sector: usize, count: usize) -> Result<(), AtaError> {
+    fn read(&mut self, sector: usize, count: usize) -> Result<(), AtaError> {
         debug_assert!(count == 1);
         blk::read(sector, count, self.0.as_ptr() as usize);
         Ok(())
@@ -52,51 +50,5 @@ impl BlkIO for DataBlock {
 
     fn get_data_mut(&mut self, offset: usize) -> &mut [u8] {
         &mut self.0[offset..]
-    }
-}
-
-const MAX_LRU: usize = 16;
-
-pub struct BlockCache {
-    cache: LruCache<usize, DataBlock>,
-}
-
-impl BlockCache {
-    pub fn new() -> Self {
-        BlockCache {
-            cache: LruCache::new(core::num::NonZeroUsize::new(MAX_LRU).unwrap()),
-        }
-    }
-
-    fn sector_cached(&self, sector: usize) -> bool {
-        self.cache.contains(&sector)
-    }
-
-    pub fn get(&mut self, sector: usize, count: usize) -> &mut DataBlock {
-        if !self.sector_cached(sector) {
-            // Uncached
-            let block = if self.cache.len() >= MAX_LRU {
-                // LRU cache is full
-                match self.cache.pop_lru() {
-                    Some((_, block)) => block,
-                    None => panic!("LRU Cache pop_lru error"),
-                }
-            } else {
-                // not full
-                DataBlock::new()
-            };
-            block.read(sector, count).expect("ata error");
-            self.cache.push(sector, block);
-            // peek it (without update)
-            match self.cache.peek_mut(&sector) {
-                Some(block) => block,
-                None => panic!("LRU Cache peek_mut error"),
-            }
-        } else {
-            match self.cache.get_mut(&sector) {
-                Some(block) => block,
-                None => panic!("LRU Cache get_mut error"),
-            }
-        }
     }
 }

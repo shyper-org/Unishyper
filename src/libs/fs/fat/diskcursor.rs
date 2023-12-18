@@ -1,8 +1,10 @@
 use spin::Mutex;
+use lru::LruCache;
 use fatfs::{IoBase, IoError, Read, Write, Seek, SeekFrom};
 
-use crate::libs::fs::fat::io::BlockCache;
 use crate::libs::fs::interface::BlkIO;
+
+use super::io::DataBlock;
 
 pub const BSIZE: usize = 512;
 
@@ -16,15 +18,17 @@ pub struct DiskCursor {
     pub sector: usize,
     pub offset: usize,
     // Block Cache
-    pub cache: BlockCache,
+    cache: LruCache<usize, DataBlock>,
 }
+
+const MAX_LRU: usize = 16;
 
 impl DiskCursor {
     pub fn new(start_sector: usize) -> Self {
         DiskCursor {
             sector: start_sector,
             offset: 0,
-            cache: BlockCache::new(),
+            cache: LruCache::new(core::num::NonZeroUsize::new(MAX_LRU).unwrap()),
         }
     }
 
@@ -65,7 +69,11 @@ impl Read for DiskCursor {
         let mut i = 0;
         while i < buf.len() {
             let count = 1;
-            let block = self.cache.get(self.sector, count);
+            let block = self.cache.get_or_insert(self.sector, || {
+                let mut block = DataBlock::new();
+                block.read(self.sector, count).expect("ata error");
+                block
+            });
 
             let data = block.get_data(self.offset);
             if data.len() == 0 {
@@ -96,7 +104,7 @@ impl Write for DiskCursor {
         let mut i = 0;
         while i < buf.len() {
             let count = 1;
-            let block = self.cache.get(self.sector, count);
+            let block = self.cache.get_or_insert_mut(self.sector, DataBlock::new);
 
             let data = block.get_data_mut(self.offset);
             if data.len() == 0 {

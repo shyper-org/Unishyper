@@ -44,19 +44,19 @@ fn touch(path: &Path) -> io::Result<()> {
 
 #[no_mangle]
 fn main() {
-    if false {
+    if true {
         println!("`echo hello > /fatfs/echo.txt`");
-        echo("hello", &Path::new("/fatfs/echo.txt")).unwrap_or_else(|why| {
+        echo("hello", &Path::new("echo.txt")).unwrap_or_else(|why| {
             println!("! {:?}", why);
         });
 
         println!("`touch /fatfs/touch.txt`");
-        touch(&Path::new("/fatfs/touch.txt")).unwrap_or_else(|why| {
+        touch(&Path::new("touch.txt")).unwrap_or_else(|why| {
             println!("! {:?}", why);
         });
 
         println!("`cat /fatfs/echo.txt`");
-        match cat(&Path::new("/fatfs/echo.txt")) {
+        match cat(&Path::new("echo.txt")) {
             Err(why) => println!("! {:?}", why),
             Ok(s) => println!("> {}", s),
         }

@@ -5,14 +5,10 @@ use crate::mm::frame_allocator;
 use crate::mm::frame_allocator::AllocatedFrames;
 use crate::mm::page_allocator::AllocatedPages;
 use crate::mm::paging::{MappedRegion, map_allocated_pages_to, EntryAttribute};
-// use crate::mm::address::VAddr;
 use crate::mm::interface::PageTableEntryAttrTrait;
-// use crate::mm::interface::MapGranularity;
 #[cfg(feature = "zone")]
 use crate::mm::interface::PageTableEntryAttrZoneTrait;
 use zone::ZoneId;
-
-// static COUNT: AtomicUsize = AtomicUsize::new(1);
 
 /// A range of mapped memory designated for use as a task's stack.
 ///
@@ -66,28 +62,6 @@ impl Drop for Stack {
 ///
 /// Returns the newly-allocated stack and a VMA to represent its mapping.
 pub fn alloc_stack(size_in_pages: usize, zone_id: ZoneId) -> Option<Stack> {
-    // Get suggested VAddr for stack.
-    // let pages: AllocatedPages;
-    // loop {
-    //     // Search for appropriate stack region.
-    //     let count = COUNT.fetch_add(2, Ordering::AcqRel);
-    //     let stack_addr =
-    //         VAddr::new_canonical(count * STACK_SIZE + crate::arch::MIN_USER_VIRTUAL_ADDRESS);
-    //     trace!("alloc stack loop: count {} saddr {}", count, stack_addr);
-    //     // Allocate enough pages for an additional guard page.
-    //     if let Some(aps) =
-    //         page_allocator::allocate_pages_at(stack_addr - PAGE_SIZE, size_in_pages + 1)
-    //     {
-    //         pages = aps;
-    //         trace!("alloc stack loop: get count {} saddr {}", count, stack_addr);
-    //         break;
-    //     }
-    // }
-    // // Get physical address for stack, no need to alloc space for guarded page.
-    // let frames = frame_allocator::allocate_frames_alignment(
-    //     size_in_pages,
-    //     MapGranularity::Page2MB as usize,
-    // )?;
     assert_eq!(size_in_pages >= 2, true);
     let pages = page_allocator::allocate_pages(size_in_pages)?;
     let frames = frame_allocator::allocate_frames(size_in_pages - 1)?;

@@ -17,7 +17,6 @@ qemu = [
     # "unishyper/pci",
     "unishyper/qemu",
     "unishyper/serial",
-	# "unishyper/async-net",
     # "unishyper/unwind",
     ]
 shyper = [

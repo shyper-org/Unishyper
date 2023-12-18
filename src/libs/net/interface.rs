@@ -138,33 +138,10 @@ pub fn network_init() {
             );
             crate::libs::thread::thread_block_current_with_timeout(delay_millis as usize);
         }
-
-        #[cfg(feature = "async-net")]
-        super::executor::spawn(network_run()).detach();
     } else {
         warn!("network_init, NetworkState is not Initialized!");
     }
     info!("network_init() lib init finished");
-}
-
-#[cfg(feature = "async-net")]
-async fn network_run() {
-    use core::task::Poll;
-
-    debug!("network_run");
-    futures_lite::future::poll_fn(|cx| match NIC.lock().deref_mut() {
-        NetworkState::Initialized(nic) => {
-            nic.poll_common(now());
-
-            // this background task will never stop
-            // => wakeup ourself
-            cx.waker().clone().wake();
-
-            Poll::Pending
-        }
-        _ => Poll::Ready(()),
-    })
-    .await
 }
 
 #[inline]

@@ -45,7 +45,7 @@ impl ArchPageTableEntryTrait for Aarch64PageTableEntry {
     }
 
     fn blocked(&self) -> bool {
-        self.0 & 0b01 != 0
+        self.0 & 0b10 == 0
     }
 
     fn entry(&self, index: usize) -> Aarch64PageTableEntry {
@@ -190,7 +190,7 @@ pub fn install_page_table() {
         .value();
     TTBR0_EL1.set(pgdir_addr as u64);
     debug!("Page table is installed");
-    crate::arch::Arch::invalidate_tlb();
+    crate::arch::Arch::flush_tlb(None);
 }
 
 impl PageTableTrait for Aarch64PageTable {
@@ -199,12 +199,13 @@ impl PageTableTrait for Aarch64PageTable {
     }
 
     fn map(&mut self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
-        trace!(
-            "page table map va 0x{:016x} pa: 0x{:016x}, directory 0x{:x}",
-            va,
-            pa,
-            self.base_pa()
-        );
+        // debug!(
+        //     "page table map va 0x{:016x} pa: 0x{:016x}, attr {:?}, directory 0x{:x}",
+        //     va,
+        //     pa,
+        //     attr,
+        //     self.base_pa()
+        // );
         let directory = Aarch64PageTableEntry::from_pa(self.base_pa());
         let mut l1e = directory.entry(va.l1x());
         if !l1e.valid() {
@@ -218,8 +219,7 @@ impl PageTableTrait for Aarch64PageTable {
             let frame = af.start().clone();
             frame.zero();
             l1e = Aarch64PageTableEntry::make_table(frame.start_address().value());
-            let mut pages = self.pages.lock();
-            pages.push(af);
+            self.pages.lock().push(af);
             directory.set_entry(va.l1x(), l1e);
         }
         let mut l2e = l1e.entry(va.l2x());
@@ -234,17 +234,27 @@ impl PageTableTrait for Aarch64PageTable {
             let frame = af.start().clone();
             frame.zero();
             l2e = Aarch64PageTableEntry::make_table(frame.start_address().value());
-            let mut pages = self.pages.lock();
-            pages.push(af);
+            self.pages.lock().push(af);
             l1e.set_entry(va.l2x(), l2e);
         }
         l2e.set_entry(va.l3x(), Aarch64PageTableEntry::from(Entry::new(attr, pa)));
+
+        crate::arch::Arch::flush_tlb(Some(va));
         Ok(())
     }
 
     fn map_2mb(&mut self, va: usize, pa: usize, attr: EntryAttribute) -> Result<(), Error> {
         assert!(va % MapGranularity::Page2MB as usize == 0);
         assert!(pa % MapGranularity::Page2MB as usize == 0);
+
+        trace!(
+            "page table map_2mb va 0x{:016x} pa: 0x{:016x}, attr {:?}, directory 0x{:x}",
+            va,
+            pa,
+            attr,
+            self.base_pa()
+        );
+
         if !attr.block() {
             warn!("map_2mb: required block attribute");
             return Err(ERROR_INVARG);
@@ -264,8 +274,7 @@ impl PageTableTrait for Aarch64PageTable {
             let frame = af.start().clone();
             frame.zero();
             l1e = Aarch64PageTableEntry::make_table(frame.start_address().value());
-            let mut pages = self.pages.lock();
-            pages.push(af);
+            self.pages.lock().push(af);
             directory.set_entry(va.l1x(), l1e);
         }
         let l2e = l1e.entry(va.l2x());
@@ -276,6 +285,7 @@ impl PageTableTrait for Aarch64PageTable {
         } else {
             warn!("map_2mb: lvl 2 already mapped with 0x{:x}", l2e.to_pte());
         }
+        crate::arch::Arch::flush_tlb(Some(va));
         Ok(())
     }
 
@@ -297,24 +307,6 @@ impl PageTableTrait for Aarch64PageTable {
         assert!(l1e.valid());
         l1e.set_entry(va.l2x(), Aarch64PageTableEntry(0));
     }
-
-    // fn insert_page(
-    //     &self,
-    //     va: usize,
-    //     user_frame: crate::mm::Frame,
-    //     attr: EntryAttribute,
-    // ) -> Result<(), Error> {
-    //     let pa = user_frame.start_address().value();
-    //     if let Some(p) = self.lookup_page(va) {
-    //         if p.pa() != pa {
-    //             // replace mapped frame
-    //             self.remove_page(va)?;
-    //         }
-    //     }
-    //     self.map(va, pa, attr)?;
-    //     crate::arch::Arch::invalidate_tlb();
-    //     Ok(())
-    // }
 
     fn lookup_entry(&self, va: usize) -> Option<(Entry, MapGranularity)> {
         let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
@@ -354,27 +346,4 @@ impl PageTableTrait for Aarch64PageTable {
             None
         }
     }
-
-    // fn remove_page(&self, va: usize) -> Result<(), Error> {
-    //     if let Some(_) = self.lookup_page(va) {
-    //         self.unmap(va);
-    //         // crate::arch::Arch::invalidate_tlb();
-    //         Ok(())
-    //     } else {
-    //         Err(ERROR_INVARG)
-    //     }
-    // }
-
-    // fn recursive_map(&self, va: usize) {
-    //     assert_eq!(va % (1 << PAGE_TABLE_L1_SHIFT), 0);
-    //     let directory = Aarch64PageTableEntry::from_pa(self.directory.start_address().value());
-    //     let l1x = va / (1 << PAGE_TABLE_L1_SHIFT);
-    //     directory.set_entry(
-    //         l1x,
-    //         Aarch64PageTableEntry::from(Entry::new(
-    //             EntryAttribute::user_readonly(),
-    //             self.directory.start_address().value(),
-    //         )),
-    //     );
-    // }
 }

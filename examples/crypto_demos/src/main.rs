@@ -26,12 +26,12 @@ mod hmac_verify_hack;
 fn main() {
     println!("Hello! Unishyper crypto demos based on ring[https://crates.io/crates/ring]");
 
-    // sha256::sha256_test();
+    sha256::sha256_test();
 
     // hmac::hmac_sign_and_verify();
-    // hmac::hmac_sign_and_verify_one_shot();
+    hmac::hmac_sign_and_verify_one_shot();
 
-    pbkdf2::pbkdf2_test();
+    // pbkdf2::pbkdf2_test();
 
-    // hmac_verify_hack::hmac_sign_verify();
+    hmac_verify_hack::hmac_sign_verify();
 }

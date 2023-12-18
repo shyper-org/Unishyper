@@ -7,13 +7,9 @@ pub trait Address {
 pub trait ArchTrait {
     fn exception_init();
     fn page_table_init();
-
-    // Note: kernel runs at privileged mode
-    // need to trigger a half process switching
-    // Require: a process has been schedule, its
-    // context filled in CONTEXT_FRAME, and its
-    // page table installed at low address space.
-    fn invalidate_tlb();
+    fn flush_icache_all();
+    fn flush_tlb(vaddr: Option<usize>);
+    fn flush_dcache_line(vaddr: usize);
     fn wait_for_interrupt();
     fn nop();
     fn fault_address() -> usize;

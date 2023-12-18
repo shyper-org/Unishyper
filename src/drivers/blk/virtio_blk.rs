@@ -170,7 +170,7 @@ pub struct VirtioBlkDriver {
 impl BlkInterface for VirtioBlkDriver {
     fn read_block(&mut self, sector: usize, count: usize, buf: usize) {
         trace!(
-            "read_block() sector {} count {} buf 0x{:x}",
+            "read_block() sector {} count {} buf {:#x}",
             sector,
             count,
             buf
@@ -231,7 +231,10 @@ impl BlkInterface for VirtioBlkDriver {
             Some(buff_tkn) => {
                 // Send write request.
                 match buff_tkn.provide().dispatch_blocking() {
-                    Ok(_) => {}
+                    Ok(_) => {
+                        // crate::arch::Arch::flush_dcache_line(&resp.as_slice_u8_mut().as_ptr() as *const _ as usize);
+                        // crate::arch::Arch::flush_dcache_line(buf.as_ptr() as usize);
+                    }
                     Err(err) => {
                         warn!(
                             "write_block() sector {} count {} buff_tkn dispatch error {:?}",

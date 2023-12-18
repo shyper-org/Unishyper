@@ -17,7 +17,6 @@ qemu = [
     # "unishyper/axdriver",
     "unishyper/qemu",
     "unishyper/serial",
-    # "unishyper/async-net",
     # "unishyper/unwind",
     ]
 shyper = [

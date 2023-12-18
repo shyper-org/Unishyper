@@ -46,8 +46,20 @@ impl ArchTrait for Arch {
         page_table::init();
     }
 
-    fn invalidate_tlb() {
-        riscv::barrier::sfence_vma_all();
+    fn flush_icache_all() {
+        unimplemented!()
+    }
+
+    fn flush_tlb(vaddr: Option<usize>) {
+        if let Some(vaddr) = vaddr {
+            riscv::barrier::sfence_vma(0, vaddr)
+        } else {
+            riscv::barrier::sfence_vma_all()
+        }
+    }
+
+    fn flush_dcache_line(_vaddr: usize) {
+        unimplemented!()
     }
 
     fn wait_for_interrupt() {

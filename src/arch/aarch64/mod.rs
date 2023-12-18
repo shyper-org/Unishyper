@@ -53,10 +53,26 @@ impl ArchTrait for Arch {
         page_table::init();
     }
 
-    fn invalidate_tlb() {
+    fn flush_icache_all() {
+        unsafe { core::arch::asm!("ic iallu; dsb sy; isb") };
+    }
+
+    fn flush_tlb(vaddr: Option<usize>) {
         unsafe {
-            core::arch::asm!("dsb ishst", "tlbi vmalle1is", "dsb ish", "isb");
+            core::arch::asm!("dsb ishst");
+            if let Some(vaddr) = vaddr {
+                core::arch::asm!("tlbi vaae1is, {}",  in(reg) vaddr);
+            } else {
+                // flush the entire TLB
+                core::arch::asm!("tlbi vmalle1is");
+            }
+            core::arch::asm!("dsb ish");
+            core::arch::asm!("isb");
         }
+    }
+
+    fn flush_dcache_line(vaddr: usize) {
+        unsafe { core::arch::asm!("dc ivac, {0:x}; dsb sy; isb", in(reg) vaddr) };
     }
 
     fn wait_for_interrupt() {

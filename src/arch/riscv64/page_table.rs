@@ -252,7 +252,7 @@ impl PageTableTrait for RISCV64PageTable {
             l1e.set_entry(va.l2x(), l2e);
         }
         l2e.set_entry(va.l3x(), RISCV64PageTableEntry::from(Entry::new(attr, pa)));
-        crate::arch::Arch::invalidate_tlb();
+        crate::arch::Arch::flush_tlb(Some(va));
         // self.dump_entry_flags_of_va(va);
         Ok(())
     }
@@ -295,6 +295,7 @@ impl PageTableTrait for RISCV64PageTable {
         } else {
             warn!("map_2mb: lvl 2 already mapped with 0x{:x}", l2e.to_pte());
         }
+		crate::arch::Arch::flush_tlb(Some(va));
         Ok(())
     }
 

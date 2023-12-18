@@ -4,8 +4,8 @@ use alloc::vec::Vec;
 use spin::Once;
 
 use crate::arch::PAGE_SIZE;
-// pub const STACK_SIZE: usize = PAGE_SIZE * 512;
-pub const STACK_SIZE: usize = PAGE_SIZE * 64;
+pub const STACK_SIZE: usize = PAGE_SIZE * 512;
+// pub const STACK_SIZE: usize = PAGE_SIZE * 64;
 // pub const STACK_SIZE: usize = PAGE_SIZE * 2;
 
 pub fn heap_range() -> Range<usize> {

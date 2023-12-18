@@ -143,7 +143,21 @@ impl ArchTrait for Arch {
         page_table::init();
     }
 
-    fn invalidate_tlb() {}
+    fn flush_icache_all() {
+        unimplemented!()
+    }
+
+    fn flush_tlb(vaddr: Option<usize>) {
+        if let Some(vaddr) = vaddr {
+            x86_64::instructions::tlb::flush(x86_64::VirtAddr::new(vaddr as u64))
+        } else {
+            x86_64::instructions::tlb::flush_all()
+        }
+    }
+
+    fn flush_dcache_line(vaddr: usize) {
+        unimplemented!()
+    }
 
     fn wait_for_interrupt() {
         x86_64::instructions::hlt()

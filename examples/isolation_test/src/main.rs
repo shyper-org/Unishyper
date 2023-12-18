@@ -237,11 +237,11 @@ fn test_heap_var_rw() {
 fn main() {
     println!("Hello, world! Unishyper memory isolation bench");
 
-    test_stack_var_rw();
+    // test_stack_var_rw();
 
     // test_global_var_rw();
 
-    // test_heap_var_rw();
+    test_heap_var_rw();
 
     println!("Memory isolation bench finished");
 }

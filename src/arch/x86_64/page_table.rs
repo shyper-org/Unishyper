@@ -552,18 +552,4 @@ impl PageTableTrait for X86_64PageTable {
     fn lookup_page(&self, _va: usize) -> Option<Entry> {
         None
     }
-
-    // fn remove_page(&self, va: usize) -> Result<(), Error> {
-    //     if let Some(_) = self.lookup_page(va) {
-    //         self.unmap(va);
-    //         // crate::arch::Arch::invalidate_tlb();
-    //         Ok(())
-    //     } else {
-    //         Err(ERROR_INVARG)
-    //     }
-    // }
-
-    // fn recursive_map(&self, va: usize) {
-    //     assert_eq!(va % (1 << PAGE_TABLE_L1_SHIFT), 0);
-    // }
 }

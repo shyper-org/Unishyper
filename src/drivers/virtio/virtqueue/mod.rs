@@ -1814,6 +1814,11 @@ impl MemPool {
         let end_phy_calc = VAddr::from(start_virt).to_physical_address() + (slice.len() - 1);
         let end_phy = VAddr::from(end_virt).to_physical_address();
 
+        // debug!(
+        //     "pull_from_raw() start_virt {:#x} end_virt {:#x} end_phy_calc {} end_phy{} ",
+        //     start_virt, end_virt, end_phy_calc, end_phy
+        // );
+
         assert_eq!(end_phy, end_phy_calc);
 
         let desc_id = match self.pool.borrow_mut().pop() {

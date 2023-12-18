@@ -194,7 +194,6 @@ net = [
 	"dep:ahash",
 	"dep:hashbrown",
 ]
-async-net = ["net", "dep:async-task"]
 axdriver = ["dep:driver_virtio", "dep:driver_net"]
 ## Driver bus
 pci = ["dep:driver_pci"]

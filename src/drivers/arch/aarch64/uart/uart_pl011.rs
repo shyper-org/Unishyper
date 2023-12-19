@@ -1,9 +1,13 @@
 use super::pl011::Pl011Mmio;
 use tock_registers::interfaces::{Readable, Writeable};
 
-const UART_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x900_0000;
+#[cfg(feature = "qemu")]
+const PL011_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0x900_0000;
 
-static PL011_MMIO: Pl011Mmio = Pl011Mmio::new(UART_BASE);
+#[cfg(feature = "pi4")]
+const PL011_MMIO_BASE: usize = 0xFFFF_FF80_0000_0000 + 0xfe201000;
+
+static PL011_MMIO: Pl011Mmio = Pl011Mmio::new(PL011_MMIO_BASE);
 
 #[allow(unused)]
 const UART_FR_RXFF: u32 = 1 << 4;

@@ -155,7 +155,7 @@ impl ArchTrait for Arch {
         }
     }
 
-    fn flush_dcache_line(vaddr: usize) {
+    fn flush_dcache_line(_vaddr: usize) {
         unimplemented!()
     }
 

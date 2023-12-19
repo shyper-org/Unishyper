@@ -4,7 +4,7 @@ fn arch_machine_supported(arch: &str, machine: &str) -> bool {
     let map = HashMap::from([
         ("x86_64", vec!["qemu"]),
         ("riscv64", vec!["k210", "qemu"]),
-        ("aarch64", vec!["tx2", "rk3588", "qemu", "shyper"]),
+        ("aarch64", vec!["pi4", "tx2", "rk3588", "qemu", "shyper"]),
     ]);
     if let Some(machine_supported) = map.get(arch) {
         if machine_supported.contains(&machine) {

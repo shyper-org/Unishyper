@@ -6,19 +6,20 @@ Unikernel means, you bundle your application directly with the kernel library, s
 
 ## Boards and Platforms
 
-Unishyper  now supports following platforms:
+Unishyper now supports following platforms:
 
 | MACHINE | ARCH                    | Description                             |
 |---------|-------------------------|-----------------------------------------|
 | qemu    | **aarch64**  | QEMU/KVM (qemu-system-aarch64) |
 | shyper  | **aarch64**  |  [Shyper](https://gitee.com/openeuler/rust_shyper) Type-1 Hypervisor         |
 | tx2     | **aarch64**  | [NVIDIA TX2](https://developer.nvidia.com/embedded/jetson-tx2)                 |
-| rk3588 | **aarch64** | [ROC-RK3588S-PC](https://www.t-firefly.com/product/industry/rocrk3588spc)|
+| pi4     | **aarch64**  | [Raspberry Pi 4 Model B](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) |
+| rk3588  | **aarch64**  | [ROC-RK3588S-PC](https://www.t-firefly.com/product/industry/rocrk3588spc)|
 | qemu    | **x86_64**   | QEMU/KVM (qemu-system-x86_64)  |
 | qemu    | **riscv64**  | QEMU/KVM (qemu-system-riscv64)|
 | k210    | **riscv64**  | [Kendryte K210](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html) on [Maix Dock(M1/M1W)](https://wiki.sipeed.com/hardware/en/maix/maixpy_develop_kit_board/Maix_dock.html) |
-| ~~raspi4~~    | **aarch64**  | ~~Raspberry Pi 4 Model B~~ (upcoming) |
 
+(Although some(~~many~~) device drivers are not yet implemented, at least you can see the console output...)
 
 ## Features
 

@@ -166,6 +166,7 @@ default = [
 ## Platforms
 shyper = []
 qemu = []
+pi4 = []
 tx2 = []
 k210 = []
 rk3588 = ["gicv3"]

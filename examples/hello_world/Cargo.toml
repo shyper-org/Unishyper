@@ -18,6 +18,7 @@ k210 = ["unishyper/k210"]
 shyper = ["unishyper/shyper"]
 tx2 = ["unishyper/tx2"]
 rk3588 = ["unishyper/rk3588"]
+pi4 = ["unishyper/pi4"]
 # [profile.release]
 # # opt-level = 's'  # Optimize for size. Fix: link error when target is aarch64-unknown-shyper.
 # lto = true

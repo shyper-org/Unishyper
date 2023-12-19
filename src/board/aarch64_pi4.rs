@@ -10,35 +10,13 @@ pub const BOARD_CORE_NUMBER: usize = 1;
 #[cfg(feature = "smp")]
 pub const BOARD_CORE_NUMBER: usize = 2;
 
-// On Nvidia tx2The real mmio addressed of gicd is 0x3881000, gicc is 0x3882000.
+pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x0000_0000..0xc000_0000; // Actually it starts from 0xfc000000.
+pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0xc000_0000..0x1_0000_0000;
 
-#[cfg(feature = "tx2")]
-pub const GICD_BASE: usize = 0x3881000;
-// The ipa of gicd provided by the hypervisor as a emulated device is 0x8000000.
-#[cfg(feature = "shyper")]
-pub const GICD_BASE: usize = 0x8000000;
+pub const ELF_IMAGE_LOAD_ADDR: usize = 0x8000_0000;
 
-#[cfg(feature = "tx2")]
-pub const GICC_BASE: usize = 0x3882000;
-// The ipa of gicc provided by the hypervisor as a passthrough device is 0x8010000.
-#[cfg(feature = "shyper")]
-pub const GICC_BASE: usize = 0x8010000;
-
-#[cfg(feature = "tx2")]
-pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x8000_0000..0xf000_0000;
-#[cfg(feature = "tx2")]
-pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x8000_0000;
-#[cfg(feature = "tx2")]
-pub const ELF_IMAGE_LOAD_ADDR: usize = 0xc000_0000;
-
-// Todo: redesign memory range in shyper.
-//       When running on hypervisor, unikernel should not take up so much memory region.
-#[cfg(feature = "shyper")]
-pub const BOARD_NORMAL_MEMORY_RANGE: Range<usize> = 0x4000_0000..0x8000_0000;
-#[cfg(feature = "shyper")]
-pub const BOARD_DEVICE_MEMORY_RANGE: Range<usize> = 0x0000_0000..0x4000_0000;
-#[cfg(feature = "shyper")]
-pub const ELF_IMAGE_LOAD_ADDR: usize = 0x6000_0000;
+pub const GICD_BASE: usize = 0xff841000;
+pub const GICC_BASE: usize = 0xff842000;
 
 pub const GLOBAL_HEAP_SIZE: usize = 64 * 1024 * 1024; // 64 MB
 
@@ -57,17 +35,7 @@ cfg_if::cfg_if! {
 use {alloc::vec::Vec, alloc::vec, crate::libs::device::Device};
 #[cfg(any(feature = "net", feature = "fat"))]
 pub fn devices() -> Vec<Device> {
-    use crate::libs::device::VirtioDevice;
-    vec![
-        #[cfg(feature = "fat")]
-        Device::Virtio(VirtioDevice::new(
-            "virtio_blk",
-            0x0a00_0000..0x0a00_0200,
-            0x10,
-        )),
-        #[cfg(feature = "net")]
-        Device::Virtio(VirtioDevice::new("virtio_net", 0xa001000..0xa002000, 0x11)),
-    ]
+    vec![]
 }
 
 pub fn init() {
@@ -126,11 +94,8 @@ pub fn launch_other_cores() {
     let core_id = crate::arch::Arch::core_id();
     for i in 0..BOARD_CORE_NUMBER {
         if i != core_id {
-            #[cfg(feature = "shyper")]
-            crate::drivers::psci::cpu_on(i as u64, (KERNEL_ENTRY as usize).kva2pa() as u64, 0);
-            #[cfg(feature = "tx2")]
             crate::driver::psci::cpu_on(
-                (i as u64) | 0x80000100,
+                (id as u64) | (1 << 31),
                 (KERNEL_ENTRY as usize).kva2pa() as u64,
                 0,
             );

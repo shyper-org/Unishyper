@@ -10,10 +10,13 @@
     all(target_arch = "aarch64", feature = "shyper"),
     path = "aarch64_tx2.rs"
 )]
+// ROC-RK3588S-PC.
 #[cfg_attr(
     all(target_arch = "aarch64", feature = "rk3588"),
-    path = "aarch64_tx2.rs"
+    path = "aarch64_rk3588.rs"
 )]
+// Raspberry Pi 4 Model B.
+#[cfg_attr(all(target_arch = "aarch64", feature = "pi4"), path = "aarch64_pi4.rs")]
 // QEMU platform `qemu-system-x86_64`.
 #[cfg_attr(all(target_arch = "x86_64", feature = "qemu"), path = "x86_64_qemu.rs")]
 // QEMU platform `qemu-system-riscv64`.

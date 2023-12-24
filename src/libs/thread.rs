@@ -815,7 +815,7 @@ pub fn thread_exit() -> ! {
 
 #[cfg(feature = "unwind")]
 extern "C" fn thread_wrapper(func: extern "C" fn(usize), arg: usize) -> usize {
-    const RETRY_MAX: usize = 5;
+    const RETRY_MAX: usize = 1;
     let mut i = 0;
     #[cfg(not(feature = "std"))]
     use crate::libs::unwind::catch::catch_unwind;
@@ -836,6 +836,7 @@ extern "C" fn thread_wrapper(func: extern "C" fn(usize), arg: usize) -> usize {
                 // This is awkward, we may need to improve context switch mechanism, see src/arch/switch.rs.
                 // crate::arch::irq::enable_and_wait();
                 if i > RETRY_MAX {
+                    info!("thread_wrapper: retry #{} exceed MAX{RETRY_MAX}, abort!!!", i);
                     break 1;
                 }
             }

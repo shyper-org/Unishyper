@@ -224,6 +224,8 @@ impl FallibleIterator for StackFrameIter {
 /// * `registers`: exception context frame.
 ///
 pub fn unwind_from_exception(registers: Registers) -> ! {
+    debug!("unwind_from_exception:\n {:?}", registers);
+
     let ctx = Box::new(UnwindingContext {
         skip: 0,
         reason: 0x1,
@@ -236,37 +238,6 @@ pub fn unwind_from_exception(registers: Registers) -> ! {
     error!("unwind failed!");
     loop {}
 }
-
-// core::arch::global_asm! {
-//     r#"
-//     .global unwind_trampoline
-//     unwind_trampoline:
-//     .cfi_startproc
-//          mov x1, sp
-//          sub sp, sp, 0xA0
-//          .cfi_adjust_cfa_offset 0x60
-//          stp x19, x20, [sp, #0x00]
-//          stp x21, x22, [sp, #0x10]
-//          stp x23, x24, [sp, #0x20]
-//          stp x25, x26, [sp, #0x30]
-//          stp x27, x28, [sp, #0x40]
-//          stp x29, lr,  [sp, #0x50]
-//          .cfi_rel_offset lr, 0x58
-//          mov x2, sp
-//          bl unwind_recorder
-//          ldr lr, [sp, #0x58]
-//          .cfi_restore lr
-//          add sp, sp, 0x60
-//          .cfi_adjust_cfa_offset -0x60
-//          ret
-//     .cfi_endproc
-//     "#
-// }
-
-// extern "C" {
-//     #[allow(improper_ctypes)]
-//     pub fn unwind_trampoline(ctx: usize);
-// }
 
 /// Starts the unwinding procedure for the current thread from panic.
 /// by working backwards up the call stack starting from the current stack frame.

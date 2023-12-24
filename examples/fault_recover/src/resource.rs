@@ -37,6 +37,7 @@ extern "C" fn test_page_fault(arg: usize) {
 
 #[inject::panic_inject]
 #[inject::count_stmts]
+#[allow(dead_code)]
 pub extern "C" fn test_inject_thread(_arg: usize) {
     println!("test_inject_thread");
     loop {
@@ -47,6 +48,6 @@ pub extern "C" fn test_inject_thread(_arg: usize) {
 pub extern "C" fn test_recover(arg: usize) {
     println!("[TEST] === test_recover ===");
     // thread_spawn(test_panic, arg);
-    // thread_spawn(test_page_fault, arg);
-    thread_spawn(test_inject_thread, arg);
+    thread_spawn(test_page_fault, arg);
+    // thread_spawn(test_inject_thread, arg);
 }

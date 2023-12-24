@@ -4,6 +4,7 @@ use tock_registers::interfaces::{Readable, Writeable};
 use crate::drivers::InterruptController;
 use crate::libs::traits::ArchTrait;
 use crate::libs::traits::InterruptControllerTrait;
+use crate::libs::cpu::idle_thread;
 
 use super::ContextFrame;
 
@@ -18,13 +19,22 @@ core::arch::global_asm!(
 unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
     let tid = TPIDRRO_EL0.get();
-    panic!(
+    println!(
         "current_el_spx_synchronous on Thread {}\nEC {:#X} ESR_EL1 {:#x}\n{}",
         tid,
         ec,
         ESR_EL1.get(),
         ctx.read()
     );
+
+    #[cfg(feature = "unwind")]
+    {
+        let ctx = *ctx.clone();
+        let registers = ctx.into();
+        crate::libs::unwind::unwind_from_exception(registers);
+    }
+
+    idle_thread(0);
 }
 
 #[no_mangle]
@@ -66,7 +76,8 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
                     DAIF.get(),
                     ctx
                 );
-                panic!("GIC unhandled SGI PPI")
+                println!("GIC unhandled SGI PPI");
+                idle_thread(0);
             }
         }
         None => {
@@ -78,7 +89,8 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
                 DAIF.get(),
                 ctx
             );
-            panic!("GIC unknown irq")
+            println!("GIC unknown irq");
+            idle_thread(0);
         }
     }
     // debug!(
@@ -91,13 +103,15 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
 unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
     let ec = ESR_EL1.read(ESR_EL1::EC);
     let tid = TPIDRRO_EL0.get();
-    panic!(
+    warn!(
         "current_el_sp0_synchronous on Thread {}\nEC {:#X} ESR_EL1 {:#x}\n{}",
         tid,
         ec,
         ESR_EL1.get(),
         ctx.read()
     );
+
+    idle_thread(0);
 }
 
 #[no_mangle]
@@ -111,42 +125,49 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
         ctx
     );
     println!("{}", ctx.read());
-    loop {}
+    idle_thread(0);
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_serror(ctx: *mut ContextFrame) {
-    panic!("current_el_spx_serror\n{}", ctx.read());
+    println!("current_el_spx_serror\n{}", ctx.read());
+    idle_thread(0);
 }
 
 #[no_mangle]
 unsafe extern "C" fn lower_aarch64_synchronous(ctx: *mut ContextFrame) {
     let core_id = crate::arch::Arch::core_id();
     let tid = crate::libs::thread::current_thread_id();
-    panic!(
+    println!(
         "core {} T[{}] lower_aarch64_synchronous\n {}",
         core_id,
         tid,
         ctx.read()
     );
+
+    idle_thread(0);
 }
 
 #[no_mangle]
 unsafe extern "C" fn lower_aarch64_irq(ctx: *mut ContextFrame) {
     let core_id = crate::arch::Arch::core_id();
 
-    panic!(
+    println!(
         "core {} lower_aarch64_irq EL{} \n {}",
         core_id,
         crate::arch::Arch::curent_privilege(),
         ctx.read()
     );
+
+    idle_thread(0);
 }
 
 #[no_mangle]
 unsafe extern "C" fn lower_aarch64_serror(ctx: *mut ContextFrame) {
     let core_id = crate::arch::Arch::core_id();
-    panic!("core {} lower_aarch64_serror\n {}", core_id, ctx.read());
+    println!("core {} lower_aarch64_serror\n {}", core_id, ctx.read());
+
+    idle_thread(0);
 }
 
 pub fn init() {

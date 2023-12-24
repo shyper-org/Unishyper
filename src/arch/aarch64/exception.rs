@@ -1,8 +1,11 @@
+use core::mem::size_of;
+
 use cortex_a::registers::{ESR_EL1, VBAR_EL1, TPIDRRO_EL0, DAIF};
 use tock_registers::interfaces::{Readable, Writeable};
 
 use crate::drivers::InterruptController;
 use crate::libs::traits::ArchTrait;
+use crate::libs::traits::ContextFrameTrait;
 use crate::libs::traits::InterruptControllerTrait;
 use crate::libs::cpu::idle_thread;
 
@@ -26,6 +29,9 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
         ESR_EL1.get(),
         ctx.read()
     );
+
+    let ctx_mut = ctx.as_mut().unwrap();
+    ctx_mut.set_stack_pointer(ctx as usize + size_of::<ContextFrame>());
 
     #[cfg(feature = "unwind")]
     {

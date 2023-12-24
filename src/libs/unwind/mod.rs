@@ -235,7 +235,7 @@ pub fn unwind_from_exception(registers: Registers) -> ! {
     let ctx = Box::into_raw(ctx);
     unwind(ctx);
     cleanup(ctx);
-    error!("unwind failed!");
+    error!("unwind_from_exception failed!");
     loop {}
 }
 
@@ -273,7 +273,7 @@ pub fn unwind_from_panic(stack_frames_to_skip: usize) -> ! {
         unwind_trampoline(ctx as usize);
     }
     cleanup(ctx);
-    error!("unwind failed!");
+    error!("unwind_from_panic failed!");
     loop {}
 }
 
@@ -305,10 +305,6 @@ fn unwind(ctx: *mut UnwindingContext) {
         }
         Ok(Some(frame)) => {
             print!("{}", frame);
-            // print!("function addr {:#x}, at ", frame.initial_address);
-            // addr2line::parse_elf(frame.initial_address);
-            // print!("call site addr {:#x}, at ", frame.call_site_address);
-            // addr2line::parse_elf(frame.call_site_address);
             match frame.lsda {
                 None => {
                     // LSDA not found in this call frame, just keep unwinding.

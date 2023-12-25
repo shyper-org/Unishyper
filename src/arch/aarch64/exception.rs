@@ -1,13 +1,9 @@
-use core::mem::size_of;
-
 use cortex_a::registers::{ESR_EL1, VBAR_EL1, TPIDRRO_EL0, DAIF};
 use tock_registers::interfaces::{Readable, Writeable};
 
 use crate::drivers::InterruptController;
 use crate::libs::traits::ArchTrait;
-use crate::libs::traits::ContextFrameTrait;
 use crate::libs::traits::InterruptControllerTrait;
-use crate::libs::cpu::idle_thread;
 
 use super::ContextFrame;
 
@@ -30,8 +26,9 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
         ctx.read()
     );
 
-    let ctx_mut = ctx.as_mut().unwrap();
-    ctx_mut.set_stack_pointer(ctx as usize + size_of::<ContextFrame>());
+    // let ctx_mut = ctx.as_mut().unwrap();
+    // ctx_mut.set_stack_pointer(ctx as usize + size_of::<ContextFrame>());
+    // ctx_mut.set_gpr(30, ctx_mut.exception_pc());
 
     #[cfg(feature = "unwind")]
     {
@@ -40,7 +37,8 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
         crate::libs::unwind::unwind_from_exception(registers);
     }
 
-    idle_thread(0);
+    // Should not reach here!!!
+    // idle_thread(0);
 }
 
 #[no_mangle]
@@ -82,8 +80,7 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
                     DAIF.get(),
                     ctx
                 );
-                println!("GIC unhandled SGI PPI");
-                idle_thread(0);
+                warn!("GIC unhandled SGI PPI");
             }
         }
         None => {
@@ -95,8 +92,7 @@ unsafe extern "C" fn current_el_spx_irq(ctx: *mut ContextFrame) {
                 DAIF.get(),
                 ctx
             );
-            println!("GIC unknown irq");
-            idle_thread(0);
+            warn!("GIC unknown irq");
         }
     }
     // debug!(
@@ -117,12 +113,17 @@ unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
         ctx.read()
     );
 
-    idle_thread(0);
+	#[cfg(feature = "unwind")]
+    {
+        let ctx = *ctx.clone();
+        let registers = ctx.into();
+        crate::libs::unwind::unwind_from_exception(registers);
+    }
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
-    warn!(
+    println!(
         "current_el_sp0_irq, thread [{}], el{}, irq {}, daif: {:x}\n ctx on user_sp {:p}\n",
         TPIDRRO_EL0.get(),
         crate::arch::Arch::curent_privilege(),
@@ -131,13 +132,23 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
         ctx
     );
     println!("{}", ctx.read());
-    idle_thread(0);
+	#[cfg(feature = "unwind")]
+    {
+        let ctx = *ctx.clone();
+        let registers = ctx.into();
+        crate::libs::unwind::unwind_from_exception(registers);
+    }
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_serror(ctx: *mut ContextFrame) {
     println!("current_el_spx_serror\n{}", ctx.read());
-    idle_thread(0);
+	#[cfg(feature = "unwind")]
+    {
+        let ctx = *ctx.clone();
+        let registers = ctx.into();
+        crate::libs::unwind::unwind_from_exception(registers);
+    }
 }
 
 #[no_mangle]
@@ -151,7 +162,12 @@ unsafe extern "C" fn lower_aarch64_synchronous(ctx: *mut ContextFrame) {
         ctx.read()
     );
 
-    idle_thread(0);
+	#[cfg(feature = "unwind")]
+    {
+        let ctx = *ctx.clone();
+        let registers = ctx.into();
+        crate::libs::unwind::unwind_from_exception(registers);
+    }
 }
 
 #[no_mangle]
@@ -165,7 +181,12 @@ unsafe extern "C" fn lower_aarch64_irq(ctx: *mut ContextFrame) {
         ctx.read()
     );
 
-    idle_thread(0);
+    #[cfg(feature = "unwind")]
+    {
+        let ctx = *ctx.clone();
+        let registers = ctx.into();
+        crate::libs::unwind::unwind_from_exception(registers);
+    }
 }
 
 #[no_mangle]
@@ -173,7 +194,12 @@ unsafe extern "C" fn lower_aarch64_serror(ctx: *mut ContextFrame) {
     let core_id = crate::arch::Arch::core_id();
     println!("core {} lower_aarch64_serror\n {}", core_id, ctx.read());
 
-    idle_thread(0);
+    #[cfg(feature = "unwind")]
+    {
+        let ctx = *ctx.clone();
+        let registers = ctx.into();
+        crate::libs::unwind::unwind_from_exception(registers);
+    }
 }
 
 pub fn init() {

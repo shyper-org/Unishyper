@@ -167,6 +167,12 @@ impl FallibleIterator for StackFrameIter {
         };
         // The caller should be the last instruction to return address.
         let caller = return_address - 4;
+
+        // debug!("return_address {return_address:#x}");
+        // addr2line::print_addr2line(return_address);
+        // debug!("caller {caller:#x}");
+        // addr2line::print_addr2line(caller);
+
         // Get Caller pointer's FDE and UnwindtableRow according to eh_frame info.
         let base_addrs = elf::base_addresses();
         let eh_frame = gimli::read::EhFrame::new(elf::eh_frame_slice(), gimli::NativeEndian);
@@ -200,6 +206,9 @@ impl FallibleIterator for StackFrameIter {
             }
         };
 
+		debug!("initial_address: {:#X}", fde.initial_address());
+		debug!("cfa: {:#X}", cfa);
+
         // Generate next stack frame.
         let frame = StackFrame {
             lsda: fde.lsda().map(|x| unsafe {
@@ -224,7 +233,7 @@ impl FallibleIterator for StackFrameIter {
 /// * `registers`: exception context frame.
 ///
 pub fn unwind_from_exception(registers: Registers) -> ! {
-    debug!("unwind_from_exception:\n {:?}", registers);
+    debug!("unwind_from_exception:\n{:?}", registers);
 
     let ctx = Box::new(UnwindingContext {
         skip: 0,
@@ -386,6 +395,8 @@ fn unwind(ctx: *mut UnwindingContext) {
                                 }
                             }
                             info!("land at {:016x}", landing_pad);
+							// addr2line::print_addr2line(landing_pad);
+
                             let mut regs = stack_frame_iter.registers.clone();
                             #[cfg(not(feature = "std"))]
                             {

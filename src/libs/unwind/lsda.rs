@@ -93,6 +93,7 @@ impl<R: Reader> GccExceptTableArea<R> {
         Err(gimli::Error::NoUnwindInfoForAddress)
     }
 
+	#[allow(unused)]
     pub fn dump_call_size_entry_of_address(&self, address: u64) {
         println!(
             "dump_call_size_entry_of_address call_site_address {:#x}",

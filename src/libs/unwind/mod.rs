@@ -180,10 +180,10 @@ impl FallibleIterator for StackFrameIter {
         // The caller should be the last instruction to return address.
         let caller = return_address - 4;
 
-        debug!("return_address {return_address:#x}");
-        addr2line::print_addr2line(return_address);
-        debug!("caller {caller:#x}");
-        addr2line::print_addr2line(caller);
+        // debug!("return_address {return_address:#x}");
+        // addr2line::print_addr2line(return_address);
+        // debug!("caller {caller:#x}");
+        // addr2line::print_addr2line(caller);
 
         // Get Caller pointer's FDE and UnwindtableRow according to eh_frame info.
         let base_addrs = elf::base_addresses();
@@ -218,8 +218,8 @@ impl FallibleIterator for StackFrameIter {
             }
         };
 
-        debug!("initial_address: {:#X}", fde.initial_address());
-        debug!("cfa: {:#X}", cfa);
+        // debug!("initial_address: {:#X}", fde.initial_address());
+        // debug!("cfa: {:#X}", cfa);
 
         // Generate next stack frame.
         let frame = StackFrame {
@@ -347,7 +347,7 @@ fn unwind(ctx: *mut UnwindingContext) {
                                 frame.initial_address,
                             );
 
-                            table.dump_call_size_entry_of_address(frame.call_site_address);
+                            // table.dump_call_size_entry_of_address(frame.call_site_address);
 
                             let entry = match table
                                 .call_site_table_entry_for_address(frame.call_site_address)
@@ -376,18 +376,14 @@ fn unwind(ctx: *mut UnwindingContext) {
                                                 if stack_frame_iter.from_exception()
                                                     && entry.landing_pad_address().is_some()
                                                 {
-                                                    println!(
-                                                        "====================================="
-                                                    );
-                                                    println!(
-                                                    "Unwind from exception, find closest_entry {:#x?} {:#x?} {:#x?}",
-                                                    entry.range_of_covered_addresses(),
-                                                    entry.landing_pad_address(),
-                                                    entry.action_offset()
-                                                );
-                                                    println!(
-                                                        "====================================="
-                                                    );
+                                                    debug!(">>>>>>>>>>>>>>>>>");
+                                                    debug!(
+                                                    	"Unwind from exception, find closest_entry {:x?} {:x?} {:x?}",
+                                                    	entry.range_of_covered_addresses(),
+                                                    	entry.landing_pad_address(),
+                                                    	entry.action_offset()
+                                                	);
+                                                    debug!("<<<<<<<<<<<<<<<<<");
                                                     closest_entry = Some(entry);
                                                     break;
                                                 }
@@ -424,20 +420,6 @@ fn unwind(ctx: *mut UnwindingContext) {
                                             }
                                         };
                                         if let Some(entry) = next {
-                                            if stack_frame_iter.from_exception()
-                                                && entry.landing_pad_address().is_some()
-                                            {
-                                                println!("=====================================");
-                                                println!(
-                                                    "Unwind from exception, find closest_entry {:#x?} {:#x?} {:#x?}",
-                                                    entry.range_of_covered_addresses(),
-                                                    entry.landing_pad_address(),
-                                                    entry.action_offset()
-                                                );
-                                                println!("=====================================");
-                                                closest_entry = Some(entry);
-                                                break;
-                                            }
                                             if entry.range_of_covered_addresses().start
                                                 < frame.call_site_address
                                             {

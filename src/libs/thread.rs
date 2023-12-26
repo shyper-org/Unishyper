@@ -814,34 +814,27 @@ pub fn thread_exit() -> ! {
 }
 
 #[cfg(feature = "unwind")]
-extern "C" fn thread_wrapper(func: extern "C" fn(usize), arg: usize) -> usize {
-    const RETRY_MAX: usize = 1;
-    let mut i = 0;
+extern "C" fn thread_wrapper(thread_entry: extern "C" fn(usize), arg: usize) -> usize {
+    const RETRY_MAX: usize = 5;
     #[cfg(not(feature = "std"))]
     use crate::libs::unwind::catch::catch_unwind;
     #[cfg(feature = "std")]
     use std::panic::catch_unwind;
-    loop {
-        i += 1;
-        let r = catch_unwind(|| {
-            func(arg);
-        });
-        match r {
+
+    for i in 0..RETRY_MAX {
+        match catch_unwind(|| thread_entry(arg)) {
             Ok(_) => {
-                break 0;
+                return 0;
             }
             Err(_) => {
                 info!("thread_wrapper: retry #{}", i);
-                // Enable interrupt when first enter this thread.
-                // This is awkward, we may need to improve context switch mechanism, see src/arch/switch.rs.
-                // crate::arch::irq::enable_and_wait();
-                if i > RETRY_MAX {
-                    info!("thread_wrapper: retry #{} exceed MAX{RETRY_MAX}, abort!!!", i);
-                    break 1;
-                }
             }
         }
     }
+    warn!(
+        "thread_wrapper: thread restart times exceed MAX{RETRY_MAX}, abort!!!",
+    );
+    ERROR_PANIC
 }
 
 /// Main spawn logic.

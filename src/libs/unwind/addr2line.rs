@@ -53,6 +53,7 @@ static CONTEXT: Lazy<Mutex<Context<EndianReader<RunTimeEndian, Arc<[u8]>>>>> = L
     Mutex::new(ctx)
 });
 
+#[allow(unused)]
 pub fn print_addr2line(addr: u64) {
     print!("addr {:#x}, at ", addr);
     match CONTEXT.lock().find_location(addr).unwrap() {

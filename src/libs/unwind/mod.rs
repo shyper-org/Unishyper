@@ -80,6 +80,9 @@ pub struct StackFrameIter {
     /// a reference to its row/entry in the unwinding table,
     /// and the Canonical Frame Address (CFA value) that is used to determine the next frame.
     state: Option<(u64, u64)>,
+    /// This is set to true when the unwinding process was from exception/interrupt,
+    /// We have to find the nearst landing pad during stackframe iteration.
+    from_exception: bool,
 }
 
 impl fmt::Debug for StackFrameIter {
@@ -94,11 +97,20 @@ impl fmt::Debug for StackFrameIter {
 }
 
 impl StackFrameIter {
-    pub fn new(registers: Registers) -> Self {
+    pub fn new(registers: Registers, from_exception: bool) -> Self {
         StackFrameIter {
             registers,
             state: None,
+            from_exception,
         }
+    }
+
+    pub fn from_exception(&self) -> bool {
+        self.from_exception
+    }
+
+    pub fn set_from_exception(&mut self, from_exception: bool) {
+        self.from_exception = from_exception
     }
 }
 
@@ -167,6 +179,12 @@ impl FallibleIterator for StackFrameIter {
         };
         // The caller should be the last instruction to return address.
         let caller = return_address - 4;
+
+        // debug!("return_address {return_address:#x}");
+        // addr2line::print_addr2line(return_address);
+        // debug!("caller {caller:#x}");
+        // addr2line::print_addr2line(caller);
+
         // Get Caller pointer's FDE and UnwindtableRow according to eh_frame info.
         let base_addrs = elf::base_addresses();
         let eh_frame = gimli::read::EhFrame::new(elf::eh_frame_slice(), gimli::NativeEndian);
@@ -200,6 +218,9 @@ impl FallibleIterator for StackFrameIter {
             }
         };
 
+        // debug!("initial_address: {:#X}", fde.initial_address());
+        // debug!("cfa: {:#X}", cfa);
+
         // Generate next stack frame.
         let frame = StackFrame {
             lsda: fde.lsda().map(|x| unsafe {
@@ -224,49 +245,20 @@ impl FallibleIterator for StackFrameIter {
 /// * `registers`: exception context frame.
 ///
 pub fn unwind_from_exception(registers: Registers) -> ! {
+    debug!("unwind_from_exception:\n{:?}", registers);
+
     let ctx = Box::new(UnwindingContext {
         skip: 0,
         reason: 0x1,
-        stack_frame_iter: StackFrameIter::new(registers),
+        stack_frame_iter: StackFrameIter::new(registers, true),
     });
     // let _ = ctx.stack_frame_iter.next();
     let ctx = Box::into_raw(ctx);
     unwind(ctx);
     cleanup(ctx);
-    error!("unwind failed!");
+    error!("unwind_from_exception failed!");
     loop {}
 }
-
-// core::arch::global_asm! {
-//     r#"
-//     .global unwind_trampoline
-//     unwind_trampoline:
-//     .cfi_startproc
-//          mov x1, sp
-//          sub sp, sp, 0xA0
-//          .cfi_adjust_cfa_offset 0x60
-//          stp x19, x20, [sp, #0x00]
-//          stp x21, x22, [sp, #0x10]
-//          stp x23, x24, [sp, #0x20]
-//          stp x25, x26, [sp, #0x30]
-//          stp x27, x28, [sp, #0x40]
-//          stp x29, lr,  [sp, #0x50]
-//          .cfi_rel_offset lr, 0x58
-//          mov x2, sp
-//          bl unwind_recorder
-//          ldr lr, [sp, #0x58]
-//          .cfi_restore lr
-//          add sp, sp, 0x60
-//          .cfi_adjust_cfa_offset -0x60
-//          ret
-//     .cfi_endproc
-//     "#
-// }
-
-// extern "C" {
-//     #[allow(improper_ctypes)]
-//     pub fn unwind_trampoline(ctx: usize);
-// }
 
 /// Starts the unwinding procedure for the current thread from panic.
 /// by working backwards up the call stack starting from the current stack frame.
@@ -284,7 +276,7 @@ pub fn unwind_from_panic(stack_frames_to_skip: usize) -> ! {
     let ctx = Box::into_raw(Box::new(UnwindingContext {
         skip: stack_frames_to_skip,
         reason: 0x2,
-        stack_frame_iter: StackFrameIter::new(Registers::default()),
+        stack_frame_iter: StackFrameIter::new(Registers::default(), false),
     }));
 
     // IMPORTANT NOTE!!!!
@@ -302,7 +294,7 @@ pub fn unwind_from_panic(stack_frames_to_skip: usize) -> ! {
         unwind_trampoline(ctx as usize);
     }
     cleanup(ctx);
-    error!("unwind failed!");
+    error!("unwind_from_panic failed!");
     loop {}
 }
 
@@ -333,11 +325,7 @@ fn unwind(ctx: *mut UnwindingContext) {
             return;
         }
         Ok(Some(frame)) => {
-            print!("{}", frame);
-            // print!("function addr {:#x}, at ", frame.initial_address);
-            // addr2line::parse_elf(frame.initial_address);
-            // print!("call site addr {:#x}, at ", frame.call_site_address);
-            // addr2line::parse_elf(frame.call_site_address);
+            print!("Unwinding StackFrame:\n{}", frame);
             match frame.lsda {
                 None => {
                     // LSDA not found in this call frame, just keep unwinding.
@@ -345,6 +333,7 @@ fn unwind(ctx: *mut UnwindingContext) {
                     return unwind(ctx);
                 }
                 Some(lsda) => {
+                    print!("lsda: {lsda:#x}\n");
                     // Resolve the gcc execption table on LSDA address.
                     match elf::section_by_addr(lsda as usize) {
                         None => {
@@ -357,10 +346,58 @@ fn unwind(ctx: *mut UnwindingContext) {
                                 gimli::NativeEndian,
                                 frame.initial_address,
                             );
+
+                            // table.dump_call_size_entry_of_address(frame.call_site_address);
+
                             let entry = match table
                                 .call_site_table_entry_for_address(frame.call_site_address)
                             {
-                                Ok(x) => x,
+                                Ok(x) => {
+                                    if x.landing_pad_address().is_some() {
+                                        x
+                                    } else {
+                                        let mut iter = match table.call_site_table_entries() {
+                                            Ok(iter) => iter,
+                                            Err(_) => {
+                                                error!("call_site_table_entries failed");
+                                                return;
+                                            }
+                                        };
+                                        let mut closest_entry = None;
+                                        loop {
+                                            let next = match iter.next() {
+                                                Ok(next) => next,
+                                                Err(_) => {
+                                                    error!("iter call site table failed");
+                                                    return;
+                                                }
+                                            };
+                                            if let Some(entry) = next {
+                                                if stack_frame_iter.from_exception()
+                                                    && entry.landing_pad_address().is_some()
+                                                {
+                                                    debug!(">>>>>>>>>>>>>>>>>");
+                                                    debug!(
+                                                    	"Unwind from exception, find closest_entry {:x?} {:x?} {:x?}",
+                                                    	entry.range_of_covered_addresses(),
+                                                    	entry.landing_pad_address(),
+                                                    	entry.action_offset()
+                                                	);
+                                                    debug!("<<<<<<<<<<<<<<<<<");
+                                                    closest_entry = Some(entry);
+                                                    break;
+                                                }
+                                            } else {
+                                                break;
+                                            }
+                                        }
+                                        if let Some(closest_entry) = closest_entry {
+                                            closest_entry
+                                        } else {
+                                            x
+                                        }
+                                    }
+                                }
                                 Err(e) => {
                                     warn!(
                                         "call site has no entry {:016x} {}",
@@ -419,6 +456,8 @@ fn unwind(ctx: *mut UnwindingContext) {
                                 }
                             }
                             info!("land at {:016x}", landing_pad);
+                            // addr2line::print_addr2line(landing_pad);
+
                             let mut regs = stack_frame_iter.registers.clone();
                             #[cfg(not(feature = "std"))]
                             {
@@ -428,8 +467,16 @@ fn unwind(ctx: *mut UnwindingContext) {
                             {
                                 regs[REG_ARGUMENT] = Some(crate::exported::get_global_payload());
                             }
-                            unsafe {
-                                land(&regs, landing_pad);
+
+                            if stack_frame_iter.from_exception() {
+                                stack_frame_iter.set_from_exception(false);
+                                unsafe {
+                                    land(&regs, landing_pad, true);
+                                }
+                            } else {
+                                unsafe {
+                                    land(&regs, landing_pad, false);
+                                }
                             }
                             // Never return!
                         }

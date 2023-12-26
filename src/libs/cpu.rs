@@ -216,7 +216,7 @@ pub fn get_cpu(core_id: usize) -> &'static mut Core {
 }
 
 #[no_mangle]
-fn idle_thread(_arg: usize) {
+pub fn idle_thread(_arg: usize) {
     debug!("enter idle thread");
     loop {
         crate::arch::Arch::wait_for_interrupt();

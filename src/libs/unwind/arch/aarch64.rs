@@ -82,6 +82,34 @@ unsafe extern "C" fn unwind_lander(regs: *const LandingRegs) -> ! {
     )
 }
 
+#[naked]
+unsafe extern "C" fn unwind_lander_from_exception(regs: *const LandingRegs) -> ! {
+    core::arch::asm!(
+        "ldp x2,  x3,  [x0, #0x10]",
+        "ldp x4,  x5,  [x0, #0x20]",
+        "ldp x6,  x7,  [x0, #0x30]",
+        "ldp x8,  x9,  [x0, #0x40]",
+        "ldp x10, x11, [x0, #0x50]",
+        "ldp x12, x13, [x0, #0x60]",
+        "ldp x14, x15, [x0, #0x70]",
+        "ldp x16, x17, [x0, #0x80]",
+        "ldp x18, x19, [x0, #0x90]",
+        "ldp x20, x21, [x0, #0xA0]",
+        "ldp x22, x23, [x0, #0xB0]",
+        "ldp x24, x25, [x0, #0xC0]",
+        "ldp x26, x27, [x0, #0xD0]",
+        "ldp x28, x29, [x0, #0xE0]",
+        "ldp x30, x1,  [x0, #0xF0]",
+		"msr elr_el1, x30",
+		"msr sp_el0, x1",
+		"mov x1, #0x45",
+		"msr spsr_el1, x1",
+        "ldp x0,  x1,  [x0, #0x00]",
+        "eret",
+        options(noreturn),
+    )
+}
+
 /// **Landing** refers to the process of jumping to a handler for a stack frame,
 /// e.g., an unwinding cleanup function, or an exception "catch" block.
 ///
@@ -90,7 +118,7 @@ unsafe extern "C" fn unwind_lander(regs: *const LandingRegs) -> ! {
 ///
 /// This is similar in design to how the latter half of a context switch routine
 /// must restore the previously-saved registers for the next task.
-pub unsafe fn land(regs: &Registers, landing_pad_address: u64) {
+pub unsafe fn land(regs: &Registers, landing_pad_address: u64, from_exception: bool) {
     let mut lr = LandingRegs {
         x: [0; 29],
         fp: regs[Aarch64::X29].unwrap_or(0),
@@ -127,17 +155,18 @@ pub unsafe fn land(regs: &Registers, landing_pad_address: u64) {
     lr.x[27] = regs[Aarch64::X27].unwrap_or(0);
     lr.x[28] = regs[Aarch64::X28].unwrap_or(0);
 
-    unwind_lander(&lr);
+	if from_exception {
+		unwind_lander_from_exception(&lr);
+	} else {
+		unwind_lander(&lr);
+	}
 }
 
 #[repr(C)]
 pub struct LandingRegs {
-    pub x: [u64; 29],
-    // x0 - x28
-    pub fp: u64,
-    // x29
-    pub lr: u64,
-    // x30
+    pub x: [u64; 29],  // x0 - x28
+    pub fp: u64, // x29
+    pub lr: u64,  // x30
     pub sp: u64, // x31
 }
 

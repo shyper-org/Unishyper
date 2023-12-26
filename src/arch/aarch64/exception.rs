@@ -26,9 +26,10 @@ unsafe extern "C" fn current_el_spx_synchronous(ctx: *mut ContextFrame) {
         ctx.read()
     );
 
-    // let ctx_mut = ctx.as_mut().unwrap();
+    use crate::libs::traits::ContextFrameTrait;
+    let ctx_mut = ctx.as_mut().unwrap();
     // ctx_mut.set_stack_pointer(ctx as usize + size_of::<ContextFrame>());
-    // ctx_mut.set_gpr(30, ctx_mut.exception_pc());
+    ctx_mut.set_gpr(30, ctx_mut.exception_pc() + 4);
 
     #[cfg(feature = "unwind")]
     {
@@ -113,7 +114,7 @@ unsafe extern "C" fn current_el_sp0_synchronous(ctx: *mut ContextFrame) {
         ctx.read()
     );
 
-	#[cfg(feature = "unwind")]
+    #[cfg(feature = "unwind")]
     {
         let ctx = *ctx.clone();
         let registers = ctx.into();
@@ -132,7 +133,7 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
         ctx
     );
     println!("{}", ctx.read());
-	#[cfg(feature = "unwind")]
+    #[cfg(feature = "unwind")]
     {
         let ctx = *ctx.clone();
         let registers = ctx.into();
@@ -143,7 +144,7 @@ unsafe extern "C" fn current_el_sp0_irq(ctx: *mut ContextFrame) {
 #[no_mangle]
 unsafe extern "C" fn current_el_spx_serror(ctx: *mut ContextFrame) {
     println!("current_el_spx_serror\n{}", ctx.read());
-	#[cfg(feature = "unwind")]
+    #[cfg(feature = "unwind")]
     {
         let ctx = *ctx.clone();
         let registers = ctx.into();
@@ -162,7 +163,7 @@ unsafe extern "C" fn lower_aarch64_synchronous(ctx: *mut ContextFrame) {
         ctx.read()
     );
 
-	#[cfg(feature = "unwind")]
+    #[cfg(feature = "unwind")]
     {
         let ctx = *ctx.clone();
         let registers = ctx.into();

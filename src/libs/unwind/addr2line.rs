@@ -53,22 +53,22 @@ static CONTEXT: Lazy<Mutex<Context<EndianReader<RunTimeEndian, Arc<[u8]>>>>> = L
     Mutex::new(ctx)
 });
 
-// pub fn print_addr2line(addr: u64) {
-//     print!("addr {:#x}, at ", addr);
-//     match CONTEXT.lock().find_location(addr).unwrap() {
-//         Some(loc) => {
-//             if let Some(ref file) = loc.file.as_ref() {
-//                 print!("{}:", file);
-//             } else {
-//                 print!("??:");
-//             }
-//             print!("{}:{}\n", loc.line.unwrap_or(0), loc.column.unwrap_or(0));
-//         }
-//         None => {
-//             print!("??:0:0\n");
-//         }
-//     }
-// }
+pub fn print_addr2line(addr: u64) {
+    print!("addr {:#x}, at ", addr);
+    match CONTEXT.lock().find_location(addr).unwrap() {
+        Some(loc) => {
+            if let Some(ref file) = loc.file.as_ref() {
+                print!("{}:", file);
+            } else {
+                print!("??:");
+            }
+            print!("{}:{}\n", loc.line.unwrap_or(0), loc.column.unwrap_or(0));
+        }
+        None => {
+            print!("??:0:0\n");
+        }
+    }
+}
 
 impl core::fmt::Display for super::StackFrame {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {

@@ -33,7 +33,7 @@ pub struct TrapContextFrame {
     /// General purpose registers, x0 to x30.
     gpr: [u64; 31],
     /// By default, spsr is set to 0x44, which is 0b0100_0100 in binray.
-    /// (SPSR_EL1::M::EL1t + SPSR_EL1::I::Unmasked + SPSR_EL1::F::Masked).value as u64
+    /// (SPSR_EL1::M::EL1h + SPSR_EL1::I::Unmasked + SPSR_EL1::F::Masked).value as u64
     spsr: u64, // 31 * 8
     /// Exception return address.
     /// During initialization, ELR_EL1 is set to the thread entry address,

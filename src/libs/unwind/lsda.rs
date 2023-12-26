@@ -92,6 +92,31 @@ impl<R: Reader> GccExceptTableArea<R> {
         }
         Err(gimli::Error::NoUnwindInfoForAddress)
     }
+
+	#[allow(unused)]
+    pub fn dump_call_size_entry_of_address(&self, address: u64) {
+        println!(
+            "dump_call_size_entry_of_address call_site_address {:#x}",
+            address
+        );
+        println!("==========================================================");
+        let mut iter = self
+            .call_site_table_entries()
+            .expect("failed to get call_site_table_entries");
+
+        while let Some(entry) = iter.next().expect("failed to get call_site_table_entry") {
+            println!(
+                "entry.range_of_covered_addresses() {:#x?}",
+                entry.range_of_covered_addresses(),
+            );
+            println!(
+                "entry landing_pad_address {:#x?} action_offset {:#x?}",
+                entry.landing_pad_address(),
+                entry.action_offset(),
+            );
+        }
+        println!("==========================================================");
+    }
 }
 
 /// The header of an LSDA section, which is at the very beginning of the area in the .gcc_except_table section

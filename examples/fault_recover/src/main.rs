@@ -6,7 +6,6 @@
 // note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 #![feature(format_args_nl)]
 
-#[macro_use]
 extern crate alloc;
 
 // use alloc::boxed::Box;

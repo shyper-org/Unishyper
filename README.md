@@ -4,6 +4,12 @@
 
 Unikernel means, you bundle your application directly with the kernel library, so that it can run without any installed operating system.
 
+Unishyper was inspired a lot by [Unikraft](https://github.com/unikraft/unikraft) and [RustyHermit](https://github.com/hermit-os/hermit-rs).
+
+Unishyper attempts to reuse components from another modular unikernel [ArceOS](https://github.com/rcore-os/arceos), and we're trying to explore further modularity.
+
+Our team has also developed an embedded hypervisor [Rust-Shyper](https://gitee.com/openeuler/rust_shyper).
+
 ## Boards and Platforms
 
 Unishyper now supports following platforms:
